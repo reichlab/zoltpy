@@ -1,0 +1,16 @@
+Metadata-Version: 2.1
+Name: zoltpy
+Version: 0.0.1.dev0
+Summary: A package of Reich Lab Zoltar utility functions.
+Home-page: https://github.com/reichlab/zoltpy
+Author: Katie House
+Author-email: katiehouse3@gmail.com
+License: UNKNOWN
+Description: # zoltpy
+        A python module that interfaces with Zoltar https://github.com/reichlab/forecast-repository
+        
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown

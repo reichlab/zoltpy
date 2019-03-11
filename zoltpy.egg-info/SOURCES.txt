@@ -1,0 +1,7 @@
+README.md
+setup.py
+zoltpy/__init__.py
+zoltpy.egg-info/PKG-INFO
+zoltpy.egg-info/SOURCES.txt
+zoltpy.egg-info/dependency_links.txt
+zoltpy.egg-info/top_level.txt
