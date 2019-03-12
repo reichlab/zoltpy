@@ -28,16 +28,15 @@ class ZoltarClient:
         # NB: here we are throwing away each project's json, which is here because the API returns json objects for
         # projects rather than just URIs
         return [Project(self, project_json['url']) for project_json in
-                ZoltarClient._json_for_uri(self.host + '/api/projects/', self.session)]
+                self._json_for_uri(self.host + '/api/projects/')]
 
 
-    @classmethod
-    def _json_for_uri(cls, uri, session):
-        if not session:
+    def _json_for_uri(self, uri):
+        if not self.session:
             raise RuntimeError('_validate_authentication(): no session')
 
         response = requests.get(uri, headers={'Accept': 'application/json; indent=4',
-                                              'Authorization': 'JWT {}'.format(session.token)})
+                                              'Authorization': 'JWT {}'.format(self.session.token)})
         if response.status_code != 200:  # HTTP_200_OK
             raise RuntimeError('get_token(): status code was not 200: {}. {}'
                                .format(response.status_code, response.text))
@@ -45,7 +44,7 @@ class ZoltarClient:
         return response.json()
 
 
-class ZoltarSession():  # internal use
+class ZoltarSession:  # internal use
 
     def __init__(self, zoltar_client):
         super().__init__()
@@ -83,7 +82,7 @@ class ZoltarResource(ABC):
 
 
     def refresh(self):
-        self.json = ZoltarClient._json_for_uri(self.uri, self.zoltar_client.session)
+        self.json = self.zoltar_client._json_for_uri(self.uri)
 
 
     def delete(self):
@@ -189,7 +188,7 @@ class Forecast(ZoltarResource):
         """
         data_uri = self.json['forecast_data']
         if is_json:  # default API format
-            return ZoltarClient._json_for_uri(data_uri, self.zoltar_client.session)
+            return self.zoltar_client._json_for_uri(data_uri)
         else:
             # todo fix api_views.forecast_data() to use proper accept type rather than 'format' query parameter
             response = requests.get(data_uri,
@@ -203,7 +202,6 @@ class Forecast(ZoltarResource):
 
 
 class UploadFileJob(ZoltarResource):
-
     STATUS_ID_TO_STR = {
         0: 'PENDING',
         1: 'CLOUD_FILE_UPLOADED',
