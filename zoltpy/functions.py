@@ -4,29 +4,50 @@ import time
 from zoltpy.client import ZoltarClient
 
 
-def main_app():
-    """
-    App demonstrating use of the library. passed one arg: forecast_csv_file: the cdc.csv data file to load.
-    """
-    forecast_csv_file = sys.argv[1]
+def authenticate(env_user = 'Z_USERNAME', env_pass = 'Z_PASSWORD'):
+    # Ensure environment variables exist
+    env_vars = [env_user, env_pass]
+    for var in env_vars:
+        if os.environ.get(var) == None:
+            print("\nERROR: Cannot locate environment variable:  %s" % var)
+            print("\nPC users, try the command: set %s='<your zoltar username>'" % var)
+            print("Mac users, try the command: export %s=<your zoltar username>" % var)
+            print("Then, Refresh the command window\n")
+            return
 
-    client = ZoltarClient()
-    client.authenticate(os.environ.get('DEV_USERNAME'), os.environ.get('DEV_PASSWORD'))
+    # Authenticate Zoltar connection
+    try:
+        client = ZoltarClient()
+        client.authenticate(os.environ.get(env_user), os.environ.get(env_pass))
+    except:
+        print("ERROR: Cannot authenticate zoltar credentials")
+        print("Ensure the environment variables for your username and password are correct")
+    return client
 
+def print_projects():
     print('* projects')
-    for project in client.projects:
+    zoltar = authenticate()
+    for project in zoltar.projects:
         print('-', project, project.id, project.name)
 
-    project = [project for project in client.projects if project.name == 'public project'][0]
+def print_models(project_name):
+    zoltar = authenticate()
+    project = [project for project in zoltar.projects if project.name == project_name][0]
     print('* models in', project)
     for model in project.models:
         print('-', model)
 
+
+''' 
+#
+# Work in progress
+#
+
+def delete_forecast(model_name, timezero_date):
     # for a particular TimeZero, delete existing Forecast, if any
-    model = [model for model in project.models if model.name == 'Test ForecastModel1'][0]
+    model = [model for model in project.models if model.name == model_name][0]
     print('* working with', model)
     print('* pre-delete forecasts', model.forecasts)
-    timezero_date = '20170117'  # YYYYMMDD_DATE_FORMAT
     forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
     if forecast_for_tz_date:
         existing_forecast = forecast_for_tz_date[0]
@@ -37,6 +58,10 @@ def main_app():
 
     model.refresh()  # o/w model.forecasts errors b/c the just-deleted forecast is still cached in model
     print('* post-delete forecasts', model.forecasts)
+
+def upload_forecast(model_name, timezero_date, forecast_csv_file):
+    model = [model for model in project.models if model.name == model_name][0]
+    print('* working with', model)
 
     # upload a new forecast
     upload_file_job = model.upload_forecast(timezero_date, forecast_csv_file)
@@ -50,13 +75,15 @@ def main_app():
     model.refresh()
     print('* post-upload forecasts', model.forecasts)
 
-    # GET its data (default format is JSON)
-    print('* data for forecast', new_forecast)
+
+def main_app(model_name, timezero_date):
+    model = [model for model in project.models if model.name == model_name][0]
+    forecast = model.forecast_for_pk(new_forecast_pk)
     data_json = new_forecast.data(is_json=True)
     data_csv = new_forecast.data(is_json=False)
     print('- data_json', data_json)
     print('- data_csv', data_csv)
-
+'''
 
 def busy_poll_upload_file_job(upload_file_job):
     # get the updated status via polling (busy wait every 1 second)
@@ -74,4 +101,4 @@ def busy_poll_upload_file_job(upload_file_job):
 
 
 if __name__ == '__main__':
-    main_app()
+    authenticate()
