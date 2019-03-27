@@ -48,8 +48,8 @@ from zoltpy import functions
 1) [print_projects()](#print-project-names) - Print project names
 2) [print_models(`project_name`)](#print-model-names) - Print model names for a specified project
 3) [delete_forecast(`project_name`, `model_name`, `timezero_date`)](#delete-forecast) - Deletes a forecast from Zoltar
-4) [upload_forecast(`project_name`, `model_name`, `timezero_date`, `forecast_csv_file`)] - Upload a forecast to Zoltar
-5) [forecast_to_dataframe(`project_name`, `model_name`, `timezero_date`)] - Returns forecast as a Pandas Dataframe
+4) [upload_forecast(`project_name`, `model_name`, `timezero_date`, `forecast_csv_file`)](#Upload-a-Forecast) - Upload a forecast to Zoltar
+5) [forecast_to_dataframe(`project_name`, `model_name`, `timezero_date`)](# Return-Forecast-as-a-Pandas-Dataframe) - Returns forecast as a Pandas Dataframe
 
 
 ### Print Project Names
@@ -75,6 +75,10 @@ functions.delete_forecast('Impetus Province Forecasts','gam_lag1_tops3','2018120
 ```
 
 ### Upload a Forecast
+```
+functions.upload_forecast(project_name='My Project', model_name='My Model', timezero_date='YYYYMMDD', 'C:\\Users\\house\\Desktop\\20181203-gam_lag1_tops3-20190114.csv')
+```
+
 Example:
 ```
 functions.upload_forecast('Impetus Province Forecasts','gam_lag1_tops3','20181203','C:\\Users\\house\\Desktop\\20181203-gam_lag1_tops3-20190114.csv')
