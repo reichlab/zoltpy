@@ -1,8 +1,15 @@
 import os
 import sys
 import time
-from zoltpy.client import ZoltarClient
-
+from zoltpy.connection import ZoltarClient
+import numpy as np
+import pandas as pd
+import csv
+import sys
+if sys.version_info[0] < 3: 
+    from StringIO import StringIO
+else:
+    from io import StringIO
 
 def authenticate(env_user = 'Z_USERNAME', env_pass = 'Z_PASSWORD'):
     # Ensure environment variables exist
@@ -37,14 +44,10 @@ def print_models(project_name):
     for model in project.models:
         print('-', model)
 
-
-''' 
-#
-# Work in progress
-#
-
-def delete_forecast(model_name, timezero_date):
+def delete_forecast(project_name, model_name, timezero_date):
     # for a particular TimeZero, delete existing Forecast, if any
+    zoltar = authenticate()
+    project = [project for project in zoltar.projects if project.name == project_name][0]
     model = [model for model in project.models if model.name == model_name][0]
     print('* working with', model)
     print('* pre-delete forecasts', model.forecasts)
@@ -59,7 +62,10 @@ def delete_forecast(model_name, timezero_date):
     model.refresh()  # o/w model.forecasts errors b/c the just-deleted forecast is still cached in model
     print('* post-delete forecasts', model.forecasts)
 
-def upload_forecast(model_name, timezero_date, forecast_csv_file):
+def upload_forecast(project_name, model_name, timezero_date, forecast_csv_file):
+    #timezero_date = '20181203'  # YYYYMMDD_DATE_FORMAT
+    zoltar = authenticate()
+    project = [project for project in zoltar.projects if project.name == project_name][0]
     model = [model for model in project.models if model.name == model_name][0]
     print('* working with', model)
 
@@ -73,17 +79,18 @@ def upload_forecast(model_name, timezero_date, forecast_csv_file):
     print('* new_forecast', new_forecast)
 
     model.refresh()
-    print('* post-upload forecasts', model.forecasts)
 
 
-def main_app(model_name, timezero_date):
+def forecast_to_dataframe(project_name, model_name, timezero_date):
+    zoltar = authenticate()
+    project = [project for project in zoltar.projects if project.name == project_name][0]
     model = [model for model in project.models if model.name == model_name][0]
-    forecast = model.forecast_for_pk(new_forecast_pk)
-    data_json = new_forecast.data(is_json=True)
-    data_csv = new_forecast.data(is_json=False)
-    print('- data_json', data_json)
-    print('- data_csv', data_csv)
-'''
+    forecast_fr_tz = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
+    existing_forecast = forecast_fr_tz[0]
+    #data_json = existing_forecast.data(is_json=True)
+    data_csv = StringIO(existing_forecast.data(is_json=False).decode("utf-8"))
+    dataset = pd.read_csv(data_csv,delimiter=",")
+    return dataset
 
 def busy_poll_upload_file_job(upload_file_job):
     # get the updated status via polling (busy wait every 1 second)
