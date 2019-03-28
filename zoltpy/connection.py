@@ -12,7 +12,7 @@ class ZoltarClient:
     # - no back-pointers are stored, e.g., Model -> owning Project
 
 
-    def __init__(self, host='zoltardata.com'):
+    def __init__(self, host='http://zoltardata.com'):
         self.host = host
         self.username, self.password = None, None
         self.session = None

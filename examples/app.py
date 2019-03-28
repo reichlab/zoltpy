@@ -1,7 +1,6 @@
 import os
 import sys
 import time
-
 from zoltpy.client import ZoltarClient
 
 
@@ -12,7 +11,7 @@ def main_app():
     forecast_csv_file = sys.argv[1]
 
     client = ZoltarClient()
-    client.authenticate(os.environ.get('USERNAME'), os.environ.get('PASSWORD'))
+    client.authenticate(os.environ.get('DEV_USERNAME'), os.environ.get('DEV_PASSWORD'))
 
     print('* projects')
     for project in client.projects:
