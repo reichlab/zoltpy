@@ -49,7 +49,7 @@ from zoltpy import functions
 2) [print_models(`project_name`)](#print-model-names) - Print model names for a specified project
 3) [delete_forecast(`project_name`, `model_name`, `timezero_date`)](#delete-forecast) - Deletes a forecast from Zoltar
 4) [upload_forecast(`project_name`, `model_name`, `timezero_date`, `forecast_csv_file`)](#Upload-a-Forecast) - Upload a forecast to Zoltar
-5) [forecast_to_dataframe(`project_name`, `model_name`, `timezero_date`)](# Return-Forecast-as-a-Pandas-Dataframe) - Returns forecast as a Pandas Dataframe
+5) [forecast_to_dataframe(`project_name`, `model_name`, `timezero_date`)](#Return-Forecast-as-a-Pandas-Dataframe) - Returns forecast as a Pandas Dataframe
 
 
 ### Print Project Names
