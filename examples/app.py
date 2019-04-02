@@ -1,32 +1,41 @@
 import os
 import sys
 import time
-from zoltpy.client import ZoltarClient
+from zoltpy.connection import ZoltarClient
 
 
 def main_app():
     """
-    App demonstrating use of the library. passed one arg: forecast_csv_file: the cdc.csv data file to load.
+    App demonstrating use of the library. args:
+    - zoltar_host: host to pass to ZoltarClient()
+    - project_name: name of Project to work with. assumptions: must have a model named in below arg, and must have a
+      timezero_date named in below arg
+    - model_name: name of a ForecastModel to work with - upload files, etc.
+    - timezero_date: in YYYYMMDD format, e.g., '20181203'
+    - forecast_csv_file: the cdc.csv data file to load
     """
-    forecast_csv_file = sys.argv[1]
+    host = sys.argv[1]
+    project_name = sys.argv[2]
+    model_name = sys.argv[3]
+    timezero_date = sys.argv[4]
+    forecast_csv_file = sys.argv[5]
 
-    client = ZoltarClient()
-    client.authenticate(os.environ.get('DEV_USERNAME'), os.environ.get('DEV_PASSWORD'))
+    client = ZoltarClient(host)
+    client.authenticate(os.environ.get('USERNAME'), os.environ.get('PASSWORD'))
 
     print('* projects')
     for project in client.projects:
         print('-', project, project.id, project.name)
 
-    project = [project for project in client.projects if project.name == 'public project'][0]
+    project = [project for project in client.projects if project.name == project_name][0]
     print('* models in', project)
     for model in project.models:
         print('-', model)
 
     # for a particular TimeZero, delete existing Forecast, if any
-    model = [model for model in project.models if model.name == 'Test ForecastModel1'][0]
+    model = [model for model in project.models if model.name == model_name][0]
     print('* working with', model)
     print('* pre-delete forecasts', model.forecasts)
-    timezero_date = '20170117'  # YYYYMMDD_DATE_FORMAT
     forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
     if forecast_for_tz_date:
         existing_forecast = forecast_for_tz_date[0]
@@ -39,7 +48,7 @@ def main_app():
     print('* post-delete forecasts', model.forecasts)
 
     # upload a new forecast
-    upload_file_job = model.upload_forecast(timezero_date, forecast_csv_file)
+    upload_file_job = model.upload_forecast(forecast_csv_file, timezero_date, timezero_date)  # 2nd: data_version_date
     busy_poll_upload_file_job(upload_file_job)
 
     # get the new forecast from the upload_file_job by parsing the generic 'output_json' field

@@ -70,7 +70,7 @@ def upload_forecast(project_name, model_name, timezero_date, forecast_csv_file):
     print('* working with', model)
 
     # upload a new forecast
-    upload_file_job = model.upload_forecast(timezero_date, forecast_csv_file)
+    upload_file_job = model.upload_forecast(forecast_csv_file, timezero_date)
     busy_poll_upload_file_job(upload_file_job)
 
     # get the new forecast from the upload_file_job by parsing the generic 'output_json' field
