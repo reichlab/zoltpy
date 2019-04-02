@@ -54,13 +54,13 @@ def delete_forecast(project_name, model_name, timezero_date):
     forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
     if forecast_for_tz_date:
         existing_forecast = forecast_for_tz_date[0]
-        print('- deleting existing forecast')
+        print('- deleting existing forecast', timezero_date, existing_forecast)
         existing_forecast.delete()
     else:
-        print('- no existing forecast')
+        print('- no existing forecast', timezero_date)
 
     model.refresh()  # o/w model.forecasts errors b/c the just-deleted forecast is still cached in model
-    print('* post-delete forecasts')
+    print('* post-delete forecasts', model.forecasts)
 
 def upload_forecast(project_name, model_name, timezero_date, forecast_csv_file):
     #timezero_date = '20181203'  # YYYYMMDD_DATE_FORMAT
