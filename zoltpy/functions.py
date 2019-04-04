@@ -32,7 +32,7 @@ def authenticate(env_user = 'Z_USERNAME', env_pass = 'Z_PASSWORD'):
     return client
 
 def print_projects():
-    print('* projects')
+    print('* projects')    
     zoltar = authenticate()
     for project in zoltar.projects:
         print('-', project, project.id, project.name)

@@ -19,10 +19,8 @@ class ZoltarClient:
 
 
     def authenticate(self, username, password):
-        print('YY1', self.session)
         self.username, self.password = username, password
         self.session = ZoltarSession(self)
-        print('YY2', self.session)
 
 
     @property
@@ -55,7 +53,6 @@ class ZoltarSession:  # internal use
 
 
     def _get_token(self):
-        print('YY')
         response = requests.post(self.zoltar_client.host + '/api-token-auth/',
                                  {'username': self.zoltar_client.username, 'password': self.zoltar_client.password})
         if response.status_code != 200:  # HTTP_200_OK
