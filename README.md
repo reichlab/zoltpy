@@ -6,6 +6,8 @@ A python module that interfaces with Zoltar https://github.com/reichlab/forecast
 - [pipenv](https://pipenv.readthedocs.io/en/latest/) for managing packages - see Pipfile
 - [click](https://click.palletsprojects.com/en/7.x/) - for the demo application's handling of args
 - [pandas](https://pandas.pydata.org/) - for use of dataframe function
+- [requests](http://docs.python-requests.org/en/v2.7.0/user/install/)
+- [numpy](https://pypi.org/project/numpy/)
 
 ## Installation
 Zoltpy is hosted on the Python Package Index (pypi.org), a repository for Python modules https://pypi.org/project/zoltpy/. 
