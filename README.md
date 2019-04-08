@@ -2,6 +2,7 @@
 A python module that interfaces with Zoltar https://github.com/reichlab/forecast-repository
 
 ## Installation requirements
+- [python 3.6](https://www.python.org/downloads/release/python-360/) 
 - [pipenv](https://pipenv.readthedocs.io/en/latest/) for managing packages - see Pipfile
 - [click](https://click.palletsprojects.com/en/7.x/) - for the demo application's handling of args
 - [pandas](https://pandas.pydata.org/) - for use of dataframe function
