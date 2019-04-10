@@ -27,8 +27,8 @@ nano .bash_profile
 ```
 Add the following to your bash_profile:
 ```
-export DEV_USERNAME=<your zoltar username>
-export DEV_PASSWORD=<your zoltar password>
+export Z_USERNAME=<your zoltar username>
+export Z_PASSWORD=<your zoltar password>
 ```
 After you are finished, press `Ctrl` + `O`, `Enter`, and `Ctrl` + `X` to save and quit.
 
@@ -36,11 +36,16 @@ Then enter the command:
 ```
 source ~/.bash_profile
 ```
+To ensure your environment variable is configured properly, run this command and check for Z_USERNAME and Z_PASSWORD:
+```
+printenv
+```
+
 ### For PC
 In the command prompt, run the following commands:
 ```
-set DEV_USERNAME="<your zoltar username>"
-set DEV_PASSWORD="<your zoltar password>"
+set Z_USERNAME="<your zoltar username>"
+set Z_PASSWORD="<your zoltar password>"
 ```
 
 ## Usage
