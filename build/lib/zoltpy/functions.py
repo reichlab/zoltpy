@@ -32,7 +32,7 @@ def authenticate(env_user = 'Z_USERNAME', env_pass = 'Z_PASSWORD'):
     return client
 
 def print_projects():
-    print('* projects')
+    print('* projects')    
     zoltar = authenticate()
     for project in zoltar.projects:
         print('-', project, project.id, project.name)
@@ -54,15 +54,15 @@ def delete_forecast(project_name, model_name, timezero_date):
     forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
     if forecast_for_tz_date:
         existing_forecast = forecast_for_tz_date[0]
-        print('- deleting existing forecast', timezero_date, existing_forecast)
+        print('- deleting existing forecast')
         existing_forecast.delete()
     else:
-        print('- no existing forecast', timezero_date)
+        print('- no existing forecast')
 
     model.refresh()  # o/w model.forecasts errors b/c the just-deleted forecast is still cached in model
-    print('* post-delete forecasts', model.forecasts)
+    print('* post-delete forecasts')
 
-def upload_forecast(project_name, model_name, timezero_date, forecast_csv_file):
+def upload_forecast(forecast_csv_file, project_name, model_name, timezero_date, data_version_date = None):
     #timezero_date = '20181203'  # YYYYMMDD_DATE_FORMAT
     zoltar = authenticate()
     project = [project for project in zoltar.projects if project.name == project_name][0]
@@ -70,7 +70,7 @@ def upload_forecast(project_name, model_name, timezero_date, forecast_csv_file):
     print('* working with', model)
 
     # upload a new forecast
-    upload_file_job = model.upload_forecast(timezero_date, forecast_csv_file)
+    upload_file_job = model.upload_forecast(forecast_csv_file, timezero_date, data_version_date)
     busy_poll_upload_file_job(upload_file_job)
 
     # get the new forecast from the upload_file_job by parsing the generic 'output_json' field

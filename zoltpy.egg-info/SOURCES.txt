@@ -1,5 +1,8 @@
 README.md
 setup.py
+tests/__init__.py
+tests/tests_connection.py
+tests/tests_functions.py
 zoltpy/__init__.py
 zoltpy/connection.py
 zoltpy/functions.py
