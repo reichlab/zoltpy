@@ -2,9 +2,12 @@
 A python module that interfaces with Zoltar https://github.com/reichlab/forecast-repository
 
 ## Installation requirements
+- [python 3.6](https://www.python.org/downloads/release/python-360/) 
 - [pipenv](https://pipenv.readthedocs.io/en/latest/) for managing packages - see Pipfile
 - [click](https://click.palletsprojects.com/en/7.x/) - for the demo application's handling of args
 - [pandas](https://pandas.pydata.org/) - for use of dataframe function
+- [requests](http://docs.python-requests.org/en/v2.7.0/user/install/)
+- [numpy](https://pypi.org/project/numpy/)
 
 ## Installation
 Zoltpy is hosted on the Python Package Index (pypi.org), a repository for Python modules https://pypi.org/project/zoltpy/. 
@@ -17,34 +20,41 @@ pip install zoltpy
 ## One-time configuration
 Users must add their Zoltar username and password to environment variables on their machine before using this module. 
 
-*For Mac Users*
+### For Mac/Unix
 ```
 cd ~
 nano .bash_profile
 ```
 Add the following to your bash_profile:
 ```
-export DEV_PASSWORD=<your zoltar password>
-export DEV_USERNAME=<your zoltar username>
+export Z_USERNAME=<your zoltar username>
+export Z_PASSWORD=<your zoltar password>
 ```
-To save the file, 
-hold `shift:` 
-then type: `wq+Enter`
+After you are finished, press `Ctrl` + `O`, `Enter`, and `Ctrl` + `X` to save and quit.
 
-*For PC Users*
+Then enter the command:
+```
+source ~/.bash_profile
+```
+To ensure your environment variable is configured properly, run this command and check for Z_USERNAME and Z_PASSWORD:
+```
+printenv
+```
+
+### For PC
 In the command prompt, run the following commands:
 ```
-set DEV_PASSWORD="<your zoltar password>"
-set DEV_USERNAME="<your zoltar username>"
+set Z_USERNAME="<your zoltar username>"
+set Z_PASSWORD="<your zoltar password>"
 ```
 
 ## Usage
 Zoltpy is a python module that communicates with Zoltar, the Reich Lab's forecast repository. To import the Zoltpy functions, run the following command after installing the package:
 ```
-from zoltpy import functions
+import zoltpy as zp
 ```
 
-**Zoltpy currently has 5 Key Functions:**
+### Zoltpy currently has 5 Key Functions:
 1) [print_projects()](#print-project-names) - Print project names
 2) [print_models(`project_name`)](#print-model-names) - Print model names for a specified project
 3) [delete_forecast(`project_name`, `model_name`, `timezero_date`)](#delete-forecast) - Deletes a forecast from Zoltar
@@ -52,40 +62,40 @@ from zoltpy import functions
 5) [forecast_to_dataframe(`project_name`, `model_name`, `timezero_date`)](#Return-Forecast-as-a-Pandas-Dataframe) - Returns forecast as a Pandas Dataframe
 
 
-### Print Project Names
+#### Print Project Names
 This fuction returns the project names that you have authorization to view in Zoltar.
 ```
-functions.print_projects()
+zp.print_projects()
 ```
 
-### Print Model Names
+#### Print Model Names
 Given a project, this function prints the models in that project.
 ```
-functions.print_models(project_name = 'My Project')
+zp.print_models(project_name = 'My Project')
 ```
 
-### Delete a Forecast
+#### Delete a Forecast
 Deletes a single forecast for a specified model and timezero.
 ```
-functions.delete_forecast(project_name='My Project', model_name='My Model', timezero_date='YYYYMMDD')
+zp.delete_forecast(project_name='My Project', model_name='My Model', timezero_date='YYYYMMDD')
 ```
 Example:
 ```
-functions.delete_forecast('Impetus Province Forecasts','gam_lag1_tops3','20181203')
+zp.delete_forecast('Impetus Province Forecasts','gam_lag1_tops3','20181203')
 ```
 
-### Upload a Forecast
+#### Upload a Forecast
 ```
-functions.upload_forecast(project_name='My Project', model_name='My Model', timezero_date='YYYYMMDD', 'C:\\Users\\house\\Desktop\\20181203-gam_lag1_tops3-20190114.csv')
+zp.upload_forecast(project_name='My Project', model_name='My Model', timezero_date='YYYYMMDD', 'C:\\Users\\house\\Desktop\\20181203-gam_lag1_tops3-20190114.csv')
 ```
 
 Example:
 ```
-functions.upload_forecast('Impetus Province Forecasts','gam_lag1_tops3','20181203','C:\\Users\\house\\Desktop\\20181203-gam_lag1_tops3-20190114.csv')
+zp.upload_forecast('Impetus Province Forecasts','gam_lag1_tops3','20181203','C:\\Users\\house\\Desktop\\20181203-gam_lag1_tops3-20190114.csv')
 ```
 
-### Return Forecast as a Pandas Dataframe
+#### Return Forecast as a Pandas Dataframe
 Example:
 ```
-functions.forecast_to_dataframe('Impetus Province Forecasts','gam_lag1_tops3','20181203')
+zp.forecast_to_dataframe('Impetus Province Forecasts','gam_lag1_tops3','20181203')
 ```
