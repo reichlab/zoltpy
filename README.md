@@ -20,7 +20,7 @@ pip install zoltpy
 ## One-time configuration
 Users must add their Zoltar username and password to environment variables on their machine before using this module. 
 
-*For Mac/Unix Users*
+### For Mac/Unix
 ```
 cd ~
 nano .bash_profile
@@ -36,7 +36,7 @@ Then enter the command:
 ```
 source ~/.bash_profile
 ```
-*For PC Users*
+### For PC
 In the command prompt, run the following commands:
 ```
 set DEV_USERNAME="<your zoltar username>"
