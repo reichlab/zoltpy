@@ -54,7 +54,7 @@ Zoltpy is a python module that communicates with Zoltar, the Reich Lab's forecas
 from zoltpy import functions
 ```
 
-**Zoltpy currently has 5 Key Functions:**
+### Zoltpy currently has 5 Key Functions:
 1) [print_projects()](#print-project-names) - Print project names
 2) [print_models(`project_name`)](#print-model-names) - Print model names for a specified project
 3) [delete_forecast(`project_name`, `model_name`, `timezero_date`)](#delete-forecast) - Deletes a forecast from Zoltar
@@ -62,19 +62,19 @@ from zoltpy import functions
 5) [forecast_to_dataframe(`project_name`, `model_name`, `timezero_date`)](#Return-Forecast-as-a-Pandas-Dataframe) - Returns forecast as a Pandas Dataframe
 
 
-### Print Project Names
+#### Print Project Names
 This fuction returns the project names that you have authorization to view in Zoltar.
 ```
 functions.print_projects()
 ```
 
-### Print Model Names
+#### Print Model Names
 Given a project, this function prints the models in that project.
 ```
 functions.print_models(project_name = 'My Project')
 ```
 
-### Delete a Forecast
+#### Delete a Forecast
 Deletes a single forecast for a specified model and timezero.
 ```
 functions.delete_forecast(project_name='My Project', model_name='My Model', timezero_date='YYYYMMDD')
@@ -84,7 +84,7 @@ Example:
 functions.delete_forecast('Impetus Province Forecasts','gam_lag1_tops3','20181203')
 ```
 
-### Upload a Forecast
+#### Upload a Forecast
 ```
 functions.upload_forecast(project_name='My Project', model_name='My Model', timezero_date='YYYYMMDD', 'C:\\Users\\house\\Desktop\\20181203-gam_lag1_tops3-20190114.csv')
 ```
@@ -94,7 +94,7 @@ Example:
 functions.upload_forecast('Impetus Province Forecasts','gam_lag1_tops3','20181203','C:\\Users\\house\\Desktop\\20181203-gam_lag1_tops3-20190114.csv')
 ```
 
-### Return Forecast as a Pandas Dataframe
+#### Return Forecast as a Pandas Dataframe
 Example:
 ```
 functions.forecast_to_dataframe('Impetus Province Forecasts','gam_lag1_tops3','20181203')
