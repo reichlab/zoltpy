@@ -1,7 +1,7 @@
 import os
 import sys
 import time
-from zoltpy.connection import ZoltarClient
+from zoltpy.connection import ZoltarConnection
 
 
 def main_app():
@@ -20,14 +20,15 @@ def main_app():
     timezero_date = sys.argv[4]
     forecast_csv_file = sys.argv[5]
 
-    client = ZoltarClient(host)
+    client = ZoltarConnection(host)
     client.authenticate(os.environ.get('USERNAME'), os.environ.get('PASSWORD'))
 
     print('* projects')
     for project in client.projects:
         print('-', project, project.id, project.name)
 
-    project = [project for project in client.projects if project.name == project_name][0]
+    project = [
+        project for project in client.projects if project.name == project_name][0]
     print('* models in', project)
     for model in project.models:
         print('-', model)
@@ -36,7 +37,8 @@ def main_app():
     model = [model for model in project.models if model.name == model_name][0]
     print('* working with', model)
     print('* pre-delete forecasts', model.forecasts)
-    forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
+    forecast_for_tz_date = [
+        forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
     if forecast_for_tz_date:
         existing_forecast = forecast_for_tz_date[0]
         print('- deleting existing forecast', timezero_date, existing_forecast)
@@ -48,7 +50,8 @@ def main_app():
     print('* post-delete forecasts', model.forecasts)
 
     # upload a new forecast
-    upload_file_job = model.upload_forecast(forecast_csv_file, timezero_date, timezero_date)  # 2nd: data_version_date
+    upload_file_job = model.upload_forecast(
+        forecast_csv_file, timezero_date, timezero_date)  # 2nd: data_version_date
     busy_poll_upload_file_job(upload_file_job)
 
     # get the new forecast from the upload_file_job by parsing the generic 'output_json' field

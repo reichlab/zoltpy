@@ -1,11 +1,10 @@
 README.md
 setup.py
 tests/__init__.py
-tests/tests_connection.py
+tests/test_connection.py
 tests/tests_functions.py
 zoltpy/__init__.py
 zoltpy/connection.py
-zoltpy/functions.py
 zoltpy.egg-info/PKG-INFO
 zoltpy.egg-info/SOURCES.txt
 zoltpy.egg-info/dependency_links.txt

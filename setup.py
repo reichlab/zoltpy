@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="zoltpy",
-    version="0.0.3dev",
+    version="0.0.4dev",
     author="Katie House",
     author_email="katiehouse3@gmail.com",
     description="A package of Reich Lab Zoltar utility functions.",
