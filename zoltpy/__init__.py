@@ -1,23 +1,21 @@
 '''
-  ______      _ _               
- |___  /     | | |              
-    / /  ___ | | |_ _ __  _   _ 
+  ______      _ _
+ |___  /     | | |
+    / /  ___ | | |_ _ __  _   _
    / /  / _ \| | __| '_ \| | | |
   / /__| (_) | | |_| |_) | |_| |
  /_____|\___/|_|\__| .__/ \__, |
                    | |     __/ |
-                   |_|    |___/ 
+                   |_|    |___/
 
 '''
-import os
-import sys
-import time
-from zoltpy.connection import ZoltarConnection
-import numpy as np
-import pandas as pd
 import csv
-import sys
-from io import StringIO
+import io
+import os
+
+from examples.app import busy_poll_upload_file_job
+from zoltpy.cdc import cdc_csv_rows_from_json_io_dict
+from zoltpy.connection import ZoltarConnection
 
 
 def authenticate(env_user='Z_USERNAME', env_pass='Z_PASSWORD'):
@@ -33,41 +31,22 @@ def authenticate(env_user='Z_USERNAME', env_pass='Z_PASSWORD'):
 
     # Authenticate Zoltar connection
     try:
-        Connection = ZoltarConnection()
-        Connection.authenticate(os.environ.get(
-            env_user), os.environ.get(env_pass))
+        connection = ZoltarConnection()
+        connection.authenticate(os.environ.get(env_user), os.environ.get(env_pass))
+        return connection
     except:
         print("ERROR: Cannot authenticate zoltar credentials")
         print("Ensure the environment variables for your username and password are correct")
-    return Connection
-
-
-def print_projects():
-    print('* projects')
-    zoltar = authenticate()
-    for project in zoltar.projects:
-        print('-', project, project.id, project.name)
-
-
-def print_models(project_name):
-    zoltar = authenticate()
-    project = [
-        project for project in zoltar.projects if project.name == project_name][0]
-    print('* models in', project)
-    for model in project.models:
-        print('-', model)
 
 
 def delete_forecast(project_name, model_name, timezero_date):
     # for a particular TimeZero, delete existing Forecast, if any
-    zoltar = authenticate()
-    project = [
-        project for project in zoltar.projects if project.name == project_name][0]
+    conn = authenticate()
+    project = [project for project in conn.projects if project.name == project_name][0]
     model = [model for model in project.models if model.name == model_name][0]
     print('* working with', model)
     print('* pre-delete forecasts', model.forecasts)
-    forecast_for_tz_date = [
-        forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
+    forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
     if forecast_for_tz_date:
         existing_forecast = forecast_for_tz_date[0]
         print('- deleting existing forecast')
@@ -79,17 +58,16 @@ def delete_forecast(project_name, model_name, timezero_date):
     print('* post-delete forecasts')
 
 
+# todo xx needs to create intermediate json file as is done by zoltar_connection_app()! also, should take a fp, and not open() it
 def upload_forecast(forecast_csv_file, project_name, model_name, timezero_date, data_version_date=None):
     # timezero_date = '20181203'  # YYYYMMDD_DATE_FORMAT
-    zoltar = authenticate()
-    project = [
-        project for project in zoltar.projects if project.name == project_name][0]
+    conn = authenticate()
+    project = [project for project in conn.projects if project.name == project_name][0]
     model = [model for model in project.models if model.name == model_name][0]
     print('* working with', model)
 
     # upload a new forecast
-    upload_file_job = model.upload_forecast(
-        forecast_csv_file, timezero_date, data_version_date)
+    upload_file_job = model.upload_forecast(forecast_csv_file, timezero_date, data_version_date)
     busy_poll_upload_file_job(upload_file_job)
 
     # get the new forecast from the upload_file_job by parsing the generic 'output_json' field
@@ -101,32 +79,25 @@ def upload_forecast(forecast_csv_file, project_name, model_name, timezero_date, 
 
 
 def forecast_to_dataframe(project_name, model_name, timezero_date):
-    zoltar = authenticate()
-    project = [
-        project for project in zoltar.projects if project.name == project_name][0]
+    import pandas as pd
+
+
+    conn = authenticate()
+    project = [project for project in conn.projects if project.name == project_name][0]
     model = [model for model in project.models if model.name == model_name][0]
-    forecast_fr_tz = [
-        forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
-    existing_forecast = forecast_fr_tz[0]
-    #data_json = existing_forecast.data(is_json=True)
-    data_csv = StringIO(existing_forecast.data(is_json=False).decode("utf-8"))
-    dataset = pd.read_csv(data_csv, delimiter=",")
+    forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
+    existing_forecast = forecast_for_tz_date[0] if forecast_for_tz_date else None
+
+    # convert native json to cdc csv
+    string_io = io.StringIO()
+    csv_writer = csv.writer(string_io, delimiter=',')
+    data_json = existing_forecast.data()
+    csv_rows = cdc_csv_rows_from_json_io_dict(data_json)
+    for row in csv_rows:
+        csv_writer.writerow(row)
+    string_io.seek(0)
+    dataset = pd.read_csv(string_io, delimiter=",")
     return dataset
-
-
-def busy_poll_upload_file_job(upload_file_job):
-    # get the updated status via polling (busy wait every 1 second)
-    print('- polling for status change. upload_file_job:', upload_file_job)
-    while True:
-        status = upload_file_job.status_as_str
-        print('  =', status)
-        if status == 'FAILED':
-            print('  x failed')
-            break
-        if status == 'SUCCESS':
-            break
-        time.sleep(1)
-        upload_file_job.refresh()
 
 
 if __name__ == '__main__':

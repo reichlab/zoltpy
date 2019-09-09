@@ -1,3 +1,4 @@
+import json
 from abc import ABC
 
 import requests
@@ -12,7 +13,7 @@ class ZoltarConnection:
     # - no back-pointers are stored, e.g., Model -> owning Project
 
 
-    def __init__(self, host='http://zoltardata.com'):
+    def __init__(self, host='https://zoltardata.com'):
         self.host = host
         self.username, self.password = None, None
         self.session = None
@@ -54,7 +55,8 @@ class ZoltarSession:  # internal use
 
     def _get_token(self):
         response = requests.post(self.zoltar_connection.host + '/api-token-auth/',
-                                 {'username': self.zoltar_connection.username, 'password': self.zoltar_connection.password})
+                                 {'username': self.zoltar_connection.username,
+                                  'password': self.zoltar_connection.password})
         if response.status_code != 200:  # HTTP_200_OK
             raise RuntimeError('get_token(): status code was not 200: {}. {}'
                                .format(response.status_code, response.text))
@@ -149,14 +151,14 @@ class Model(ZoltarResource):
         return Forecast(self.zoltar_connection, forecast_uri)
 
 
-    def upload_forecast(self, forecast_csv_file, timezero_date, data_version_date=None):  # YYYYMMDD_DATE_FORMAT
+    def upload_forecast(self, forecast_json_fp, timezero_date, data_version_date=None):  # YYYYMMDD_DATE_FORMAT
         data = {'timezero_date': timezero_date}
         if data_version_date:
             data['data_version_date'] = data_version_date
         response = requests.post(self.uri + 'forecasts/',
                                  headers={'Authorization': 'JWT {}'.format(self.zoltar_connection.session.token)},
                                  data=data,
-                                 files={'data_file': open(forecast_csv_file, 'rb')})
+                                 files={'data_file': forecast_json_fp})
         if response.status_code != 200:  # HTTP_200_OK
             raise RuntimeError('upload_forecast(): status code was not 200: {}'.format(response.text))
 
@@ -171,7 +173,7 @@ class Forecast(ZoltarResource):
 
 
     def __repr__(self):
-        return str((self.__class__.__name__, self.uri, self.id, self.timezero_date, self.csv_filename))
+        return str((self.__class__.__name__, self.uri, self.id, self.timezero_date, self.source))
 
 
     @property
@@ -180,28 +182,22 @@ class Forecast(ZoltarResource):
 
 
     @property
-    def csv_filename(self):
-        return self.json['csv_filename']
+    def source(self):
+        return self.json['source']
 
 
-    def data(self, is_json=True):
+    def data(self):
         """
-        :return: this forecast's data as either JSON or CSV
-        :param is_json: True for JSON format, false for CSV
+        :return: this forecast's data as a dict formatted as documented in Zoltar2's utils/forecast.py
         """
         data_uri = self.json['forecast_data']
-        if is_json:  # default API format
-            return self.zoltar_connection._json_for_uri(data_uri)
-        else:
-            # todo fix api_views.forecast_data() to use proper accept type rather than 'format' query parameter
-            response = requests.get(data_uri,
-                                    headers={'Authorization': 'JWT {}'.format(self.zoltar_connection.session.token)},
-                                    params={'format': 'csv'})
-            if response.status_code != 200:  # HTTP_200_OK
-                raise RuntimeError('data(): status code was not 200: {}. {}'
-                                   .format(response.status_code, response.text))
+        response = requests.get(data_uri,
+                                headers={'Authorization': 'JWT {}'.format(self.zoltar_connection.session.token)})
+        if response.status_code != 200:  # HTTP_200_OK
+            raise RuntimeError('data(): status code was not 200: {}. {}'
+                               .format(response.status_code, response.text))
 
-            return response.content
+        return json.loads(response.content.decode('utf-8'))
 
 
 class UploadFileJob(ZoltarResource):
