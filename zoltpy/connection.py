@@ -1,14 +1,20 @@
 import json
+import logging
 from abc import ABC
 
 import requests
 
 
+logger = logging.getLogger(__name__)
+
+
 class ZoltarConnection:
 
     # notes:
+    # - implement is_token_expired()
+    # - get, upload, delete should call re_authenticate_if_necessary()
+    # - needs tests! should be straightforward to mock internal ZoltarResource json responses
     # - incomplete - ZoltarResource children only have a few properties implemented
-    # - authentication approach is quick-and-dirty
     # - caches resource json, but doesn't automatically handle becoming stale, refreshing, etc.
     # - no back-pointers are stored, e.g., Model -> owning Project
 
@@ -22,6 +28,12 @@ class ZoltarConnection:
     def authenticate(self, username, password):
         self.username, self.password = username, password
         self.session = ZoltarSession(self)
+
+
+    def re_authenticate_if_necessary(self):
+        if self.session.is_token_expired():
+            logger.info(f"re_authenticate_if_necessary(): re-authenticating expired token. host={self.host}")
+            self.authenticate(self.username, self.password)
 
 
     @property
@@ -64,11 +76,20 @@ class ZoltarSession:  # internal use
         return response.json()['token']
 
 
+    def is_token_expired(self):
+        """
+        :return: True if my token is expired, and False o/w
+        """
+        # see zoltr: is_token_expired(), token_expiration_date()
+        return True  # todo xx fix!
+
+
 class ZoltarResource(ABC):
     """
     An abstract proxy for a Zoltar object at a particular URI including its JSON. NB: subclasses not meant to be
     directly instantiated by users.
     """
+
 
     def __init__(self, zoltar_connection, uri):  # NB: hits API
         self.zoltar_connection = zoltar_connection

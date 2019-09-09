@@ -4,6 +4,7 @@ WIP
 
 import unittest
 from unittest.mock import patch
+
 from zoltpy.connection import ZoltarConnection, ZoltarSession
 
 
@@ -24,6 +25,10 @@ M5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c'''
             conn.authenticate(u, p)
             print('XX', conn.session.token)
             self.assertIsInstance(conn.session, ZoltarSession)
+
+
+    def test_is_token_expired(self):
+        self.fail()  # todo xx
 
 
 if __name__ == '__main__':
