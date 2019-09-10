@@ -172,14 +172,14 @@ class Model(ZoltarResource):
         return Forecast(self.zoltar_connection, forecast_uri)
 
 
-    def upload_forecast(self, forecast_json_fp, timezero_date, data_version_date=None):  # YYYYMMDD_DATE_FORMAT
+    def upload_forecast(self, forecast_json_fp, source, timezero_date, data_version_date=None):  # YYYYMMDD_DATE_FORMAT
         data = {'timezero_date': timezero_date}
         if data_version_date:
             data['data_version_date'] = data_version_date
         response = requests.post(self.uri + 'forecasts/',
                                  headers={'Authorization': 'JWT {}'.format(self.zoltar_connection.session.token)},
                                  data=data,
-                                 files={'data_file': forecast_json_fp})
+                                 files={'data_file': (source, forecast_json_fp, 'application/json')})
         if response.status_code != 200:  # HTTP_200_OK
             raise RuntimeError('upload_forecast(): status code was not 200: {}'.format(response.text))
 

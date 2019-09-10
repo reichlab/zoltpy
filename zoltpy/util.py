@@ -4,6 +4,7 @@ import json
 import logging
 import tempfile
 import time
+from pathlib import Path
 
 from zoltpy.cdc import cdc_csv_rows_from_json_io_dict, json_io_dict_from_cdc_csv_file
 from zoltpy.csv_util import csv_rows_from_json_io_dict
@@ -54,6 +55,7 @@ def upload_forecast(conn, forecast_csv_file, project_name, model_name, timezero_
         can be obtained via upload_file_job.output_json['forecast_pk']
     """
     conn.re_authenticate_if_necessary()
+    forecast_csv_file = Path(forecast_csv_file)
     project = [project for project in conn.projects if project.name == project_name][0]
     model = [model for model in project.models if model.name == model_name][0]
 
@@ -64,7 +66,7 @@ def upload_forecast(conn, forecast_csv_file, project_name, model_name, timezero_
         json_io_dict = json_io_dict_from_cdc_csv_file(csv_fp)
         json.dump(json_io_dict, json_fp)
         json_fp.seek(0)
-        upload_file_job = model.upload_forecast(json_fp, timezero_date, data_version_date)
+        upload_file_job = model.upload_forecast(json_fp, forecast_csv_file.name, timezero_date, data_version_date)
 
     return upload_file_job
 

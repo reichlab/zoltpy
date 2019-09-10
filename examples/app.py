@@ -55,7 +55,7 @@ def zoltar_connection_app():
     model.refresh()  # o/w model.forecasts errors b/c the just-deleted forecast is still cached in model
     print(f'\n* post-delete forecasts: {model.forecasts}')
 
-    # upload a new forecast and wait for success
+    # upload a new forecast and then wait for success
     upload_file_job = upload_forecast(conn, forecast_csv_file, project_name, model_name, timezero_date)
     busy_poll_upload_file_job(upload_file_job)
 
@@ -72,33 +72,33 @@ def zoltar_connection_app():
     print(f'\n* data:')
     print(f'- json: #predictions={len(data_json["predictions"])}')
     with open(Path(tempfile.gettempdir()) / (str(new_forecast_pk) + '.json'), 'w') as fp:
-        print(f'- writing json data to {fp.name}')
+        print(f'  = writing json data to {fp.name}')
         json.dump(data_json, fp, indent=4)
 
-        # convert native json to cdc csv
+    # export native json to cdc csv
     csv_rows = cdc_csv_rows_from_json_io_dict(data_json)
-    print(f'- cdc csv rows: #rows={len(csv_rows)}')
+    print(f'\n- cdc csv rows: #rows={len(csv_rows)}')
     with open(Path(tempfile.gettempdir()) / (str(new_forecast_pk) + '.' + CDC_CSV_FILENAME_EXTENSION), 'w') as fp:
-        print(f'- writing cdc csv data to {fp.name}')
+        print(f'  = writing cdc csv data to {fp.name}')
         csv_writer = csv.writer(fp, delimiter=',')
         for row in csv_rows:
             csv_writer.writerow(row)
 
-    # convert native json to zoltar2 csv
+    # export native json to zoltar2 csv
     csv_rows = csv_rows_from_json_io_dict(data_json)
-    print(f'- zoltar2 csv rows: #rows={len(csv_rows)}')
+    print(f'\n- zoltar2 csv rows: #rows={len(csv_rows)}')
     with open(Path(tempfile.gettempdir()) / (str(new_forecast_pk) + '.csv'), 'w') as fp:
-        print(f'- writing zoltar2 csv data to {fp.name}')
+        print(f'  = writing zoltar2 csv data to {fp.name}')
         csv_writer = csv.writer(fp, delimiter=',')
         for row in csv_rows:
             csv_writer.writerow(row)
 
     # convert to a Pandas DataFrame
     dataframe = dataframe_from_json_io_dict(data_json)
-    print(f'- pandas zoltar2 csv:\n{dataframe}')
+    print(f'\n- pandas zoltar2 csv:\n{dataframe}')
 
     dataframe = dataframe_from_json_io_dict(data_json, is_cdc_format=True)
-    print(f'- pandas cdc csv csv:\n{dataframe}')
+    print(f'\n- pandas cdc csv csv:\n{dataframe}')
 
 
 if __name__ == '__main__':
