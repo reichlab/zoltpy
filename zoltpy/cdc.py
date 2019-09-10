@@ -32,10 +32,12 @@ CDC_CSV_FILENAME_EXTENSION = 'cdc.csv'
 
 def cdc_csv_rows_from_json_io_dict(json_io_dict):
     """
+    A utility that converts a "JSON IO dict" as returned by zoltar into a list of CDC CSV rows, suitable for working
+    with in memory or saving to a file.
+
     :param json_io_dict: a "JSON IO dict" to load from. see docs for details. NB: this dict MUST have a valid "meta"
         section b/c we need ['meta']['targets'] for each target's 'unit' so we can figure out bin_end_notincl values.
-    :return: a list of CDC CSV rows as documented elsewhere. Does include a column header row. See CDC_CSV_HEADER:
-        ['location', 'target', 'type', 'unit', 'bin_start_incl', 'bin_end_notincl', 'value'] .
+    :return: a list of CDC CSV rows as documented elsewhere. Does include a column header row. See CDC_CSV_HEADER.
     """
     # do some initial validation
     if 'meta' not in json_io_dict:

@@ -8,16 +8,16 @@ CSV_HEADER = ['location', 'target', 'unit', 'class', 'cat', 'family', 'lwr', 'pa
 
 def csv_rows_from_json_io_dict(json_io_dict):
     """
-    A utility that converts json_io_dict to a list of CSV rows specific to Zoltar. The rows are an 'expanded' version of
-    json_io_dict where bin-type classes result in multiple rows: BinCatDistribution, BinLwrDistribution,
-    SampleDistribution, and SampleCatDistribution. The 'class' of each row is named according to
-    PREDICTION_CLASS_TO_JSON_IO_DICT_CLASS. Column ordering is CSV_HEADER. Note that the csv is 'sparse': not every row
-    uses all columns, and unused ones are empty. However, the first four columns are always non-empty, i.e., every
-    prediction has them.
+    A utility that converts a "JSON IO dict" as returned by zoltar to a list of zoltar-specific CSV rows. The rows are
+    an 'expanded' version of json_io_dict where bin-type classes result in multiple rows: BinCatDistribution,
+    BinLwrDistribution, SampleDistribution, and SampleCatDistribution. The 'class' of each row is named according to
+    forecast-repository.utils.forecast.PREDICTION_CLASS_TO_JSON_IO_DICT_CLASS. Column ordering is CSV_HEADER. Note that
+    the csv is 'sparse': not every row uses all columns, and unused ones are empty. However, the first four columns are
+    always non-empty, i.e., every prediction has them.
 
     :param json_io_dict: a "JSON IO dict" to load from. see docs for details. NB: this dict MUST have a valid "meta"
         section b/c we need ['meta']['targets'] for each target's 'unit' so we can figure out bin_end_notincl values.
-    :return: a list of CSV rows including header
+    :return: a list of CSV rows including header - see CSV_HEADER
     """
     # todo merge w/cdc_csv_rows_from_json_io_dict()
 
@@ -33,6 +33,9 @@ def csv_rows_from_json_io_dict(json_io_dict):
     target_name_to_dict = {target_dict['name']: target_dict for target_dict in json_io_dict['meta']['targets']}
     for prediction_dict in json_io_dict['predictions']:
         prediction_class = prediction_dict['class']
+        if prediction_class not in ['BinCat', 'BinLwr', 'Binary', 'Named', 'Point', 'Sample', 'SampleCat']:
+            raise RuntimeError(f"invalid prediction_dict class: {prediction_class}")
+
         target_name = prediction_dict['target']
         if target_name not in target_name_to_dict:
             raise RuntimeError(f"prediction_dict target not found in meta targets: {target_name}")

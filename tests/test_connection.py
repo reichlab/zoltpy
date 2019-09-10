@@ -8,7 +8,7 @@ from unittest.mock import patch
 from zoltpy.connection import ZoltarConnection, ZoltarSession
 
 
-class TestStringMethods(unittest.TestCase):
+class TestConnection(unittest.TestCase):
 
     def test_authenticate(self):
         host = 'http://idonotexist.com'
