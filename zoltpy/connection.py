@@ -9,14 +9,14 @@ logger = logging.getLogger(__name__)
 
 
 class ZoltarConnection:
+    """
+    Represents a connection to a Zoltar server. This is an object-oriented interface that may be best suited to zoltpy
+    developers. See the `util` module for a name-based non-OOP interface.
 
-    # notes:
-    # - implement is_token_expired()
-    # - get, upload, delete should call re_authenticate_if_necessary()
-    # - needs tests! should be straightforward to mock internal ZoltarResource json responses
-    # - incomplete - ZoltarResource children only have a few properties implemented
-    # - caches resource json, but doesn't automatically handle becoming stale, refreshing, etc.
-    # - no back-pointers are stored, e.g., Model -> owning Project
+    Notes:
+    - This implementation uses the simple approach of caching the JSON response for resource URLs, but doesn't
+      automatically handle their becoming stale, hence the need to call ZoltarResource.refresh().
+    """
 
 
     def __init__(self, host='https://zoltardata.com'):
@@ -37,14 +37,16 @@ class ZoltarConnection:
 
 
     @property
-    def projects(self):  # entry point into ZoltarResources. NB: hits API
+    def projects(self):
+        """
+        The entry point into ZoltarResources. Returns a list of Projects. NB: A property, but hits the API.
+        """
         # NB: here we are throwing away each project's json, which is here because the API returns json objects for
         # projects rather than just URIs
-        return [Project(self, project_json['url']) for project_json in
-                self._json_for_uri(self.host + '/api/projects/')]
+        return [Project(self, project_json['url']) for project_json in self.json_for_uri(self.host + '/api/projects/')]
 
 
-    def _json_for_uri(self, uri):
+    def json_for_uri(self, uri):
         if not self.session:
             raise RuntimeError('_validate_authentication(): no session')
 
@@ -86,8 +88,12 @@ class ZoltarSession:  # internal use
 
 class ZoltarResource(ABC):
     """
-    An abstract proxy for a Zoltar object at a particular URI including its JSON. NB: subclasses not meant to be
-    directly instantiated by users.
+    An abstract proxy for a Zoltar object at a particular URI including its JSON. All it does is cache JSON from a
+    URI. Notes:
+    - This class and its subclasses are not meant to be directly instantiated by users. Instead the user enters through
+      ZoltarConnection.projects and then drills down.
+    - Because the JSON is cached, it will become stale after the source object in the server changes, such as when a
+      model's forecasts change. Thus, use refresh() as needed.
     """
 
 
@@ -95,7 +101,6 @@ class ZoltarResource(ABC):
         self.zoltar_connection = zoltar_connection
         self.uri = uri
         self.json = None  # cached -> can become stale!
-
         self.refresh()
 
 
@@ -105,7 +110,7 @@ class ZoltarResource(ABC):
 
 
     def refresh(self):
-        self.json = self.zoltar_connection._json_for_uri(self.uri)
+        self.json = self.zoltar_connection.json_for_uri(self.uri)
 
 
     def delete(self):
