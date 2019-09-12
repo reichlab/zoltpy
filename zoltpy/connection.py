@@ -48,13 +48,13 @@ class ZoltarConnection:
 
     def json_for_uri(self, uri):
         if not self.session:
-            raise RuntimeError('_validate_authentication(): no session')
+            raise RuntimeError("json_for_uri(): no session")
 
         response = requests.get(uri, headers={'Accept': 'application/json; indent=4',
                                               'Authorization': 'JWT {}'.format(self.session.token)})
         if response.status_code != 200:  # HTTP_200_OK
-            raise RuntimeError('get_token(): status code was not 200: {}. {}'
-                               .format(response.status_code, response.text))
+            raise RuntimeError(f"json_for_uri(): status code was not 200. status_code={response.status_code}. "
+                               f"text={response.text}")
 
         return response.json()
 
@@ -72,8 +72,8 @@ class ZoltarSession:  # internal use
                                  {'username': self.zoltar_connection.username,
                                   'password': self.zoltar_connection.password})
         if response.status_code != 200:  # HTTP_200_OK
-            raise RuntimeError('get_token(): status code was not 200: {}. {}'
-                               .format(response.status_code, response.text))
+            raise RuntimeError(f"get_token(): status code was not 200. status_code={response.status_code}. "
+                               f"text={response.text}")
 
         return response.json()['token']
 
@@ -118,8 +118,7 @@ class ZoltarResource(ABC):
                                                       'Authorization': 'JWT {}'
                                    .format(self.zoltar_connection.session.token)})
         if response.status_code != 204:  # HTTP_204_NO_CONTENT
-            raise RuntimeError('delete_resource(): status code was not 204: {}. {}'
-                               .format(response.status_code, response.text))
+            raise RuntimeError(f"delete(): status code was not 204: {response.status_code}. {response.text}")
 
 
 class Project(ZoltarResource):
@@ -186,7 +185,8 @@ class Model(ZoltarResource):
                                  data=data,
                                  files={'data_file': (source, forecast_json_fp, 'application/json')})
         if response.status_code != 200:  # HTTP_200_OK
-            raise RuntimeError('upload_forecast(): status code was not 200: {}'.format(response.text))
+            raise RuntimeError(f"upload_forecast(): status code was not 200. status_code={response.status_code}. "
+                               f"text={response.text}")
 
         upload_file_job_json = response.json()
         return UploadFileJob(self.zoltar_connection, upload_file_job_json['url'])
@@ -220,8 +220,8 @@ class Forecast(ZoltarResource):
         response = requests.get(data_uri,
                                 headers={'Authorization': 'JWT {}'.format(self.zoltar_connection.session.token)})
         if response.status_code != 200:  # HTTP_200_OK
-            raise RuntimeError('data(): status code was not 200: {}. {}'
-                               .format(response.status_code, response.text))
+            raise RuntimeError(f"data(): status code was not 200. status_code={response.status_code}. "
+                               f"text={response.text}")
 
         return json.loads(response.content.decode('utf-8'))
 
