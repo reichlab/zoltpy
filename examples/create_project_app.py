@@ -12,7 +12,7 @@ def create_project_app():
     Application that demonstrates project creation and deletion.
 
     App args:
-    - zoltar_host: host to pass to ZoltarConnection(). should *not* have a trailing '/'
+    - zoltar_host: host to pass to ZoltarConnection()
     - project_config_file: configuration json file for the project of interest. see zoltar documentation for details,
         esp. utils.project.create_project_from_json()
 
@@ -41,7 +41,7 @@ def create_project_app():
     print(f"creating new project. project name={project_dict['name']}")
     response = requests.post(f'{conn.host}/api/projects/',
                              headers={'Authorization': f'JWT {conn.session.token}'},
-                             json={'config_file': project_dict})
+                             json={'project_config': project_dict})
     if response.status_code != 200:  # HTTP_200_OK
         raise RuntimeError(f"status_code was not 200. status_code={response.status_code}, text={response.text}")
 

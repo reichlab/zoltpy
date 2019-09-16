@@ -18,7 +18,7 @@ def zoltar_connection_app():
     higher-level functions such as delete_forecast(), etc.)
 
     App args:
-    - zoltar_host: host to pass to ZoltarConnection(). should *not* have a trailing '/'
+    - zoltar_host: host to pass to ZoltarConnection()
     - project_name: name of Project to work with. assumptions: must have a model named in below arg, and must have a
       timezero_date named in below arg. must be a CDC project (locations, targets, forecasts, etc.)
     - model_name: name of a ForecastModel to work with - upload files, etc.

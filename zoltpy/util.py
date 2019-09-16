@@ -119,7 +119,7 @@ def dataframe_from_json_io_dict(json_io_dict, is_cdc_format=False):
 
 def busy_poll_upload_file_job(upload_file_job):
     """
-    Polls upload_file_job's status every second until either success or failure.
+    A simple utility that polls upload_file_job's status every second until either success or failure.
     """
     print(f'\n* polling for status change. upload_file_job: {upload_file_job}')
     while True:

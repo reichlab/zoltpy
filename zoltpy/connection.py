@@ -20,6 +20,9 @@ class ZoltarConnection:
 
 
     def __init__(self, host='https://zoltardata.com'):
+        """
+        :param host: URL of the Zoltar host. should *not* have a trailing '/'
+        """
         self.host = host
         self.username, self.password = None, None
         self.session = None
@@ -99,7 +102,7 @@ class ZoltarResource(ABC):
 
     def __init__(self, zoltar_connection, uri):  # NB: hits API
         self.zoltar_connection = zoltar_connection
-        self.uri = uri
+        self.uri = uri  # *does* include trailing slash
         self.json = None  # cached -> can become stale!
         self.refresh()
 
@@ -115,13 +118,16 @@ class ZoltarResource(ABC):
 
     def delete(self):
         response = requests.delete(self.uri, headers={'Accept': 'application/json; indent=4',
-                                                      'Authorization': 'JWT {}'
-                                   .format(self.zoltar_connection.session.token)})
+                                                      'Authorization': f'JWT {self.zoltar_connection.session.token}'})
         if response.status_code != 204:  # HTTP_204_NO_CONTENT
-            raise RuntimeError(f"delete(): status code was not 204: {response.status_code}. {response.text}")
+            raise RuntimeError(f'delete_resource(): status code was not 204: {response.status_code}. {response.text}')
 
 
 class Project(ZoltarResource):
+    """
+    Represents a Zoltar project, and is the entry point for getting its list of Models.
+    """
+
 
     def __init__(self, zoltar_connection, uri):
         super().__init__(zoltar_connection, uri)
@@ -138,10 +144,46 @@ class Project(ZoltarResource):
 
     @property
     def models(self):
+        """
+        :return: a list of the Project's Models
+        """
         return [Model(self.zoltar_connection, model_uri) for model_uri in self.json['models']]
 
 
+    def create_model(self, model_config):
+        """
+        Creates a forecast Model with the passed configuration.
+
+        :param model_config: a dict used to initialize the new model. it must contain these fields: ['name'], and can
+            optionally contain: ['abbreviation', 'team_name', 'description', 'home_url', 'aux_data_url']
+        :return: a Model
+        """
+        # validate model_config
+        actual_keys = set(model_config.keys())
+        expected_keys = {'name', 'abbreviation', 'team_name', 'description', 'home_url', 'aux_data_url'}
+        if actual_keys != expected_keys:
+            raise RuntimeError(f"Wrong keys in 'model_config'. expected={expected_keys}, actual={actual_keys}")
+
+        # POST. note that we throw away the new model's JSON that's returned once we extract its pk b/c it will be
+        # cached by the Model() call
+        response = requests.post(f'{self.uri}models/',
+                                 headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
+                                 json={'model_config': model_config})
+        if response.status_code != 200:  # HTTP_200_OK
+            raise RuntimeError(f"status_code was not 200. status_code={response.status_code}, text={response.text}")
+
+        new_model_json = response.json()
+        new_model_pk = new_model_json['id']
+        new_model_url = f'{self.zoltar_connection.host}/api/model/{new_model_pk}'
+        new_model = Model(self.zoltar_connection, new_model_url)
+        return new_model
+
+
 class Model(ZoltarResource):
+    """
+    Represents a Zoltar forecast model, and is the entry point for getting its Forecasts as well as uploading them.
+    """
+
 
     def __init__(self, zoltar_connection, uri):
         super().__init__(zoltar_connection, uri)
@@ -158,6 +200,9 @@ class Model(ZoltarResource):
 
     @property
     def forecasts(self):
+        """
+        :return: a list of this Model's Forecasts
+        """
         # unlike other resources that are a list of URIs, model each model forecast is a dict with three keys:
         #   'timezero_date', 'data_version_date', 'forecast'
         #
@@ -172,16 +217,25 @@ class Model(ZoltarResource):
 
 
     def forecast_for_pk(self, forecast_pk):
-        forecast_uri = self.zoltar_connection.host + '/api/forecast/{}/'.format(forecast_pk)
+        forecast_uri = self.zoltar_connection.host + f'/api/forecast/{forecast_pk}/'
         return Forecast(self.zoltar_connection, forecast_uri)
 
 
-    def upload_forecast(self, forecast_json_fp, source, timezero_date, data_version_date=None):  # YYYYMMDD_DATE_FORMAT
+    def upload_forecast(self, forecast_json_fp, source, timezero_date, data_version_date=None):
+        """
+        Uploads a forecast file.
+
+        :param forecast_csv_file: a JSON file in the "JSON IO dict" format accepted by
+            utils.forecast.load_predictions_from_json_io_dict()
+        :param timezero_date: YYYYMMDD_DATE_FORMAT
+        :param data_version_date: YYYYMMDD_DATE_FORMAT
+        :return: an UploadFileJob
+        """
         data = {'timezero_date': timezero_date}
         if data_version_date:
             data['data_version_date'] = data_version_date
         response = requests.post(self.uri + 'forecasts/',
-                                 headers={'Authorization': 'JWT {}'.format(self.zoltar_connection.session.token)},
+                                 headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
                                  data=data,
                                  files={'data_file': (source, forecast_json_fp, 'application/json')})
         if response.status_code != 200:  # HTTP_200_OK
