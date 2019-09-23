@@ -56,7 +56,7 @@ def cdc_csv_rows_from_json_io_dict(json_io_dict):
         target_name = prediction_dict['target']
         if target_name not in TARGET_NAME_TO_UNIT:
             raise RuntimeError(f"prediction_dict target not recognized: {target_name}. "
-                               f"valid targets={list(TARGET_NAME_TO_UNIT.keys)}")
+                               f"valid targets={list(TARGET_NAME_TO_UNIT.keys())}")
 
         location = prediction_dict['location']
         target = prediction_dict['target']

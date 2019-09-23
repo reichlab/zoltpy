@@ -66,16 +66,19 @@ class UtilsTestCase(TestCase):
     def test_cdc_csv_rows_from_json_io_dict(self):
         # no predictions
         with self.assertRaises(RuntimeError) as context:
-            cdc_csv_rows_from_json_io_dict({'meta': {'targets': []}})
+            cdc_csv_rows_from_json_io_dict({})
         self.assertIn('no predictions section found in json_io_dict', str(context.exception))
 
         # invalid prediction class
         for invalid_prediction_class in ['Binary', 'Named', 'Sample', 'SampleCat']:  # ok: 'BinCat', 'BinLwr', 'Point'
             with self.assertRaises(RuntimeError) as context:
-                json_io_dict = {'meta': {'targets': []},
-                                'predictions': [{'class': invalid_prediction_class}]}
-                cdc_csv_rows_from_json_io_dict(json_io_dict)
+                cdc_csv_rows_from_json_io_dict({'predictions': [{'class': invalid_prediction_class}]})
             self.assertIn('invalid prediction_dict class', str(context.exception))
+
+        # prediction_dict target not recognized
+        with self.assertRaises(RuntimeError) as context:
+            cdc_csv_rows_from_json_io_dict({'predictions': [{'class': 'Point', 'target': 'non-CDC target'}]})
+        self.assertIn('prediction_dict target not recognized', str(context.exception))
 
         # blue sky
         with open(Path('tests/EW1-KoTsarima-2017-01-17-small.csv')) as csv_fp:
