@@ -15,15 +15,20 @@ from itertools import groupby
 #
 
 # todo these are project-specific: CDC ensemble and Impetus´
-BINLWR_TARGET_NAMES = ['Season peak percentage', '1 wk ahead', '2 wk ahead', '3 wk ahead', '4 wk ahead',
-                       '1_biweek_ahead', '2_biweek_ahead', '3_biweek_ahead', '4_biweek_ahead', '5_biweek_ahead']
+BINLWR_TARGET_NAMES = ['Season peak percentage', '1 wk ahead', '2 wk ahead', '3 wk ahead', '4 wk ahead']
 BINCAT_TARGET_NAMES = ['Season onset', 'Season peak week']
-
 CDC_POINT_NA_VALUE = 'NA'
 CDC_POINT_ROW_TYPE = 'Point'
 CDC_BIN_ROW_TYPE = 'Bin'
 CDC_CSV_HEADER = ['location', 'target', 'type', 'unit', 'bin_start_incl', 'bin_end_notincl', 'value']
 CDC_CSV_FILENAME_EXTENSION = 'cdc.csv'
+TARGET_NAME_TO_UNIT = {'Season peak percentage': 'percent',
+                       '1 wk ahead': 'percent',
+                       '2 wk ahead': 'percent',
+                       '3 wk ahead': 'percent',
+                       '4 wk ahead': 'percent',
+                       'Season onset': 'week',
+                       'Season peak week': 'week'}
 
 
 #
@@ -32,36 +37,31 @@ CDC_CSV_FILENAME_EXTENSION = 'cdc.csv'
 
 def cdc_csv_rows_from_json_io_dict(json_io_dict):
     """
-    A utility that converts a "JSON IO dict" as returned by zoltar into a list of CDC CSV rows, suitable for working
-    with in memory or saving to a file.
+    A project-specific utility that converts a "JSON IO dict" as returned by zoltar into a list of CDC CSV rows,
+    suitable for working with in memory or saving to a file.
 
-    :param json_io_dict: a "JSON IO dict" to load from. see docs for details. NB: this dict MUST have a valid "meta"
-        section b/c we need ['meta']['targets'] for each target's 'unit' so we can figure out bin_end_notincl values.
+    :param json_io_dict: a "JSON IO dict" to load from. see docs for details. The "meta" is ignored.
     :return: a list of CDC CSV rows as documented elsewhere. Does include a column header row. See CDC_CSV_HEADER.
     """
     # do some initial validation
-    if 'meta' not in json_io_dict:
-        raise RuntimeError("no meta section found in json_io_dict")
-    elif 'targets' not in json_io_dict['meta']:
-        raise RuntimeError("no targets section found in json_io_dict meta section")
-    elif 'predictions' not in json_io_dict:
+    if 'predictions' not in json_io_dict:
         raise RuntimeError("no predictions section found in json_io_dict")
 
     rows = [CDC_CSV_HEADER]  # returned value. filled next
-    target_name_to_dict = {target_dict['name']: target_dict for target_dict in json_io_dict['meta']['targets']}
     for prediction_dict in json_io_dict['predictions']:
         prediction_class = prediction_dict['class']
         if prediction_class not in ['BinCat', 'BinLwr', 'Point']:
             raise RuntimeError(f"invalid prediction_dict class: {prediction_class}")
 
         target_name = prediction_dict['target']
-        if target_name not in target_name_to_dict:
-            raise RuntimeError(f"prediction_dict target not found in meta targets: {target_name}")
+        if target_name not in TARGET_NAME_TO_UNIT:
+            raise RuntimeError(f"prediction_dict target not recognized: {target_name}. "
+                               f"valid targets={list(TARGET_NAME_TO_UNIT.keys)}")
 
         location = prediction_dict['location']
         target = prediction_dict['target']
         row_type = CDC_POINT_ROW_TYPE if prediction_class == 'Point' else CDC_BIN_ROW_TYPE
-        unit = target_name_to_dict[target_name]['unit']
+        unit = TARGET_NAME_TO_UNIT[target_name]
         prediction = prediction_dict['prediction']
         if row_type == CDC_POINT_ROW_TYPE:  # output the single point row
             bin_start_incl = CDC_POINT_NA_VALUE

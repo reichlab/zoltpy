@@ -35,7 +35,7 @@ class UtilsTestCase(TestCase):
         with self.assertRaises(RuntimeError) as context:
             # remove arbitrary meta target. doesn't matter b/c all are referenced
             del (json_io_dict['meta']['targets'][0])
-            cdc_csv_rows_from_json_io_dict(json_io_dict)
+            csv_rows_from_json_io_dict(json_io_dict)
         self.assertIn('prediction_dict target not found in meta targets', str(context.exception))
 
         with open('tests/predictions-example.json') as fp:
@@ -64,16 +64,6 @@ class UtilsTestCase(TestCase):
 
 
     def test_cdc_csv_rows_from_json_io_dict(self):
-        # no meta
-        with self.assertRaises(RuntimeError) as context:
-            cdc_csv_rows_from_json_io_dict({})
-        self.assertIn('no meta section found in json_io_dict', str(context.exception))
-
-        # no meta > targets
-        with self.assertRaises(RuntimeError) as context:
-            cdc_csv_rows_from_json_io_dict({'meta': {}})
-        self.assertIn('no targets section found in json_io_dict meta section', str(context.exception))
-
         # no predictions
         with self.assertRaises(RuntimeError) as context:
             cdc_csv_rows_from_json_io_dict({'meta': {'targets': []}})
@@ -86,22 +76,6 @@ class UtilsTestCase(TestCase):
                                 'predictions': [{'class': invalid_prediction_class}]}
                 cdc_csv_rows_from_json_io_dict(json_io_dict)
             self.assertIn('invalid prediction_dict class', str(context.exception))
-
-        # prediction dict target not found in meta > targets
-        with open('tests/predictions-example.json') as fp:
-            json_io_dict = json.load(fp)
-
-            # remove invalid prediction classes
-            del (json_io_dict['predictions'][6])  # 'SampleCat'
-            del (json_io_dict['predictions'][5])  # 'Sample'
-            del (json_io_dict['predictions'][3])  # 'Named'
-            del (json_io_dict['predictions'][2])  # 'Binary
-
-        with self.assertRaises(RuntimeError) as context:
-            # remove arbitrary meta target. doesn't matter b/c all are referenced
-            del (json_io_dict['meta']['targets'][0])
-            cdc_csv_rows_from_json_io_dict(json_io_dict)
-        self.assertIn('prediction_dict target not found in meta targets', str(context.exception))
 
         # blue sky
         with open(Path('tests/EW1-KoTsarima-2017-01-17-small.csv')) as csv_fp:

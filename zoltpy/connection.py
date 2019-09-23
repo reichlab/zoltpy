@@ -268,7 +268,8 @@ class Forecast(ZoltarResource):
 
     def data(self):
         """
-        :return: this forecast's data as a dict formatted as documented in Zoltar2's utils/forecast.py
+        :return: this forecast's data as a dict in the "JSON IO dict" format accepted by
+            utils.forecast.load_predictions_from_json_io_dict()
         """
         data_uri = self.json['forecast_data']
         response = requests.get(data_uri,
