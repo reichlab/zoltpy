@@ -1,11 +1,12 @@
 import csv
 import io
+import os
 import json
 import logging
 import tempfile
 import time
 from pathlib import Path
-
+from zoltpy.connection import ZoltarConnection
 from zoltpy.cdc import cdc_csv_rows_from_json_io_dict, json_io_dict_from_cdc_csv_file
 from zoltpy.csv_util import csv_rows_from_json_io_dict
 
@@ -132,3 +133,33 @@ def busy_poll_upload_file_job(upload_file_job):
             break
         time.sleep(1)
         upload_file_job.refresh()
+
+
+def authenticate(env_user='USERNAME', env_pass='PASSWORD'):
+    # Ensure environment variables exist
+    env_vars = [env_user, env_pass]
+    for var in env_vars:
+        if os.environ.get(var) == None:
+            print("\nERROR: Cannot locate environment variable:  %s" % var)
+            print("\nPC users, try the command: set %s='<your zoltar username>'" % var)
+            print("Mac users, try the command: export %s=<your zoltar username>" % var)
+            print("Then, Refresh the command window\n")
+            return
+    # Authenticate Zoltar connection
+    try:
+        Connection = ZoltarConnection()
+        Connection.authenticate(os.environ.get(
+            env_user), os.environ.get(env_pass))
+        return Connection
+    except:
+        print("ERROR: Cannot authenticate zoltar credentials")
+        print("Ensure the environment variables for your username and password are correct")
+    return print("ERROR")
+    
+
+
+def print_projects():
+    print('* projects')
+    zoltar = authenticate()
+    for project in zoltar.projects:
+        print('-', project, project.id, project.name)
