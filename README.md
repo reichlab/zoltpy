@@ -49,7 +49,7 @@ set Z_PASSWORD="<your zoltar password>"
 ```
 
 ## Usage
-Zoltpy is a python module that communicates with Zoltar, the Reich Lab's forecast repository. To import the Zoltpy utility functions functions, run the following command after installing the package:
+Zoltpy is a python module that communicates with Zoltar, the Reich Lab's forecast repository. To import the Zoltpy utility functions, run the following command after installing the package:
 ```
 from zoltpy import util
 ```
