@@ -53,35 +53,25 @@ def cdc_csv_rows_from_json_io_dict(json_io_dict):
         if prediction_class not in ['BinCat', 'BinLwr', 'Point']:
             raise RuntimeError(f"invalid prediction_dict class: {prediction_class}")
 
-        target_name = prediction_dict['target']
-        if target_name not in TARGET_NAME_TO_UNIT:
-            raise RuntimeError(f"prediction_dict target not recognized: {target_name}. "
+        target = prediction_dict['target']
+        if target not in TARGET_NAME_TO_UNIT:
+            raise RuntimeError(f"prediction_dict target not recognized: {target}. "
                                f"valid targets={list(TARGET_NAME_TO_UNIT.keys())}")
 
         location = prediction_dict['location']
-        target = prediction_dict['target']
         row_type = CDC_POINT_ROW_TYPE if prediction_class == 'Point' else CDC_BIN_ROW_TYPE
-        unit = TARGET_NAME_TO_UNIT[target_name]
+        unit = TARGET_NAME_TO_UNIT[target]
         prediction = prediction_dict['prediction']
         if row_type == CDC_POINT_ROW_TYPE:  # output the single point row
-            bin_start_incl = CDC_POINT_NA_VALUE
-            bin_end_notincl = CDC_POINT_NA_VALUE
-            value = prediction['value']
-            rows.append([location, target, row_type, unit, bin_start_incl, bin_end_notincl, value])
+            rows.append([location, target, row_type, unit, CDC_POINT_NA_VALUE, CDC_POINT_NA_VALUE, prediction['value']])
         elif prediction_class == 'BinCat':  # 'BinCat' CDC_BIN_ROW_TYPE -> output multiple bin rows
             # BinCat targets: unit='week', target='Season onset' or 'Season peak week'
             for cat, prob in zip(prediction['cat'], prediction['prob']):
-                bin_start_incl = cat
-                bin_end_notincl = _recode_cat_bin_end_notincl(cat)
-                value = prob
-                rows.append([location, target, row_type, unit, bin_start_incl, bin_end_notincl, value])
+                rows.append([location, target, row_type, unit, cat, _recode_cat_bin_end_notincl(cat), prob])
         else:  # prediction_class == 'BinLwr' CDC_BIN_ROW_TYPE -> output multiple bin rows
             # BinLwr targets: unit='percent', target='1 wk ahead' ... '4 wk ahead', or 'Season peak percentage'
             for lwr, prob in zip(prediction['lwr'], prediction['prob']):
-                bin_start_incl = lwr
-                bin_end_notincl = 100 if lwr == 13 else lwr + 0.1
-                value = prob
-                rows.append([location, target, row_type, unit, bin_start_incl, bin_end_notincl, value])
+                rows.append([location, target, row_type, unit, lwr, 100 if lwr == 13 else lwr + 0.1, prob])
     return rows
 
 
