@@ -49,9 +49,9 @@ set Z_PASSWORD="<your zoltar password>"
 ```
 
 ## Usage
-Zoltpy is a python module that communicates with Zoltar, the Reich Lab's forecast repository. To import the Zoltpy functions, run the following command after installing the package:
+Zoltpy is a python module that communicates with Zoltar, the Reich Lab's forecast repository. To import the Zoltpy utility functions functions, run the following command after installing the package:
 ```
-import zoltpy as zp
+from zoltpy import util
 ```
 
 ### Zoltpy currently has 5 Key Functions:
@@ -65,37 +65,41 @@ import zoltpy as zp
 #### Print Project Names
 This fuction returns the project names that you have authorization to view in Zoltar.
 ```
-zp.print_projects()
+util.print_projects()
 ```
 
 #### Print Model Names
 Given a project, this function prints the models in that project.
 ```
-zp.print_models(project_name = 'My Project')
+util.print_models(project_name = 'My Project')
 ```
 
 #### Delete a Forecast
 Deletes a single forecast for a specified model and timezero.
 ```
-zp.delete_forecast(project_name='My Project', model_name='My Model', timezero_date='YYYYMMDD')
+util.delete_forecast(project_name='My Project', model_name='My Model', timezero_date='YYYYMMDD')
 ```
 Example:
 ```
-zp.delete_forecast('Impetus Province Forecasts','gam_lag1_tops3','20181203')
+util.delete_forecast('Impetus Province Forecasts','gam_lag1_tops3','20181203')
 ```
 
 #### Upload a Forecast
 ```
-zp.upload_forecast(project_name='My Project', model_name='My Model', timezero_date='YYYYMMDD', 'C:\\Users\\house\\Desktop\\20181203-gam_lag1_tops3-20190114.csv')
-```
+from zoltpy import util
 
-Example:
-```
-zp.upload_forecast('Impetus Province Forecasts','gam_lag1_tops3','20181203','C:\\Users\\house\\Desktop\\20181203-gam_lag1_tops3-20190114.csv')
+project_name = 'private project'
+model_name = 'Test ForecastModel1'
+timezero_date = '20170117'
+forecast_file_path = 'tests/EW1-KoTsarima-2017-01-17-small.csv'
+
+forecast_filename, predx_json = util.convert_cdc_csv_to_predx_json(forecast_file_path)
+conn = util.authenticate()
+util.upload_forecast(conn, predx_json, forecast_filename, project_name, model_name, timezero_date, overwrite=True)
 ```
 
 #### Return Forecast as a Pandas Dataframe
 Example:
 ```
-zp.forecast_to_dataframe('Impetus Province Forecasts','gam_lag1_tops3','20181203')
+util.forecast_to_dataframe('Impetus Province Forecasts','gam_lag1_tops3','20181203')
 ```
