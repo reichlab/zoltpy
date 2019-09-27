@@ -10,7 +10,6 @@ from zoltpy.connection import ZoltarConnection
 from zoltpy.cdc import cdc_csv_rows_from_json_io_dict, json_io_dict_from_cdc_csv_file
 from zoltpy.csv_util import csv_rows_from_json_io_dict
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -42,12 +41,13 @@ def delete_forecast(conn, project_name, model_name, timezero_date):
         logger.info(f'delete_forecast(): no existing forecast. model={model.id}, timezero_date={timezero_date}')
 
 
-def upload_forecast(conn, forecast_csv_file, project_name, model_name, timezero_date, data_version_date=None):
+def upload_forecast(conn, forecast_predx_json, forecast_filename, project_name, model_name, timezero_date, data_version_date=None, overwrite=False):
     """
     Uploads the passed CDC CSV forecast file to the model corresponding to the args.
 
     :param conn: a ZoltarConnection
-    :param forecast_csv_file: a CDC CSV file
+    :param forecast_predx_json: a predx json file
+    :param forecast_filename: filename of original forecast
     :param project_name: name of the Project that contains model_name
     :param model_name: name of the Model that contains a Forecast for timezero_date
     :param timezero_date: YYYYMMDD_DATE_FORMAT, e.g., '20181203'
@@ -56,18 +56,17 @@ def upload_forecast(conn, forecast_csv_file, project_name, model_name, timezero_
         can be obtained via upload_file_job.output_json['forecast_pk']
     """
     conn.re_authenticate_if_necessary()
-    forecast_csv_file = Path(forecast_csv_file)
+    if overwrite==True:
+        delete_forecast(conn, project_name, model_name, timezero_date)
     project = [project for project in conn.projects if project.name == project_name][0]
     model = [model for model in project.models if model.name == model_name][0]
 
     # note that this app accepts a *.cdc.csv file, but zoltar requires a native json file. so we first convert to a
     # temp json file and then pass it
-    with tempfile.TemporaryFile('r+') as json_fp, \
-            open(forecast_csv_file, 'r') as csv_fp:
-        json_io_dict = json_io_dict_from_cdc_csv_file(csv_fp)
-        json.dump(json_io_dict, json_fp)
+    with tempfile.TemporaryFile('r+') as json_fp:
+        json.dump(forecast_predx_json, json_fp)
         json_fp.seek(0)
-        upload_file_job = model.upload_forecast(json_fp, forecast_csv_file.name, timezero_date, data_version_date)
+        upload_file_job = model.upload_forecast(json_fp, forecast_filename, timezero_date, data_version_date)
 
     return upload_file_job
 
@@ -163,3 +162,8 @@ def print_projects():
     zoltar = authenticate()
     for project in zoltar.projects:
         print('-', project, project.id, project.name)
+
+def convert_cdc_csv_to_predx_json(filepath):
+    with open(filepath) as cdc_file:
+        cdc_json = json_io_dict_from_cdc_csv_file(cdc_file)
+        return filepath, cdc_json
