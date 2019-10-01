@@ -41,17 +41,19 @@ def delete_forecast(conn, project_name, model_name, timezero_date):
         logger.info(f'delete_forecast(): no existing forecast. model={model.id}, timezero_date={timezero_date}')
 
 
-def upload_forecast(conn, forecast_predx_json, forecast_filename, project_name, model_name, timezero_date, data_version_date=None, overwrite=False):
+def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_name, timezero_date, 
+        data_version_date=None, overwrite=False):
     """
-    Uploads the passed CDC CSV forecast file to the model corresponding to the args.
+    Uploads the passed JSON dictionary file to the model corresponding to the args.
 
     :param conn: a ZoltarConnection
-    :param forecast_predx_json: a predx json file
+    :param json_io_dict: a JSON dictionary
     :param forecast_filename: filename of original forecast
     :param project_name: name of the Project that contains model_name
     :param model_name: name of the Model that contains a Forecast for timezero_date
     :param timezero_date: YYYYMMDD_DATE_FORMAT, e.g., '20181203'
     :param data_version_date: optional for the upload. same format as timezero_date
+    :param overwrite: True if you would like to overwrite the existing forecast for that timezero_date. Default is False
     :return: an UploadFileJob. it can be polled for status via busy_poll_upload_file_job(), and then the new forecast
         can be obtained via upload_file_job.output_json['forecast_pk']
     """
@@ -64,7 +66,7 @@ def upload_forecast(conn, forecast_predx_json, forecast_filename, project_name, 
     # note that this app accepts a *.cdc.csv file, but zoltar requires a native json file. so we first convert to a
     # temp json file and then pass it
     with tempfile.TemporaryFile('r+') as json_fp:
-        json.dump(forecast_predx_json, json_fp)
+        json.dump(json_io_dict, json_fp)
         json_fp.seek(0)
         upload_file_job = model.upload_forecast(json_fp, forecast_filename, timezero_date, data_version_date)
 
@@ -134,7 +136,7 @@ def busy_poll_upload_file_job(upload_file_job):
         upload_file_job.refresh()
 
 
-def authenticate(env_user='USERNAME', env_pass='PASSWORD'):
+def authenticate(env_user='Z_USERNAME', env_pass='Z_PASSWORD'):
     # Ensure environment variables exist
     env_vars = [env_user, env_pass]
     for var in env_vars:
@@ -146,16 +148,15 @@ def authenticate(env_user='USERNAME', env_pass='PASSWORD'):
             return
     # Authenticate Zoltar connection
     try:
-        Connection = ZoltarConnection()
-        Connection.authenticate(os.environ.get(
+        conn = ZoltarConnection()
+        conn.authenticate(os.environ.get(
             env_user), os.environ.get(env_pass))
-        return Connection
+        return conn
     except:
         print("ERROR: Cannot authenticate zoltar credentials")
         print("Ensure the environment variables for your username and password are correct")
     return print("ERROR")
     
-
 
 def print_projects():
     print('* projects')
@@ -163,7 +164,10 @@ def print_projects():
     for project in zoltar.projects:
         print('-', project, project.id, project.name)
 
-def convert_cdc_csv_to_predx_json(filepath):
+
+def convert_cdc_csv_to_json_io_dict(filepath):
     with open(filepath) as cdc_file:
-        cdc_json = json_io_dict_from_cdc_csv_file(cdc_file)
-        return filepath, cdc_json
+        json_io_dict = json_io_dict_from_cdc_csv_file(cdc_file)
+        forecast_file = Path(filepath)
+        forecast_filename = forecast_file.name
+        return json_io_dict, forecast_filename
