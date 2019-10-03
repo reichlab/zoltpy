@@ -137,6 +137,13 @@ def busy_poll_upload_file_job(upload_file_job):
 
 
 def authenticate(env_user='Z_USERNAME', env_pass='Z_PASSWORD'):
+    """
+    Authenticate the user ID and password for connection to Zoltar.
+
+    :param Z_USERNAME environment variable: username of account in Zoltar
+    :param Z_PASSWORD environment variable: password for ""
+    :return: a ZoltarConnection
+    """
     # Ensure environment variables exist
     env_vars = [env_user, env_pass]
     for var in env_vars:
@@ -159,6 +166,9 @@ def authenticate(env_user='Z_USERNAME', env_pass='Z_PASSWORD'):
     
 
 def print_projects():
+    """
+    A simple utility that outputs a list of projects within Zoltar. 
+    """
     print('* projects')
     zoltar = authenticate()
     for project in zoltar.projects:
@@ -166,6 +176,12 @@ def print_projects():
 
 
 def convert_cdc_csv_to_json_io_dict(filepath):
+    """
+    Converts the passed cdc forecast file to native Zoltar json_io_dict.
+
+    :param filepath: a file path to the forecast file that needs to be convereted
+    :return: a tuple of the json_io_dict and the filename of original forecast
+    """
     with open(filepath) as cdc_file:
         json_io_dict = json_io_dict_from_cdc_csv_file(cdc_file)
         forecast_file = Path(filepath)
