@@ -14,9 +14,8 @@ from itertools import groupby
 # globals
 #
 
-# todo these are project-specific: CDC ensemble and Impetus´
-BINLWR_TARGET_NAMES = ['Season peak percentage', '1 wk ahead', '2 wk ahead', '3 wk ahead', '4 wk ahead']
 BINCAT_TARGET_NAMES = ['Season onset', 'Season peak week']
+BINLWR_TARGET_NAMES = ['Season peak percentage', '1 wk ahead', '2 wk ahead', '3 wk ahead', '4 wk ahead']
 CDC_POINT_NA_VALUE = 'NA'
 CDC_POINT_ROW_TYPE = 'Point'
 CDC_BIN_ROW_TYPE = 'Bin'
