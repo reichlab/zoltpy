@@ -9,6 +9,7 @@ A python module that interfaces with Zoltar https://github.com/reichlab/forecast
 - [requests](http://docs.python-requests.org/en/v2.7.0/user/install/)
 - [numpy](https://pypi.org/project/numpy/)
 
+
 ## Installation
 Zoltpy is hosted on the Python Package Index (pypi.org), a repository for Python modules https://pypi.org/project/zoltpy/. 
 
@@ -16,6 +17,7 @@ Install Zoltpy with the following command:
 ```
 pip install zoltpy
 ```
+
 
 ## One-time configuration
 Users must add their Zoltar username and password to environment variables on their machine before using this module. 
@@ -47,6 +49,7 @@ In the command prompt, run the following commands:
 set Z_USERNAME="<your zoltar username>"
 set Z_PASSWORD="<your zoltar password>"
 ```
+
 
 ## Usage
 Zoltpy is a python module that communicates with Zoltar, the Reich Lab's forecast repository. To import the Zoltpy utility functions, run the following command after installing the package:
