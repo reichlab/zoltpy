@@ -12,7 +12,8 @@ def create_project_app():
     Application that demonstrates project creation and deletion.
 
     App args:
-    - zoltar_host: host to pass to ZoltarConnection()
+    - zoltar_host: host to pass to ZoltarConnection(). This is typically "https://www.zoltardata.com" (no quotes and no
+        trailing '/') unless used for developer testing.
     - project_config_file: configuration json file for the project of interest. see zoltar documentation for details,
         esp. utils.project.create_project_from_json()
 

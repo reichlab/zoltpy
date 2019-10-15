@@ -227,7 +227,7 @@ class Model(ZoltarResource):
 
         :param forecast_csv_file: a JSON file in the "JSON IO dict" format accepted by
             utils.forecast.load_predictions_from_json_io_dict()
-        :param timezero_date: YYYYMMDD_DATE_FORMAT
+        :param timezero_date: YYYYMMDD_DATE_FORMAT. The TimeZero will be created if a corresponding one isn't found.
         :param data_version_date: YYYYMMDD_DATE_FORMAT
         :return: an UploadFileJob
         """
