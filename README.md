@@ -60,13 +60,18 @@ from zoltpy import util
 ### Authentication
 To access your project, you'll first need to authenticate via the `authenticate(username, password)` method from the `ZoltarConnection()` object. Pass it the username and password saved in your [environment variables](#one-time-environment-variable-configuration): 
 ```
-env_user='Z_USERNAME', env_pass='Z_PASSWORD'
-conn = ZoltarConnection.authenticate(os.environ.get(
-      env_user), os.environ.get(env_pass))
+from zoltpy.connection import ZoltarConnection
+import os
+env_user='Z_USERNAME'
+env_pass='Z_PASSWORD'
+conn = ZoltarConnection()
+conn.authenticate(os.environ.get(env_user),
+        os.environ.get(env_pass))
 ```
 Now you can use your authentication token to access private projects:
 ```
-project = [project for project in conn.projects if project.name == project_name][0]
+project = [project for project in conn.projects]
+print(project)
 ```
 - Be careful to store and use your username and password so that they're not accessible to others. The preferred method is to [create enviornment variables](#one-time-environment-variable-configuration)
 - The Zoltar service uses a "token"-based scheme for authentication. These tokens have a five minute expiration for
