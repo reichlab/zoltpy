@@ -15,11 +15,11 @@ Zoltpy is hosted on the Python Package Index (pypi.org), a repository for Python
 
 Install Zoltpy with the following command:
 ```
-pip install zoltpy
+pip install git+https://github.com/reichlab/zoltpy/
 ```
 
 
-## One-time configuration
+## One-time Environment Variable Configuration
 Users must add their Zoltar username and password to environment variables on their machine before using this module. 
 
 ### For Mac/Unix
@@ -57,7 +57,26 @@ Zoltpy is a python module that communicates with Zoltar, the Reich Lab's forecas
 from zoltpy import util
 ```
 
-### Zoltpy currently has 5 Key Functions:
+### Authentication
+To access your project, you'll first need to authenticate via the `authenticate(username, password)` method from the `ZoltarConnection()` object. Pass it the username and password saved in your [environment variables](#one-time-environment-variable-configuration): 
+```
+env_user='Z_USERNAME', env_pass='Z_PASSWORD'
+conn = ZoltarConnection.authenticate(os.environ.get(
+      env_user), os.environ.get(env_pass))
+```
+Now you can use your authentication token to access private projects:
+```
+project = [project for project in conn.projects if project.name == project_name][0]
+```
+- Be careful to store and use your username and password so that they're not accessible to others. The preferred method is to [create enviornment variables](#one-time-environment-variable-configuration)
+- The Zoltar service uses a "token"-based scheme for authentication. These tokens have a five minute expiration for
+  security, which requires re-authentication after that period of time. The Zoltpy library takes care of 
+  re-authenticating as needed by passing your username and password back to the server to get another token. Note that
+  the connection object returned by the `re_authenticate_if_necessary()` function stores a token internally, so be careful if saving that object into a file.
+  
+  
+  
+### Zoltpy currently has 5 Key Functions
 1) [print_projects()](#print-project-names) - Print project names
 2) [print_models(`project_name`)](#print-model-names) - Print model names for a specified project
 3) [delete_forecast(`project_name`, `model_name`, `timezero_date`)](#delete-forecast) - Deletes a forecast from Zoltar
