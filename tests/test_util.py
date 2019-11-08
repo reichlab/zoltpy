@@ -3,13 +3,29 @@ import json
 from pathlib import Path
 from unittest import TestCase
 
-from zoltpy.cdc import cdc_csv_rows_from_json_io_dict
+from zoltpy.cdc import cdc_csv_rows_from_json_io_dict, json_io_dict_from_cdc_csv_file
 from zoltpy.csv_util import csv_rows_from_json_io_dict
 
 
 class UtilsTestCase(TestCase):
     """
     """
+
+
+    def test_json_io_dict_from_cdc_csv_file(self):
+        with open('tests/EW1-KoTsarima-2017-01-17-small.csv') as cdc_csv_fp, \
+                open('tests/exp-predictions.json') as exp_json_fp:
+            exp_json_io_dict = json.load(exp_json_fp)  # converted from EW1-KoTsarima-2017-01-17-small.csv
+            act_json_io_dict = json_io_dict_from_cdc_csv_file(cdc_csv_fp)
+            self.assertEqual(exp_json_io_dict, act_json_io_dict)
+
+        # test a test larger csv file that has >1 bin rows
+        with open('tests/20161023-KoTstable-20161109-small.cdc.csv') as cdc_csv_fp, \
+                open('tests/20161023-KoTstable-20161109-small-exp-predictions.json') \
+                        as exp_json_fp:
+            exp_json_io_dict = json.load(exp_json_fp)
+            act_json_io_dict = json_io_dict_from_cdc_csv_file(cdc_csv_fp)
+            self.assertEqual(exp_json_io_dict, act_json_io_dict)
 
 
     def test_csv_rows_from_json_io_dict(self):
