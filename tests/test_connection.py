@@ -16,14 +16,13 @@ MOCK_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjozLCJ1c2VybmFtZ
 
 
 class TestConnection(unittest.TestCase):
-    """
-    """
+    """"""
 
 
     def test_authenticate(self):
         conn = ZoltarConnection('')
-        u = 'username'
-        p = 'password'
+        u = 'Z_USERNAME'
+        p = 'Z_PASSWORD'
         with patch('requests.post', return_value=MagicMock()) as post_mock:
             post_mock.return_value.status_code = 200
             post_mock.return_value.json = MagicMock(return_value={'token': MOCK_TOKEN})

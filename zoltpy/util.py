@@ -5,8 +5,10 @@ import json
 import logging
 import tempfile
 import time
+import requests
+import pandas as pd
 from pathlib import Path
-from zoltpy.connection import ZoltarConnection
+from zoltpy.connection import ZoltarConnection, Project
 from zoltpy.cdc import cdc_csv_rows_from_json_io_dict, json_io_dict_from_cdc_csv_file
 from zoltpy.csv_util import csv_rows_from_json_io_dict
 
@@ -18,9 +20,41 @@ logger = logging.getLogger(__name__)
 # ZoltarConnection operations.
 #
 
-def delete_forecast(conn, project_name, model_name, timezero_date):
+def create_project(conn, project_json):
+    """Creates a project from a json file.
+
+    :param conn: a ZoltarConnection
+    :param project_json: configuration json file for the project of interest. see zoltar documentation for details,
+        esp. utils.project.create_project_from_json()
     """
-    Deletes the forecast corresponding to the args.
+    conn.re_authenticate_if_necessary()
+    with open(project_json) as fp:
+        project_dict = json.load(fp)
+
+    # delete existing project if found
+    project_dict = project_dict[0]
+    existing_project = [project for project in conn.projects if project.name == project_dict['name']]
+    if existing_project:
+        existing_project = existing_project[0]
+        print(f"deleting existing project: {existing_project}")
+        existing_project.delete()
+        print("delete done")
+
+    # create new project
+    print(f"creating new project. project name={project_dict['name']}")
+    response = requests.post(f'{conn.host}/api/projects/',
+                             headers={'Authorization': f'JWT {conn.session.token}'},
+                             json={'project_config': project_dict})
+    if response.status_code != 200:  # HTTP_200_OK
+        raise RuntimeError(f"status_code was not 200. status_code={response.status_code}, text={response.text}")
+
+    new_project_json = response.json()
+    new_project = Project(conn, new_project_json['url'])
+    print(f"created new project: {new_project}")
+
+
+def delete_forecast(conn, project_name, model_name, timezero_date):
+    """Deletes the forecast corresponding to the args.
 
     :param conn: a ZoltarConnection
     :param project_name: name of the Project that contains model_name
@@ -38,14 +72,14 @@ def delete_forecast(conn, project_name, model_name, timezero_date):
         existing_forecast.delete()
         logger.info(f'delete_forecast(): delete done')
     else:
-        logger.info(f'delete_forecast(): no existing forecast. model={model.id}, timezero_date={timezero_date}')
 
 
 def upload_forecast(conn, forecast_predx_json, forecast_filename, project_name, model_name, timezero_date, data_version_date=None, overwrite=False):
-    """
-    Uploads the passed CDC CSV forecast file to the model corresponding to the args.
+    """Uploads the passed CDC CSV forecast file to the model corresponding to
+    the args.
 
     :param conn: a ZoltarConnection
+    :param forecast_predx_json: a predx json file
     :param forecast_predx_json: a predx json file
     :param forecast_filename: filename of original forecast
     :param project_name: name of the Project that contains model_name
@@ -68,16 +102,17 @@ def upload_forecast(conn, forecast_predx_json, forecast_filename, project_name, 
         json_fp.seek(0)
         upload_file_job = model.upload_forecast(json_fp, forecast_filename, timezero_date, data_version_date)
 
-    return upload_file_job
 
 
 def download_forecast(conn, project_name, model_name, timezero_date):
-    """
-    Downloads the data for the forecast corresponding to the args, in Zoltar's native json format, AKA a "json_io_dict".
-    The resulting dict can then be passed to dataframe_from_json_io_dict(), or to either of the underlying csv utility
-    functions:csv_rows_from_json_io_dict(), cdc_csv_rows_from_json_io_dict().
+    """Downloads the data for the forecast corresponding to the args, in
+    Zoltar's native json format, AKA a "json_io_dict". The resulting dict can
+    then be passed to dataframe_from_json_io_dict(), or to either of the
+    underlying csv utility functions:csv_rows_from_json_io_dict(),
+    cdc_csv_rows_from_json_io_dict().
 
     :param conn: a ZoltarConnection
+    :param project_name: name of the Project that contains model_name
     :param project_name: name of the Project that contains model_name
     :param model_name: name of the Model that contains a Forecast for timezero_date
     :param timezero_date: YYYYMMDD_DATE_FORMAT, e.g., '20181203'
@@ -96,16 +131,13 @@ def download_forecast(conn, project_name, model_name, timezero_date):
 
 
 def dataframe_from_json_io_dict(json_io_dict, is_cdc_format=False):
-    """
-    Converts the passed native Zoltar json_io_dict to CSV data, returned as a Pandas DataFrame.
+    """Converts the passed native Zoltar json_io_dict to CSV data, returned as
+    a Pandas DataFrame.
 
     :param json_io_dict: a json_io_dict as returned by download_forecast()
     :param is_cdc_format: flag that specifies CDC CSV format (if True) or generic Zoltar format o/w
     :return: a Pandas DataFrame
     """
-    import pandas as pd
-
-
     string_io = io.StringIO()
     csv_writer = csv.writer(string_io, delimiter=',')
     csv_rows = cdc_csv_rows_from_json_io_dict(json_io_dict) if is_cdc_format \
@@ -118,9 +150,8 @@ def dataframe_from_json_io_dict(json_io_dict, is_cdc_format=False):
 
 
 def busy_poll_upload_file_job(upload_file_job):
-    """
-    A simple utility that polls upload_file_job's status every second until either success or failure.
-    """
+    """A simple utility that polls upload_file_job's status every second until
+    either success or failure."""
     print(f'\n* polling for status change. upload_file_job: {upload_file_job}')
     while True:
         status = upload_file_job.status_as_str
@@ -134,7 +165,7 @@ def busy_poll_upload_file_job(upload_file_job):
         upload_file_job.refresh()
 
 
-def authenticate(env_user='USERNAME', env_pass='PASSWORD'):
+def authenticate(env_user='Z_USERNAME', env_pass='Z_PASSWORD'):
     # Ensure environment variables exist
     env_vars = [env_user, env_pass]
     for var in env_vars:

@@ -8,8 +8,7 @@ from zoltpy.connection import ZoltarConnection, Project
 
 
 def create_project_app():
-    """
-    Application that demonstrates project creation and deletion.
+    """Application that demonstrates project creation and deletion.
 
     App args:
     - zoltar_host: host to pass to ZoltarConnection()
@@ -17,19 +16,20 @@ def create_project_app():
         esp. utils.project.create_project_from_json()
 
     Required environment variables:
-    - 'USERNAME': username of the account that has permission to access the resources in above app args
-    - 'PASSWORD': password ""
+    - 'Z_USERNAME': username of the account that has permission to access the resources in above app args
+    - 'Z_PASSWORD': password ""
     """
-    host = sys.argv[1]
-    project_config_file = sys.argv[2]
+    #host = sys.argv[1]
+    project_config_file = sys.argv[1]
 
-    conn = ZoltarConnection(host)
-    conn.authenticate(os.environ.get('USERNAME'), os.environ.get('PASSWORD'))
+    conn = ZoltarConnection()
+    conn.authenticate(os.environ.get('Z_USERNAME'), os.environ.get('Z_PASSWORD'))
 
     with open(project_config_file) as fp:
         project_dict = json.load(fp)
 
     # delete existing project if found
+    project_dict = project_dict[0]
     existing_project = [project for project in conn.projects if project.name == project_dict['name']]
     if existing_project:
         existing_project = existing_project[0]

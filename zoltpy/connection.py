@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 class ZoltarConnection:
-    """
-    Represents a connection to a Zoltar server. This is an object-oriented interface that may be best suited to zoltpy
-    developers. See the `util` module for a name-based non-OOP interface.
+    """Represents a connection to a Zoltar server. This is an object-oriented
+    interface that may be best suited to zoltpy developers. See the `util`
+    module for a name-based non-OOP interface.
 
     Notes:
     - This implementation uses the simple approach of caching the JSON response for resource URLs, but doesn't
@@ -41,8 +41,9 @@ class ZoltarConnection:
 
     @property
     def projects(self):
-        """
-        The entry point into ZoltarResources. Returns a list of Projects. NB: A property, but hits the API.
+        """The entry point into ZoltarResources.
+
+        Returns a list of Projects. NB: A property, but hits the API.
         """
         # NB: here we are throwing away each project's json, which is here because the API returns json objects for
         # projects rather than just URIs
@@ -89,14 +90,14 @@ class ZoltarSession:  # internal use
         return True  # todo xx fix!
 
 
+
 class ZoltarResource(ABC):
-    """
-    An abstract proxy for a Zoltar object at a particular URI including its JSON. All it does is cache JSON from a
-    URI. Notes:
+    """An abstract proxy for a Zoltar object at a particular URI including its
+    JSON. All it does is cache JSON from a URI. Notes:
+
     - This class and its subclasses are not meant to be directly instantiated by users. Instead the user enters through
       ZoltarConnection.projects and then drills down.
     - Because the JSON is cached, it will become stale after the source object in the server changes, such as when a
-      model's forecasts change. Thus, use refresh() as needed.
     """
 
 
@@ -123,14 +124,13 @@ class ZoltarResource(ABC):
             raise RuntimeError(f'delete_resource(): status code was not 204: {response.status_code}. {response.text}')
 
 
+
 class Project(ZoltarResource):
-    """
-    Represents a Zoltar project, and is the entry point for getting its list of Models.
-    """
+    """Represents a Zoltar project, and is the entry point for getting its list
+    of Models."""
 
 
-    def __init__(self, zoltar_connection, uri):
-        super().__init__(zoltar_connection, uri)
+    def __init__(self, zoltar_connection, uri):)
 
 
     def __repr__(self):
@@ -151,8 +151,7 @@ class Project(ZoltarResource):
 
 
     def create_model(self, model_config):
-        """
-        Creates a forecast Model with the passed configuration.
+        """Creates a forecast Model with the passed configuration.
 
         :param model_config: a dict used to initialize the new model. it must contain these fields: ['name'], and can
             optionally contain: ['abbreviation', 'team_name', 'description', 'home_url', 'aux_data_url']
@@ -176,15 +175,14 @@ class Project(ZoltarResource):
         new_model_pk = new_model_json['id']
         new_model_url = f'{self.zoltar_connection.host}/api/model/{new_model_pk}'
         new_model = Model(self.zoltar_connection, new_model_url)
-        return new_model
 
 
 class Model(ZoltarResource):
-    """
-    Represents a Zoltar forecast model, and is the entry point for getting its Forecasts as well as uploading them.
-    """
+    """Represents a Zoltar forecast model, and is the entry point for getting
+    its Forecasts as well as uploading them."""
 
 
+    def __init__(self, zoltar_connection, uri):
     def __init__(self, zoltar_connection, uri):
         super().__init__(zoltar_connection, uri)
 
@@ -217,14 +215,13 @@ class Model(ZoltarResource):
 
 
     def forecast_for_pk(self, forecast_pk):
-        forecast_uri = self.zoltar_connection.host + f'/api/forecast/{forecast_pk}/'
-        return Forecast(self.zoltar_connection, forecast_uri)
 
 
     def upload_forecast(self, forecast_json_fp, source, timezero_date, data_version_date=None):
-        """
-        Uploads a forecast file.
+        """Uploads a forecast file.
 
+        :param forecast_csv_file: a JSON file in the "JSON IO dict" format accepted by
+            utils.forecast.load_predictions_from_json_io_dict()
         :param forecast_csv_file: a JSON file in the "JSON IO dict" format accepted by
             utils.forecast.load_predictions_from_json_io_dict()
         :param timezero_date: YYYYMMDD_DATE_FORMAT

@@ -26,8 +26,8 @@ def zoltar_connection_app():
     - forecast_csv_file: the cdc.csv data file to load
 
     Required environment variables:
-    - 'USERNAME': username of the account that has permission to access the resources in above app args
-    - 'PASSWORD': password ""
+    - 'Z-USERNAME': username of the account that has permission to access the resources in above app args
+    - 'Z_PASSWORD': password ""
     """
     host = sys.argv[1]
     project_name = sys.argv[2]
@@ -36,7 +36,7 @@ def zoltar_connection_app():
     forecast_csv_file = sys.argv[5]  # CDC CSV format
 
     conn = ZoltarConnection(host)
-    conn.authenticate(os.environ.get('USERNAME'), os.environ.get('PASSWORD'))
+    conn.authenticate(os.environ.get('Z-USERNAME'), os.environ.get('Z_PASSWORD'))
 
     print('\n* projects')
     for project in conn.projects:

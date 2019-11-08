@@ -5,8 +5,7 @@ from zoltpy.connection import ZoltarConnection
 
 
 def create_model_app():
-    """
-    Application that demonstrates model creation and deletion.
+    """Application that demonstrates model creation and deletion.
 
     App args:
     - zoltar_host: host to pass to ZoltarConnection()
@@ -14,15 +13,15 @@ def create_model_app():
     - model_name: name of a ForecastModel to create and delete. it will be given demonstration data
 
     Required environment variables:
-    - 'USERNAME': username of the account that has permission to access the resources in above app args
-    - 'PASSWORD': password ""
+    - 'Z_USERNAME': username of the account that has permission to access the resources in above app args
+    - 'Z_PASSWORD': password ""
     """
     host = sys.argv[1]
     project_name = sys.argv[2]
     model_name = sys.argv[3]
 
     conn = ZoltarConnection(host)
-    conn.authenticate(os.environ.get('USERNAME'), os.environ.get('PASSWORD'))
+    conn.authenticate(os.environ.get('Z_USERNAME'), os.environ.get('Z_PASSWORD'))
 
     # delete existing model if found
     project = [project for project in conn.projects if project.name == project_name]
