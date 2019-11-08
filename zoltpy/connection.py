@@ -130,7 +130,8 @@ class Project(ZoltarResource):
     of Models."""
 
 
-    def __init__(self, zoltar_connection, uri):)
+    def __init__(self, zoltar_connection, uri):
+        super().__init__(zoltar_connection, uri)
 
 
     def __repr__(self):
@@ -182,7 +183,6 @@ class Model(ZoltarResource):
     its Forecasts as well as uploading them."""
 
 
-    def __init__(self, zoltar_connection, uri):
     def __init__(self, zoltar_connection, uri):
         super().__init__(zoltar_connection, uri)
 
