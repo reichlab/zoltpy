@@ -32,7 +32,6 @@ def create_project(conn, project_json):
         project_dict = json.load(fp)
 
     # delete existing project if found
-    project_dict = project_dict[0]
     existing_project = [project for project in conn.projects if project.name == project_dict['name']]
     if existing_project:
         existing_project = existing_project[0]
