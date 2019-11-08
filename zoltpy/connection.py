@@ -215,6 +215,8 @@ class Model(ZoltarResource):
 
 
     def forecast_for_pk(self, forecast_pk):
+        forecast_uri = self.zoltar_connection.host + f'/api/forecast/{forecast_pk}/'
+        return Forecast(self.zoltar_connection, forecast_uri)
 
 
     def upload_forecast(self, forecast_json_fp, source, timezero_date, data_version_date=None):
