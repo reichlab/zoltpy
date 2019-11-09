@@ -120,7 +120,7 @@ model_name = 'Test ForecastModel1'
 timezero_date = '20170117'
 forecast_file_path = 'tests/EW1-KoTsarima-2017-01-17-small.csv'
 
-forecast_filename, predx_json = util.convert_cdc_csv_to_predx_json(forecast_file_path)
+forecast_filename, predx_json = util.convert_cdc_csv_to_json_io_dict(forecast_file_path)
 conn = util.authenticate()
 util.upload_forecast(conn, predx_json, forecast_filename, project_name, model_name, timezero_date, overwrite=True)
 ```
