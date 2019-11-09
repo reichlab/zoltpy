@@ -75,7 +75,7 @@ def delete_forecast(conn, project_name, model_name, timezero_date):
 
 
 def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_name, timezero_date, 
-    data_version_date=None, overwrite=False):
+        data_version_date=None, overwrite=False):
     """Uploads the passed JSON dictionary file to the model corresponding to
     the args.
 
@@ -103,7 +103,7 @@ def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_n
         json_fp.seek(0)
         upload_file_job = model.upload_forecast(json_fp, forecast_filename, timezero_date, data_version_date)
 
-
+    return upload_file_job
 
 def download_forecast(conn, project_name, model_name, timezero_date):
     """Downloads the data for the forecast corresponding to the args, in
