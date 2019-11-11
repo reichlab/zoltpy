@@ -111,7 +111,7 @@ Example:
 util.delete_forecast('Impetus Province Forecasts','gam_lag1_tops3','20181203')
 ```
 
-#### Upload a Forecast
+#### Upload a Single Forecast
 ```
 from zoltpy import util
 
@@ -120,9 +120,46 @@ model_name = 'Test ForecastModel1'
 timezero_date = '20170117'
 forecast_file_path = 'tests/EW1-KoTsarima-2017-01-17-small.csv'
 
-forecast_filename, predx_json = util.convert_cdc_csv_to_json_io_dict(forecast_file_path)
+predx_json, forecast_filename = util.convert_cdc_csv_to_json_io_dict(forecast_file_path)
 conn = util.authenticate()
 util.upload_forecast(conn, predx_json, forecast_filename, project_name, model_name, timezero_date, overwrite=True)
+```
+
+#### Uploading Multiple Forecasts
+This method makes uploading multiple forecasts for a single model and project more efficient. The first step is to iterate through every forecast in your model and create the following three batch variables: `predx_batch`, `forecast_filename_batch`, `timezero_batch`. Below is an example of getting these batch variables
+```
+# import libraries
+import pymmwr as pm
+from zoltpy import util
+import datetime
+
+# initialize parameters
+project_name = 'private project'
+model_name = 'Test ForecastModel1'
+
+# set up batch variables
+predx_batch = []
+forecast_filename_batch = []
+timezero_batch = []
+
+for csv_file in '/Users/my/forecast/directory':
+    conn = util.authenticate()
+    
+    # get timezero
+    timezero = pm.epiweek_to_date(ew)
+    timezero = timezero + datetime.timedelta(days = 1) # timezeros on Mondays
+    timezero = timezero.strftime('%Y%m%d')
+
+    # generate predx_json and forecast_filename
+    predx_json, forecast_filename = util.convert_cdc_csv_to_json_io_dict(csv_file)
+    
+    # save batch variables
+    predx_batch += [predx_json]
+    forecast_filename_batch += [forecast_filename]
+    timezero_batch += [timezero]
+
+util.upload_forecast_batch(conn, predx_batch, forecast_filename_batch, 
+                           project_name, model_name, timezero_batch, overwrite=False)
 ```
 
 #### Return Forecast as a Pandas Dataframe
