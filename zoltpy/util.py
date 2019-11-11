@@ -105,6 +105,48 @@ def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_n
 
     return upload_file_job
 
+
+def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, project_name, model_name, timezero_date_batch, 
+        data_version_date=None, overwrite=False):
+    """Uploads a batch (list) of JSON dictionaries to the model corresponding
+    to the args. This only iterates through timezeros, not models or projects.
+
+    :param conn: a ZoltarConnection
+    :param json_io_dict_batch: an list of a JSON dictionaries
+    :param forecast_filename_batch: a list of filenames of original forecast
+    :param project_name: name of the Project that contains model_name
+    :param model_name: name of the Model that contains a Forecast for timezero_date
+    :param timezero_date_batch: an list of YYYYMMDD_DATE_FORMAT, e.g., '20181203'
+    :param data_version_date: optional for the upload. same format as timezero_date
+    :param overwrite: True if you would like to overwrite the existing forecast for that timezero_date. Default is False
+    :return: an UploadFileJob. it can be polled for status via busy_poll_upload_file_job(), and then the new forecast
+        can be obtained via upload_file_job.output_json['forecast_pk']
+    """
+    print(model_name)
+    conn.re_authenticate_if_necessary()
+    project = [project for project in conn.projects if project.name == project_name][0]
+    model = [model for model in project.models if model.name == model_name][0]
+    
+    print('uploading %i forecasts...' % len(forecast_filename_batch))
+    
+    if len(json_io_dict_batch) > 0:
+        for i in range(len(json_io_dict_batch)):
+            print('uploading %s project, %s model, %s timezero...' % (project_name, 
+                            model_name, timezero_date_batch[i]))
+            if overwrite == True:
+                delete_forecast(conn, project_name, model_name, timezero_date_batch[i])
+
+            # note that this app accepts a *.cdc.csv file, but zoltar requires a native json file. so we first convert to a
+            # temp json file and then pass it
+            with tempfile.TemporaryFile('r+') as json_fp:
+                json.dump(json_io_dict_batch[i], json_fp)
+                json_fp.seek(0)
+                upload_file_job = model.upload_forecast(json_fp, forecast_filename_batch[i], 
+                                        timezero_date_batch[i], data_version_date)
+            print('upload complete')
+        return upload_file_job
+
+
 def download_forecast(conn, project_name, model_name, timezero_date):
     """Downloads the data for the forecast corresponding to the args, in
     Zoltar's native json format, AKA a "json_io_dict". The resulting dict can
