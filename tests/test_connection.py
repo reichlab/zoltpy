@@ -31,7 +31,7 @@ class TestConnection(unittest.TestCase):
             self.assertEqual(p, conn.password)
             self.assertIsInstance(conn.session, ZoltarSession)
             self.assertEqual(MOCK_TOKEN, conn.session.token)
-            post_mock.assert_called_once_with('/api-token-auth/', {'username': 'username', 'password': 'password'})
+            post_mock.assert_called_once_with('/api-token-auth/', {'username': 'Z_USERNAME', 'password': 'Z_PASSWORD'})
 
 
 if __name__ == '__main__':

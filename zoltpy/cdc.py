@@ -175,6 +175,11 @@ def _cleaned_rows_from_cdc_csv_file(cdc_csv_file_fp):
                                .format(CDC_POINT_ROW_TYPE, CDC_BIN_ROW_TYPE))
         is_point_row = (row_type == CDC_POINT_ROW_TYPE.lower())
 
+        # if blank cell, transform to NA
+        bin_start_incl = 'NA' if bin_start_incl == '' else bin_start_incl
+        bin_end_notincl = 'NA' if bin_end_notincl == '' else bin_end_notincl
+        value = 'NA' if value == '' else value
+        
         # use parse_value() to handle non-numeric cases like 'NA' and 'none'
         bin_start_incl = parse_value(bin_start_incl)
         bin_end_notincl = parse_value(bin_end_notincl)
