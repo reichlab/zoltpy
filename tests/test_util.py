@@ -27,6 +27,14 @@ class UtilsTestCase(TestCase):
             act_json_io_dict = json_io_dict_from_cdc_csv_file(cdc_csv_fp)
             self.assertEqual(exp_json_io_dict, act_json_io_dict)
 
+        # test a csv file with blank cells
+        with open('tests/EW43-2019-FluOutlook_Mech.csv') as cdc_csv_fp, \
+                open('tests/EW43-2019-FluOutlook_Mech-exp-predictions.json') \
+                        as exp_json_fp:
+            exp_json_io_dict = json.load(exp_json_fp)
+            act_json_io_dict = json_io_dict_from_cdc_csv_file(cdc_csv_fp)
+            self.assertEqual(exp_json_io_dict, act_json_io_dict)
+
 
     def test_csv_rows_from_json_io_dict(self):
         # no meta
