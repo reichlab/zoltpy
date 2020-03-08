@@ -94,7 +94,7 @@
   },
   "predictions": [
     {
-      "location": "US National",
+      "unit": "US National",
       "target": "1 wk ahead",
       "class": "BinCat",
       "prediction": {
@@ -111,7 +111,7 @@
       }
     },
     {
-      "location": "HHS Region 1",
+      "unit": "HHS Region 1",
       "target": "2 wk ahead",
       "class": "BinLwr",
       "prediction": {
@@ -128,7 +128,7 @@
       }
     },
     {
-      "location": "HHS Region 2",
+      "unit": "HHS Region 2",
       "target": "3 wk ahead",
       "class": "Binary",
       "prediction": {
@@ -136,7 +136,7 @@
       }
     },
     {
-      "location": "HHS Region 3",
+      "unit": "HHS Region 3",
       "target": "4 wk ahead",
       "class": "Named",
       "prediction": {
@@ -147,7 +147,7 @@
       }
     },
     {
-      "location": "HHS Region 4",
+      "unit": "HHS Region 4",
       "target": "Season onset",
       "class": "Point",
       "prediction": {
@@ -155,7 +155,7 @@
       }
     },
     {
-      "location": "HHS Region 5",
+      "unit": "HHS Region 5",
       "target": "Season peak percentage",
       "class": "Sample",
       "prediction": {
@@ -166,7 +166,7 @@
       }
     },
     {
-      "location": "HHS Region 6",
+      "unit": "HHS Region 6",
       "target": "Season peak week",
       "class": "SampleCat",
       "prediction": {

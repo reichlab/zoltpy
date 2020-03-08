@@ -1,0 +1,19 @@
+timezero,location,target,value
+10/2/11,location1,pct next week,4.5432
+10/2/11,location1,cases next week,10
+10/2/11,location1,season severity,moderate
+10/2/11,location1,above baseline,TRUE
+10/2/11,location1,Season peak week,12/15/19
+10/9/11,location2,pct next week,99.9
+10/9/11,location2,cases next week,3
+10/9/11,location2,season severity,severe
+10/9/11,location2,above baseline,TRUE
+10/9/11,location2,Season peak week,12/29/19
+10/16/11,location1,pct next week,0
+10/16/11,location1,cases next week,0
+10/16/11,location1,above baseline,FALSE
+10/16/11,location1,Season peak week,12/22/19
+10/16/11,location2,pct next week,50
+10/16/11,location2,cases next week,3
+10/16/11,location2,season severity,severe
+10/16/11,location2,above baseline,TRUE

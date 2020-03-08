@@ -7,6 +7,7 @@ import tempfile
 import time
 import requests
 import pandas as pd
+import sys
 from pathlib import Path
 from zoltpy.connection import ZoltarConnection, Project
 from zoltpy.cdc import cdc_csv_rows_from_json_io_dict, json_io_dict_from_cdc_csv_file
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 # ZoltarConnection operations.
 #
 
+
 def create_project(conn, project_json):
     """Creates a project from a json file.
 
@@ -32,7 +34,7 @@ def create_project(conn, project_json):
         project_dict = json.load(fp)
 
     # delete existing project if found
-    existing_project = [project for project in conn.projects if project.name == project_dict['name']]
+    existing_project = [project for project in conn.projects if project.name == project_dict["name"]]
     if existing_project:
         existing_project = existing_project[0]
         print(f"deleting existing project: {existing_project}")
@@ -48,7 +50,7 @@ def create_project(conn, project_json):
         raise RuntimeError(f"status_code was not 200. status_code={response.status_code}, text={response.text}")
 
     new_project_json = response.json()
-    new_project = Project(conn, new_project_json['url'])
+    new_project = Project(conn, new_project_json["url"])
     print(f"created new project: {new_project}")
 
 
@@ -58,7 +60,7 @@ def delete_forecast(conn, project_name, model_name, timezero_date):
     :param conn: a ZoltarConnection
     :param project_name: name of the Project that contains model_name
     :param model_name: name of the Model that contains a Forecast for timezero_date
-    :param timezero_date: YYYYMMDD_DATE_FORMAT, e.g., '20181203'
+    :param timezero_date: YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
     """
     conn.re_authenticate_if_necessary()
     project = [project for project in conn.projects if project.name == project_name][0]
@@ -66,16 +68,17 @@ def delete_forecast(conn, project_name, model_name, timezero_date):
     forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
     if forecast_for_tz_date:
         existing_forecast = forecast_for_tz_date[0]
-        logger.info(f'delete_forecast(): deleting existing forecast. model={model.id}, timezero_date={timezero_date}, '
-                    f'existing_forecast={existing_forecast.id}')
+        logger.info(
+            f"delete_forecast(): deleting existing forecast. model={model.id}, timezero_date={timezero_date}, "
+            f"existing_forecast={existing_forecast.id}")
         existing_forecast.delete()
-        logger.info(f'delete_forecast(): delete done')
+        logger.info(f"delete_forecast(): delete done")
     else:
-        logger.info(f'delete_forecast(): no existing forecast. model={model.id}, timezero_date={timezero_date}')
+        logger.info(f"delete_forecast(): no existing forecast. model={model.id}, timezero_date={timezero_date}")
 
 
-def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_name, timezero_date, 
-        data_version_date=None, overwrite=False):
+def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_name, timezero_date,
+                    data_version_date=None, overwrite=False):
     """Uploads the passed JSON dictionary file to the model corresponding to
     the args.
 
@@ -84,30 +87,41 @@ def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_n
     :param forecast_filename: filename of original forecast
     :param project_name: name of the Project that contains model_name
     :param model_name: name of the Model that contains a Forecast for timezero_date
-    :param timezero_date: YYYYMMDD_DATE_FORMAT, e.g., '20181203'
+    :param timezero_date: YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
     :param data_version_date: optional for the upload. same format as timezero_date
     :param overwrite: True if you would like to overwrite the existing forecast for that timezero_date. Default is False
     :return: an UploadFileJob. it can be polled for status via busy_poll_upload_file_job(), and then the new forecast
         can be obtained via upload_file_job.output_json['forecast_pk']
     """
     conn.re_authenticate_if_necessary()
-    if overwrite==True:
+
+    if overwrite == True:
         delete_forecast(conn, project_name, model_name, timezero_date)
     project = [project for project in conn.projects if project.name == project_name][0]
     model = [model for model in project.models if model.name == model_name][0]
 
+    # check json formatting before upload
+    try:
+        with open(json_io_dict) as jsonfile:
+            json_io_dict = json.load(jsonfile)
+    except:
+        print("""\nERROR - cannot read JSON Format. 
+        Uploading a CSV? Consider converting to json Predx style with:
+        predx_json, forecast_filename = util.convert_cdc_csv_to_json_io_dict(forecast_file_path)""")
+        sys.exit(1)
+
     # note that this app accepts a *.cdc.csv file, but zoltar requires a native json file. so we first convert to a
     # temp json file and then pass it
-    with tempfile.TemporaryFile('r+') as json_fp:
+    with tempfile.TemporaryFile("r+") as json_fp:
         json.dump(json_io_dict, json_fp)
         json_fp.seek(0)
         upload_file_job = model.upload_forecast(json_fp, forecast_filename, timezero_date, data_version_date)
 
-    return upload_file_job
+    return busy_poll_upload_file_job(upload_file_job)
 
 
-def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, project_name, model_name, timezero_date_batch, 
-        data_version_date=None, overwrite=False):
+def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, project_name, model_name,
+                          timezero_date_batch, data_version_date=None, overwrite=False,):
     """Uploads a batch (list) of JSON dictionaries to the model corresponding
     to the args. This only iterates through timezeros, not models or projects.
 
@@ -116,7 +130,7 @@ def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, pro
     :param forecast_filename_batch: a list of filenames of original forecast
     :param project_name: name of the Project that contains model_name
     :param model_name: name of the Model that contains a Forecast for timezero_date
-    :param timezero_date_batch: an list of YYYYMMDD_DATE_FORMAT, e.g., '20181203'
+    :param timezero_date_batch: an list of YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
     :param data_version_date: optional for the upload. same format as timezero_date
     :param overwrite: True if you would like to overwrite the existing forecast for that timezero_date. Default is False
     :return: an UploadFileJob. it can be polled for status via busy_poll_upload_file_job(), and then the new forecast
@@ -126,25 +140,26 @@ def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, pro
     conn.re_authenticate_if_necessary()
     project = [project for project in conn.projects if project.name == project_name][0]
     model = [model for model in project.models if model.name == model_name][0]
-    
-    print('uploading %i forecasts...' % len(forecast_filename_batch))
-    
+
+    print("uploading %i forecasts..." % len(forecast_filename_batch))
+
     if len(json_io_dict_batch) > 0:
         for i in range(len(json_io_dict_batch)):
-            print('uploading %s project, %s model, %s timezero...' % (project_name, 
-                            model_name, timezero_date_batch[i]))
+            print("uploading %s project, %s model, %s timezero..." % (project_name, model_name, timezero_date_batch[i]))
             if overwrite == True:
                 delete_forecast(conn, project_name, model_name, timezero_date_batch[i])
 
             # note that this app accepts a *.cdc.csv file, but zoltar requires a native json file. so we first convert to a
             # temp json file and then pass it
-            with tempfile.TemporaryFile('r+') as json_fp:
+            with tempfile.TemporaryFile("r+") as json_fp:
                 json.dump(json_io_dict_batch[i], json_fp)
                 json_fp.seek(0)
-                upload_file_job = model.upload_forecast(json_fp, forecast_filename_batch[i], 
-                                        timezero_date_batch[i], data_version_date)
-            print('upload complete')
-        return upload_file_job
+                upload_file_job = model.upload_forecast(
+                    json_fp, forecast_filename_batch[i],
+                    timezero_date_batch[i],
+                    data_version_date,)
+            print("upload complete")
+        return busy_poll_upload_file_job(upload_file_job)
 
 
 def download_forecast(conn, project_name, model_name, timezero_date):
@@ -158,7 +173,7 @@ def download_forecast(conn, project_name, model_name, timezero_date):
     :param project_name: name of the Project that contains model_name
     :param project_name: name of the Project that contains model_name
     :param model_name: name of the Model that contains a Forecast for timezero_date
-    :param timezero_date: YYYYMMDD_DATE_FORMAT, e.g., '20181203'
+    :param timezero_date: YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
     :return: a json_io_dict
     """
     conn.re_authenticate_if_necessary()
@@ -166,8 +181,9 @@ def download_forecast(conn, project_name, model_name, timezero_date):
     model = [model for model in project.models if model.name == model_name][0]
     forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
     if not forecast_for_tz_date:
-        raise RuntimeError(f'forecast not found. project_name={project_name}, model_name={model_name}, '
-                           f'timezero_date={timezero_date}')
+        raise RuntimeError(
+            f"forecast not found. project_name={project_name}, model_name={model_name}, "
+            f"timezero_date={timezero_date}")
 
     existing_forecast = forecast_for_tz_date[0]
     return existing_forecast.data()
@@ -182,9 +198,9 @@ def dataframe_from_json_io_dict(json_io_dict, is_cdc_format=False):
     :return: a Pandas DataFrame
     """
     string_io = io.StringIO()
-    csv_writer = csv.writer(string_io, delimiter=',')
-    csv_rows = cdc_csv_rows_from_json_io_dict(json_io_dict) if is_cdc_format \
-        else csv_rows_from_json_io_dict(json_io_dict)
+    csv_writer = csv.writer(string_io, delimiter=",")
+    csv_rows = cdc_csv_rows_from_json_io_dict(
+        json_io_dict) if is_cdc_format else csv_rows_from_json_io_dict(json_io_dict)
     for row in csv_rows:
         csv_writer.writerow(row)
     string_io.seek(0)
@@ -195,20 +211,22 @@ def dataframe_from_json_io_dict(json_io_dict, is_cdc_format=False):
 def busy_poll_upload_file_job(upload_file_job):
     """A simple utility that polls upload_file_job's status every second until
     either success or failure."""
-    print(f'\n* polling for status change. upload_file_job: {upload_file_job}')
+    print(f"\n* polling for status change. upload_file_job: {upload_file_job}")
     while True:
         status = upload_file_job.status_as_str
-        print(f'- {status}')
-        if status == 'FAILED':
-            print('x failed')
+        failure_message = upload_file_job.json["failure_message"]
+        print(f"- {status}")
+        if status == "FAILED":
+            print("x FAILED")
+            print("\n", failure_message)
             break
-        if status == 'SUCCESS':
+        if status == "SUCCESS":
             break
         time.sleep(1)
         upload_file_job.refresh()
 
 
-def authenticate(env_user='Z_USERNAME', env_pass='Z_PASSWORD'):
+def authenticate(env_user="Z_USERNAME", env_pass="Z_PASSWORD"):
     """Authenticate the user ID and password for connection to Zoltar.
 
     :param Z_USERNAME environment variable: username of account in Zoltar
@@ -226,21 +244,29 @@ def authenticate(env_user='Z_USERNAME', env_pass='Z_PASSWORD'):
     # Authenticate Zoltar connection
     try:
         conn = ZoltarConnection()
-        conn.authenticate(os.environ.get(
-            env_user), os.environ.get(env_pass))
+        conn.authenticate(os.environ.get(env_user), os.environ.get(env_pass))
         return conn
     except:
         print("ERROR: Cannot authenticate zoltar credentials")
         print("Ensure the environment variables for your username and password are correct")
     return print("ERROR")
-    
+
 
 def print_projects():
     """A simple utility that outputs a list of projects within Zoltar."""
-    print('* projects')
+    print("* projects")
     zoltar = authenticate()
     for project in zoltar.projects:
-        print('-', project, project.id, project.name)
+        print("-", project, project.id, project.name)
+
+
+def print_models(conn, project_name):
+    """A simple utility that outputs a list of models a Zoltar project."""
+    print("* models in %s" % project_name)
+    zoltar = authenticate()
+    project = [project for project in conn.projects if project.name == project_name][0]
+    for model in project.models:
+        print("-", model)
 
 
 def convert_cdc_csv_to_json_io_dict(filepath):

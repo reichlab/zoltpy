@@ -9,7 +9,6 @@ A python module that interfaces with Zoltar https://github.com/reichlab/forecast
 - [requests](http://docs.python-requests.org/en/v2.7.0/user/install/)
 - [numpy](https://pypi.org/project/numpy/)
 
-
 ## Installation
 Zoltpy is hosted on the Python Package Index (pypi.org), a repository for Python modules https://pypi.org/project/zoltpy/. 
 
@@ -17,7 +16,6 @@ Install Zoltpy with the following command:
 ```
 pip install git+https://github.com/reichlab/zoltpy/
 ```
-
 
 ## One-time Environment Variable Configuration
 Users must add their Zoltar username and password to environment variables on their machine before using this module. 
@@ -50,7 +48,6 @@ set Z_USERNAME="<your zoltar username>"
 set Z_PASSWORD="<your zoltar password>"
 ```
 
-
 ## Usage
 Zoltpy is a python module that communicates with Zoltar, the Reich Lab's forecast repository. To import the Zoltpy utility functions, run the following command after installing the package:
 ```
@@ -60,13 +57,9 @@ from zoltpy import util
 ### Authentication
 To access your project, you'll first need to authenticate via the `authenticate(username, password)` method from the `ZoltarConnection()` object. Pass it the username and password saved in your [environment variables](#one-time-environment-variable-configuration): 
 ```
-from zoltpy.connection import ZoltarConnection
-import os
-env_user='Z_USERNAME'
-env_pass='Z_PASSWORD'
-conn = ZoltarConnection()
-conn.authenticate(os.environ.get(env_user),
-        os.environ.get(env_pass))
+from zoltpy import util
+
+conn = util.authenticate()
 ```
 Now you can use your authentication token to access private projects:
 ```
@@ -80,13 +73,11 @@ print(project)
   the connection object returned by the `re_authenticate_if_necessary()` function stores a token internally, so be careful if saving that object into a file.
   
   
-  
-### Zoltpy currently has 5 Key Functions
+### Zoltpy currently has 4 Key Functions
 1) [print_projects()](#print-project-names) - Print project names
-2) [print_models(`project_name`)](#print-model-names) - Print model names for a specified project
-3) [delete_forecast(`project_name`, `model_name`, `timezero_date`)](#delete-forecast) - Deletes a forecast from Zoltar
-4) [upload_forecast(`project_name`, `model_name`, `timezero_date`, `forecast_csv_file`)](#Upload-a-Forecast) - Upload a forecast to Zoltar
-5) [forecast_to_dataframe(`project_name`, `model_name`, `timezero_date`)](#Return-Forecast-as-a-Pandas-Dataframe) - Returns forecast as a Pandas Dataframe
+2) [print_models(`conn`,`project_name`)](#print-model-names) - Print model names for a specified project
+3) [delete_forecast(`conn`, `project_name`, `model_name`, `timezero_date`)](#delete-forecast) - Deletes a forecast from Zoltar
+4) [upload_forecast(`conn`, `project_name`, `model_name`, `timezero_date`, `forecast_csv_file`)](#Upload-a-Forecast) - Upload a forecast to Zoltar
 
 
 #### Print Project Names
@@ -98,31 +89,32 @@ util.print_projects()
 #### Print Model Names
 Given a project, this function prints the models in that project.
 ```
-util.print_models(project_name = 'My Project')
+util.print_models(conn, project_name = 'My Project')
 ```
 
 #### Delete a Forecast
 Deletes a single forecast for a specified model and timezero.
 ```
-util.delete_forecast(project_name='My Project', model_name='My Model', timezero_date='YYYYMMDD')
+util.delete_forecast(conn, project_name='My Project', model_name='My Model', timezero_date='YYYY-MM-DD')
 ```
 Example:
 ```
-util.delete_forecast('Impetus Province Forecasts','gam_lag1_tops3','20181203')
+conn = util.authenticate()
+
+util.delete_forecast(conn, `'Impetus Province Forecasts','gam_lag1_tops3','20181203')
 ```
 
 #### Upload a Single Forecast
 ```
-from zoltpy import util
+project_name = 'Docs Example Project'
+model_name = 'docs forecast model'
+timezero_date = '2011-10-09'
+predx_json = 'examples/docs-predictions.json'
+forecast_filename = 'docs-predictions'
 
-project_name = 'private project'
-model_name = 'Test ForecastModel1'
-timezero_date = '20170117'
-forecast_file_path = 'tests/EW1-KoTsarima-2017-01-17-small.csv'
-
-predx_json, forecast_filename = util.convert_cdc_csv_to_json_io_dict(forecast_file_path)
 conn = util.authenticate()
-util.upload_forecast(conn, predx_json, forecast_filename, project_name, model_name, timezero_date, overwrite=True)
+
+util.upload_forecast(conn, predx_json, forecast_filename, project_name, model_name, timezero_date overwrite=True)
 ```
 
 #### Uploading Multiple Forecasts
@@ -163,6 +155,8 @@ util.upload_forecast_batch(conn, predx_batch, forecast_filename_batch,
 ```
 
 #### Return Forecast as a Pandas Dataframe
+
+TODO
 Example:
 ```
 util.forecast_to_dataframe('Impetus Province Forecasts','gam_lag1_tops3','20181203')

@@ -5,6 +5,10 @@ name = "pypi"
 
 [packages]
 pandas = "*"
+click = "*"
+requests = "*"
+numpy = "*"
+black = "==18.5b0"
 
 [dev-packages]
 

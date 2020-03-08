@@ -179,7 +179,7 @@ def _cleaned_rows_from_cdc_csv_file(cdc_csv_file_fp):
         bin_start_incl = 'NA' if bin_start_incl == '' else bin_start_incl
         bin_end_notincl = 'NA' if bin_end_notincl == '' else bin_end_notincl
         value = 'NA' if value == '' else value
-        
+
         # use parse_value() to handle non-numeric cases like 'NA' and 'none'
         bin_start_incl = parse_value(bin_start_incl)
         bin_end_notincl = parse_value(bin_end_notincl)
@@ -231,14 +231,14 @@ def _prediction_dicts_for_csv_rows(rows):
 
         # add the actual prediction dicts
         if bincat_cats:
-            prediction_dicts.append({"location": location_name,
+            prediction_dicts.append({"unit": location_name,
                                      "target": target_name,
                                      "class": "BinCat",
                                      "prediction": {
                                          "cat": bincat_cats,
                                          "prob": bincat_probs}})
         if binlwr_lwrs:
-            prediction_dicts.append({"location": location_name,
+            prediction_dicts.append({"unit": location_name,
                                      "target": target_name,
                                      "class": "BinLwr",
                                      "prediction": {
@@ -246,7 +246,7 @@ def _prediction_dicts_for_csv_rows(rows):
                                          "prob": binlwr_probs}})
         if point_values:
             for point_value in point_values:
-                prediction_dicts.append({"location": location_name,
+                prediction_dicts.append({"unit": location_name,
                                          "target": target_name,
                                          'class': 'Point',
                                          'prediction': {

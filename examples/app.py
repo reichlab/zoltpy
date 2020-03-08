@@ -22,7 +22,7 @@ def zoltar_connection_app():
     - project_name: name of Project to work with. assumptions: must have a model named in below arg, and must have a
       timezero_date named in below arg. must be a CDC project (locations, targets, forecasts, etc.)
     - model_name: name of a ForecastModel to work with - upload files, etc.
-    - timezero_date: in YYYYMMDD format, e.g., '20181203'
+    - timezero_date: in YYYY-MM-DD format, e.g., '2018-12-03'
     - forecast_csv_file: the cdc.csv data file to load
 
     Required environment variables:
