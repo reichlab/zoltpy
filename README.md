@@ -20,7 +20,7 @@ pip install git+https://github.com/reichlab/zoltpy/
 ## One-time Environment Variable Configuration
 Users must add their Zoltar username and password to environment variables on their machine before using this module. 
 
-### For Mac/Unix
+#### For Mac/Unix
 ```
 cd ~
 nano .bash_profile
@@ -41,7 +41,7 @@ To ensure your environment variable is configured properly, run this command and
 printenv
 ```
 
-### For PC
+#### For PC
 In the command prompt, run the following commands:
 ```
 set Z_USERNAME="<your zoltar username>"
@@ -54,7 +54,7 @@ Zoltpy is a python module that communicates with Zoltar, the Reich Lab's forecas
 from zoltpy import util
 ```
 
-### Authentication
+## Authentication
 To access your project, you'll first need to authenticate via the `authenticate(username, password)` method from the `ZoltarConnection()` object. Pass it the username and password saved in your [environment variables](#one-time-environment-variable-configuration): 
 ```
 from zoltpy import util
@@ -73,26 +73,26 @@ print(project)
   the connection object returned by the `re_authenticate_if_necessary()` function stores a token internally, so be careful if saving that object into a file.
   
   
-### Zoltpy currently has 4 Key Functions
+## Zoltpy currently has 4 Key Functions
 1) [print_projects()](#print-project-names) - Print project names
 2) [print_models(`conn`,`project_name`)](#print-model-names) - Print model names for a specified project
 3) [delete_forecast(`conn`, `project_name`, `model_name`, `timezero_date`)](#delete-forecast) - Deletes a forecast from Zoltar
 4) [upload_forecast(`conn`, `project_name`, `model_name`, `timezero_date`, `forecast_csv_file`)](#Upload-a-Forecast) - Upload a forecast to Zoltar
 
 
-#### Print Project Names
+### Print Project Names
 This fuction returns the project names that you have authorization to view in Zoltar.
 ```
 util.print_projects()
 ```
 
-#### Print Model Names
+### Print Model Names
 Given a project, this function prints the models in that project.
 ```
 util.print_models(conn, project_name = 'My Project')
 ```
 
-#### Delete a Forecast
+### Delete a Forecast
 Deletes a single forecast for a specified model and timezero.
 ```
 util.delete_forecast(conn, project_name='My Project', model_name='My Model', timezero_date='YYYY-MM-DD')
@@ -104,7 +104,7 @@ conn = util.authenticate()
 util.delete_forecast(conn, `'Impetus Province Forecasts','gam_lag1_tops3','20181203')
 ```
 
-#### Upload a Single Forecast
+### Upload a Single Forecast
 ```
 project_name = 'Docs Example Project'
 model_name = 'docs forecast model'
@@ -117,7 +117,7 @@ conn = util.authenticate()
 util.upload_forecast(conn, predx_json, forecast_filename, project_name, model_name, timezero_date overwrite=True)
 ```
 
-#### Uploading Multiple Forecasts
+### Uploading Multiple Forecasts
 This method makes uploading multiple forecasts for a single model and project more efficient. The first step is to iterate through every forecast in your model and create the following three batch variables: `predx_batch`, `forecast_filename_batch`, `timezero_batch`. Below is an example of getting these batch variables
 ```
 # import libraries
@@ -154,7 +154,7 @@ util.upload_forecast_batch(conn, predx_batch, forecast_filename_batch,
                            project_name, model_name, timezero_batch, overwrite=False)
 ```
 
-#### Return Forecast as a Pandas Dataframe
+### Return Forecast as a Pandas Dataframe
 
 TODO
 Example:
