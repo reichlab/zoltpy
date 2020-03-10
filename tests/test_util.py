@@ -66,7 +66,7 @@ class UtilsTestCase(TestCase):
             json_io_dict = json.load(fp)
         # location,target,unit,class,cat,family,lwr,param1,param2,param3,prob,sample,value
         exp_rows = [
-            ['location', 'target', 'unit', 'class', 'cat', 'family', 'lwr', 'param1', 'param2', 'param3', 'prob',
+            ['unit', 'target', 'unit', 'class', 'cat', 'family', 'lwr', 'param1', 'param2', 'param3', 'prob',
              'sample', 'value'],
             ['US National', '1 wk ahead', 'percent', 'BinCat', 'cat1', '', '', '', '', '', 0.0, '', ''],
             ['US National', '1 wk ahead', 'percent', 'BinCat', 'cat2', '', '', '', '', '', 0.1, '', ''],

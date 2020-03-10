@@ -2,7 +2,7 @@
 # csv_rows_from_json_io_dict()
 #
 
-CSV_HEADER = ['location', 'target', 'unit', 'class', 'cat', 'family', 'lwr', 'param1', 'param2', 'param3', 'prob',
+CSV_HEADER = ['unit', 'target', 'unit', 'class', 'cat', 'family', 'lwr', 'param1', 'param2', 'param3', 'prob',
               'sample', 'value']
 
 
@@ -40,7 +40,7 @@ def csv_rows_from_json_io_dict(json_io_dict):
         if target_name not in target_name_to_dict:
             raise RuntimeError(f"prediction_dict target not found in meta targets: {target_name}")
 
-        location = prediction_dict['location']
+        location = prediction_dict['unit']
         target = prediction_dict['target']
         unit = target_name_to_dict[target_name]['unit']
         prediction = prediction_dict['prediction']

@@ -19,7 +19,7 @@ BINLWR_TARGET_NAMES = ['Season peak percentage', '1 wk ahead', '2 wk ahead', '3 
 CDC_POINT_NA_VALUE = 'NA'
 CDC_POINT_ROW_TYPE = 'Point'
 CDC_BIN_ROW_TYPE = 'Bin'
-CDC_CSV_HEADER = ['location', 'target', 'type', 'unit', 'bin_start_incl', 'bin_end_notincl', 'value']
+CDC_CSV_HEADER = ['unit', 'target', 'type', 'unit', 'bin_start_incl', 'bin_end_notincl', 'value']
 CDC_CSV_FILENAME_EXTENSION = 'cdc.csv'
 TARGET_NAME_TO_UNIT = {'Season peak percentage': 'percent',
                        '1 wk ahead': 'percent',
@@ -57,7 +57,7 @@ def cdc_csv_rows_from_json_io_dict(json_io_dict):
             raise RuntimeError(f"prediction_dict target not recognized: {target}. "
                                f"valid targets={list(TARGET_NAME_TO_UNIT.keys())}")
 
-        location = prediction_dict['location']
+        location = prediction_dict['unit']
         row_type = CDC_POINT_ROW_TYPE if prediction_class == 'Point' else CDC_BIN_ROW_TYPE
         unit = TARGET_NAME_TO_UNIT[target]
         prediction = prediction_dict['prediction']
