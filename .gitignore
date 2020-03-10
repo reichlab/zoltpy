@@ -1,4 +1,6 @@
-zoltpy/__pycache__/
+__pycache__
+
+*.pyc
 
 # Distribution / packaging
 .Python

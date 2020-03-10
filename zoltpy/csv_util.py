@@ -2,7 +2,7 @@
 # csv_rows_from_json_io_dict()
 #
 
-CSV_HEADER = ['unit', 'target', 'unit', 'class', 'cat', 'family', 'lwr', 'param1', 'param2', 'param3', 'prob',
+CSV_HEADER = ['location', 'target', 'unit', 'class', 'cat', 'family', 'lwr', 'param1', 'param2', 'param3', 'prob',
               'sample', 'value']
 
 

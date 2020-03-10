@@ -10,7 +10,7 @@ import pandas as pd
 import sys
 from pathlib import Path
 from zoltpy.connection import ZoltarConnection, Project
-from zoltpy.cdc import cdc_csv_rows_from_json_io_dict, json_io_dict_from_cdc_csv_file
+from zoltpy.cdc import cdc_csv_rows_from_json_io_dict, json_io_dict_from_cdc_csv_file, monday_date_from_ew_and_season_start_year
 from zoltpy.csv_util import csv_rows_from_json_io_dict
 
 logger = logging.getLogger(__name__)
@@ -97,18 +97,26 @@ def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_n
 
     if overwrite == True:
         delete_forecast(conn, project_name, model_name, timezero_date)
-    project = [project for project in conn.projects if project.name == project_name][0]
-    model = [model for model in project.models if model.name == model_name][0]
+
+    # get projects
+    projects = conn.projects
+    project = [project for project in projects if project.name == project_name][0]
+
+    # get models for project
+    models = project.models
+    model = [model for model in models if model.name == model_name][0]
 
     # check json formatting before upload
-    try:
-        with open(json_io_dict) as jsonfile:
-            json_io_dict = json.load(jsonfile)
-    except:
-        print("""\nERROR - cannot read JSON Format. 
-        Uploading a CSV? Consider converting to json Predx style with:
-        predx_json, forecast_filename = util.convert_cdc_csv_to_json_io_dict(forecast_file_path)""")
-        sys.exit(1)
+    # accepts either string or dictionary
+    if isinstance(json_io_dict, str):
+        try:
+            with open(json_io_dict) as jsonfile:
+                json_io_dict = json.load(jsonfile)
+        except:
+            print("""\nERROR - cannot read JSON Format. 
+            Uploading a CSV? Consider converting to json Predx style with:
+            predx_json, forecast_filename = util.convert_cdc_csv_to_json_io_dict(forecast_file_path)""")
+            sys.exit(1)
 
     # note that this app accepts a *.cdc.csv file, but zoltar requires a native json file. so we first convert to a
     # temp json file and then pass it
@@ -269,14 +277,14 @@ def print_models(conn, project_name):
         print("-", model)
 
 
-def convert_cdc_csv_to_json_io_dict(filepath):
+def convert_cdc_csv_to_json_io_dict(season_start_year, filepath):
     """Converts the passed cdc forecast file to native Zoltar json_io_dict.
 
     :param filepath: a file path to the forecast file that needs to be convereted
     :return: a tuple of the json_io_dict and the filename of original forecast
     """
     with open(filepath) as cdc_file:
-        json_io_dict = json_io_dict_from_cdc_csv_file(cdc_file)
+        json_io_dict = json_io_dict_from_cdc_csv_file(season_start_year, cdc_file)
         forecast_file = Path(filepath)
         forecast_filename = forecast_file.name
         return json_io_dict, forecast_filename
