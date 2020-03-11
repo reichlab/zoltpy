@@ -144,10 +144,15 @@ def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, pro
     :return: an UploadFileJob. it can be polled for status via busy_poll_upload_file_job(), and then the new forecast
         can be obtained via upload_file_job.output_json['forecast_pk']
     """
-    print(model_name)
     conn.re_authenticate_if_necessary()
-    project = [project for project in conn.projects if project.name == project_name][0]
-    model = [model for model in project.models if model.name == model_name][0]
+
+    # get projects
+    projects = conn.projects
+    project = [project for project in projects if project.name == project_name][0]
+
+    # get models for project
+    models = project.models
+    model = [model for model in models if model.name == model_name][0]
 
     print("uploading %i forecasts..." % len(forecast_filename_batch))
 
@@ -280,6 +285,7 @@ def print_models(conn, project_name):
 def convert_cdc_csv_to_json_io_dict(season_start_year, filepath):
     """Converts the passed cdc forecast file to native Zoltar json_io_dict.
 
+    :param season_start_year: the start year of the season (as an integer)
     :param filepath: a file path to the forecast file that needs to be convereted
     :return: a tuple of the json_io_dict and the filename of original forecast
     """
