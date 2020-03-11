@@ -167,6 +167,7 @@ def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, pro
             with tempfile.TemporaryFile("r+") as json_fp:
                 json.dump(json_io_dict_batch[i], json_fp)
                 json_fp.seek(0)
+                conn.re_authenticate_if_necessary()
                 upload_file_job = model.upload_forecast(
                     json_fp, forecast_filename_batch[i],
                     timezero_date_batch[i],
