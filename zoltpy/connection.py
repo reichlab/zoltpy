@@ -18,6 +18,7 @@ class ZoltarConnection:
       automatically handle their becoming stale, hence the need to call ZoltarResource.refresh().
     """
 
+
     def __init__(self, host='https://zoltardata.com'):
         """
         :param host: URL of the Zoltar host. should *not* have a trailing '/'
@@ -26,14 +27,17 @@ class ZoltarConnection:
         self.username, self.password = None, None
         self.session = None
 
+
     def authenticate(self, username, password):
         self.username, self.password = username, password
         self.session = ZoltarSession(self)
+
 
     def re_authenticate_if_necessary(self):
         if self.session.is_token_expired():
             logger.info(f"re_authenticate_if_necessary(): re-authenticating expired token. host={self.host}")
             self.authenticate(self.username, self.password)
+
 
     @property
     def projects(self):
@@ -44,6 +48,7 @@ class ZoltarConnection:
         # NB: here we are throwing away each project's json, which is here because the API returns json objects for
         # projects rather than just URIs
         return [Project(self, project_json['url']) for project_json in self.json_for_uri(self.host + '/api/projects/')]
+
 
     def json_for_uri(self, uri):
         if not self.session:
@@ -65,6 +70,7 @@ class ZoltarSession:  # internal use
         self.zoltar_connection = zoltar_connection
         self.token = self._get_token()
 
+
     def _get_token(self):
         response = requests.post(self.zoltar_connection.host + '/api-token-auth/',
                                  {'username': self.zoltar_connection.username,
@@ -74,6 +80,7 @@ class ZoltarSession:  # internal use
                                f"text={response.text}")
 
         return response.json()['token']
+
 
     def is_token_expired(self):
         """
@@ -92,18 +99,22 @@ class ZoltarResource(ABC):
     - Because the JSON is cached, it will become stale after the source object in the server changes, such as when a
     """
 
+
     def __init__(self, zoltar_connection, uri):  # NB: hits API
         self.zoltar_connection = zoltar_connection
         self.uri = uri  # *does* include trailing slash
         self.json = None  # cached -> can become stale!
         self.refresh()
 
+
     @property
     def id(self):
         return self.json['id']
 
+
     def refresh(self):
         self.json = self.zoltar_connection.json_for_uri(self.uri)
+
 
     def delete(self):
         response = requests.delete(self.uri, headers={'Accept': 'application/json; indent=4',
@@ -116,15 +127,19 @@ class Project(ZoltarResource):
     """Represents a Zoltar project, and is the entry point for getting its list
     of Models."""
 
+
     def __init__(self, zoltar_connection, uri):
         super().__init__(zoltar_connection, uri)
+
 
     def __repr__(self):
         return str((self.__class__.__name__, self.uri, self.id, self.name))
 
+
     @property
     def name(self):
         return self.json['name']
+
 
     @property
     def models(self):
@@ -132,6 +147,7 @@ class Project(ZoltarResource):
         :return: a list of the Project's Models
         """
         return [Model(self.zoltar_connection, model_uri) for model_uri in self.json['models']]
+
 
     def create_model(self, model_config):
         """Creates a forecast Model with the passed configuration.
@@ -157,50 +173,44 @@ class Project(ZoltarResource):
         new_model_json = response.json()
         new_model_pk = new_model_json['id']
         new_model_url = f'{self.zoltar_connection.host}/api/model/{new_model_pk}'
-        new_model = Model(self.zoltar_connection, new_model_url)
+        return Model(self.zoltar_connection, new_model_url)
 
 
 class Model(ZoltarResource):
     """Represents a Zoltar forecast model, and is the entry point for getting
     its Forecasts as well as uploading them."""
 
+
     def __init__(self, zoltar_connection, uri):
         super().__init__(zoltar_connection, uri)
+
 
     def __repr__(self):
         return str((self.__class__.__name__, self.uri, self.id, self.name))
 
+
     @property
     def name(self):
         return self.json['name']
+
 
     @property
     def forecasts(self):
         """
         :return: a list of this Model's Forecasts
         """
-        # unlike other resources that are a list of URIs, model each model forecast is a dict with three keys:
-        #   'timezero_date', 'data_version_date', 'forecast'
-        #
-        # for example:
-        # [{'timezero_date': '20170117', 'data_version_date': None, 'forecast': 'http://127.0.0.1:8000/api/forecast/35/'},
-        #  {'timezero_date': '20170124', 'data_version_date': None, 'forecast': None}]}
-        #
-        # note that 'data_version_date' and 'forecast' might be None. in this method we only return Forecast objects
-        # that are not None. (recall that a model's TimeZeros might not have associated forecast data yet.)
-        return [Forecast(self.zoltar_connection, forecast_dict['forecast']) for forecast_dict in self.json['forecasts']
-                if forecast_dict['forecast']]
+        return [Forecast(self.zoltar_connection, forecast_uri) for forecast_uri in self.json['forecasts']]
+
 
     def forecast_for_pk(self, forecast_pk):
         forecast_uri = self.zoltar_connection.host + f'/api/forecast/{forecast_pk}/'
         return Forecast(self.zoltar_connection, forecast_uri)
 
+
     def upload_forecast(self, forecast_json_fp, source, timezero_date, data_version_date=None):
         """Uploads a forecast file.
 
-        :param forecast_csv_file: a JSON file in the "JSON IO dict" format accepted by
-            utils.forecast.load_predictions_from_json_io_dict()
-        :param forecast_csv_file: a JSON file in the "JSON IO dict" format accepted by
+        :param forecast_json_fp: a JSON file in the "JSON IO dict" format accepted by
             utils.forecast.load_predictions_from_json_io_dict()
         :param timezero_date: YYYY-MM-DD DATE FORMAT
         :param data_version_date: YYYY-MM-DD DATE FORMAT
@@ -226,16 +236,20 @@ class Forecast(ZoltarResource):
     def __init__(self, zoltar_connection, uri):
         super().__init__(zoltar_connection, uri)
 
+
     def __repr__(self):
         return str((self.__class__.__name__, self.uri, self.id, self.timezero_date, self.source))
+
 
     @property
     def timezero_date(self):
         return self.json['time_zero']['timezero_date']
 
+
     @property
     def source(self):
         return self.json['source']
+
 
     def data(self):
         """
@@ -262,15 +276,19 @@ class UploadFileJob(ZoltarResource):
         5: 'FAILED',
     }
 
+
     def __init__(self, zoltar_connection, uri):
         super().__init__(zoltar_connection, uri)
+
 
     def __repr__(self):
         return str((self.__class__.__name__, self.uri, self.id, self.status_as_str))
 
+
     @property
     def output_json(self):
         return self.json['output_json']
+
 
     @property
     def status_as_str(self):
