@@ -77,6 +77,29 @@ def delete_forecast(conn, project_name, model_name, timezero_date):
         logger.info(f"delete_forecast(): no existing forecast. model={model.id}, timezero_date={timezero_date}")
 
 
+def delete_model(conn, project_name, model_name):
+    """Deletes a model corresponding to the args.
+
+    :param conn: a ZoltarConnection
+    :param project_name: name of the Project that contains model_name
+    :param model_name: name of the Model that contains a Forecast for timezero_date
+    """
+    conn.re_authenticate_if_necessary()
+    project = [project for project in conn.projects if project.name == project_name][0]
+    model = [model for model in project.models if model.name == model_name][0]
+    # num_forecasts = len(model.forecasts) - TODO
+    if model:
+        proceed = input("%s may have forecasts - these WILL BE DELETED.\nReturn Y to Proceed, N to Cancel: "
+                        % (model_name))
+        if proceed == "Y":
+            print(
+                f"delete_model(): deleting existing model. model={model.id}, ")
+            model.delete()
+            print(f"delete_model(): delete done")
+    else:
+        print(f"delete_model(): no existing model. model={model_name}")
+
+
 def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_name, timezero_date,
                     data_version_date=None, overwrite=False):
     """Uploads the passed JSON dictionary file to the model corresponding to
