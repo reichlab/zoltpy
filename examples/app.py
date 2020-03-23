@@ -5,7 +5,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from zoltpy.cdc import cdc_csv_rows_from_json_io_dict, CDC_CSV_FILENAME_EXTENSION
+from zoltpy.cdc import cdc_csv_rows_from_json_io_dict
 from zoltpy.connection import ZoltarConnection
 from zoltpy.csv_util import csv_rows_from_json_io_dict
 from zoltpy.util import delete_forecast, busy_poll_upload_file_job, upload_forecast, download_forecast, \
@@ -78,7 +78,7 @@ def zoltar_connection_app():
     # export native json to cdc csv
     csv_rows = cdc_csv_rows_from_json_io_dict(data_json)
     print(f'\n- cdc csv rows: #rows={len(csv_rows)}')
-    with open(Path(tempfile.gettempdir()) / (str(new_forecast_pk) + '.' + CDC_CSV_FILENAME_EXTENSION), 'w') as fp:
+    with open(Path(tempfile.gettempdir()) / (str(new_forecast_pk) + '.cdc.csv'), 'w') as fp:
         print(f'  = writing cdc csv data to {fp.name}')
         csv_writer = csv.writer(fp, delimiter=',')
         for row in csv_rows:

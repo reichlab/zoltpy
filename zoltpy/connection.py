@@ -9,9 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 class ZoltarConnection:
-    """Represents a connection to a Zoltar server. This is an object-oriented
-    interface that may be best suited to zoltpy developers. See the `util`
-    module for a name-based non-OOP interface.
+    """
+    Represents a connection to a Zoltar server. This is an object-oriented interface that may be best suited to zoltpy
+    developers. See the `util` module for a name-based non-OOP interface.
+
+    A note on URLs: We require a trailing slash ('/') on all URLs. The only exception is the host arg passed to this
+    class's constructor. This convention matches Django REST framework one, which is what Zoltar is written in.
 
     Notes:
     - This implementation uses the simple approach of caching the JSON response for resource URLs, but doesn't
@@ -46,17 +49,12 @@ class ZoltarConnection:
 
         Returns a list of Projects. NB: A property, but hits the API.
         """
-        # NB: unlike all other API json, the projects list includes "expanded" contents for each project (e.g., 'owner',
-        # 'is_public', etc.) and not just URIs. thus we cache my _json
-        project_json_list = self.json_for_uri(self.host + '/api/projects/')
-        projects = []  # return value. filled next
-        for project_json in project_json_list:
-            projects.append(Project(self, project_json['url'], project_json))
-        return projects
+        projects_json_list = self.json_for_uri(self.host + '/api/projects/')
+        return [Project(self, project_json['url'], project_json) for project_json in projects_json_list]
 
 
     def json_for_uri(self, uri):
-        logger.debug(f"json_for_uri(): {uri!r}")
+        logger.info(f"json_for_uri(): {uri!r}")
         if not self.session:
             raise RuntimeError("json_for_uri(): no session")
 
@@ -109,10 +107,15 @@ class ZoltarResource(ABC):
     """
 
 
-    def __init__(self, zoltar_connection, uri):  # NB: hits API
+    def __init__(self, zoltar_connection, uri, initial_json=None):
+        """
+        :param zoltar_connection:
+        :param uri:
+        :param initial_json: optional param that's passed if caller already has JSON from server
+        """
         self.zoltar_connection = zoltar_connection
         self.uri = uri  # *does* include trailing slash
-        self._json = None  # cached JSON - can become stale
+        self._json = initial_json  # cached JSON is None if not yet touched. can become stale
         # NB: no self.refresh() call!
 
 
@@ -164,19 +167,14 @@ class ZoltarResource(ABC):
 
 class Project(ZoltarResource):
     """
-    Represents a Zoltar project, and is the entry point for getting its list of Models. Note that unlike all other
-    ZoltarResource subclasses, _json is an optional argument to the constructor. This is b/c the API's '/api/projects/'
-    endpoint includes "expanded" contents for each project (e.g., 'owner', 'is_public', etc.) and not just a list of
-    project URIs, which means we can cache the json immediately instead of incurring an unnecessary refresh() later.
+    Represents a Zoltar project, and is the entry point for getting its list of Models.
     """
 
     _repr_keys = ('name', 'is_public')
 
 
-    def __init__(self, zoltar_connection, uri, _json=None):
-        super().__init__(zoltar_connection, uri)
-        if _json:
-            self._json = _json
+    def __init__(self, zoltar_connection, uri, initial_json=None):
+        super().__init__(zoltar_connection, uri, initial_json)
 
 
     @property
@@ -189,31 +187,36 @@ class Project(ZoltarResource):
         """
         :return: a list of the Project's Models
         """
-        return [Model(self.zoltar_connection, model_uri) for model_uri in self.json['models']]
+        models_json_list = self.zoltar_connection.json_for_uri(self.uri + 'models/')
+        return [Model(self.zoltar_connection, model_json['url'], model_json) for model_json in models_json_list]
 
 
     @property
     def units(self):
         """
-        :return: a list of the Project's Models
+        :return: a list of the Project's Units
         """
-        return [Unit(self.zoltar_connection, unit_uri) for unit_uri in self.json['units']]
+        units_json_list = self.zoltar_connection.json_for_uri(self.uri + 'units/')
+        return [Unit(self.zoltar_connection, unit_json['url'], unit_json) for unit_json in units_json_list]
 
 
     @property
     def targets(self):
         """
-        :return: a list of the Project's Models
+        :return: a list of the Project's Targets
         """
-        return [Target(self.zoltar_connection, target_uri) for target_uri in self.json['targets']]
+        targets_json_list = self.zoltar_connection.json_for_uri(self.uri + 'targets/')
+        return [Target(self.zoltar_connection, target_json['url'], target_json) for target_json in targets_json_list]
 
 
     @property
     def timezeros(self):
         """
-        :return: a list of the Project's Models
+        :return: a list of the Project's TimeZeros
         """
-        return [TimeZero(self.zoltar_connection, timezero_uri) for timezero_uri in self.json['timezeros']]
+        timezeros_json_list = self.zoltar_connection.json_for_uri(self.uri + 'timezeros/')
+        return [TimeZero(self.zoltar_connection, timezero_json['url'], timezero_json)
+                for timezero_json in timezeros_json_list]
 
 
     def create_model(self, model_config):
@@ -240,7 +243,7 @@ class Project(ZoltarResource):
         new_model_json = response.json()
         new_model_pk = new_model_json['id']
         new_model_url = f'{self.zoltar_connection.host}/api/model/{new_model_pk}'
-        return Model(self.zoltar_connection, new_model_url)
+        return Model(self.zoltar_connection, new_model_url, new_model_json)
 
 
 class Model(ZoltarResource):
@@ -251,12 +254,8 @@ class Model(ZoltarResource):
     _repr_keys = ('name',)
 
 
-    def __init__(self, zoltar_connection, uri):
-        super().__init__(zoltar_connection, uri)
-
-
-    def __repr__(self):
-        return str((self.__class__.__name__, self.uri, self.id, self.name)) if self._json else super().__repr__()
+    def __init__(self, zoltar_connection, uri, initial_json=None):
+        super().__init__(zoltar_connection, uri, initial_json)
 
 
     @property
@@ -269,7 +268,9 @@ class Model(ZoltarResource):
         """
         :return: a list of this Model's Forecasts
         """
-        return [Forecast(self.zoltar_connection, forecast_uri) for forecast_uri in self.json['forecasts']]
+        forecasts_json_list = self.zoltar_connection.json_for_uri(self.uri + 'forecasts/')
+        return [Forecast(self.zoltar_connection, forecast_json['url'], forecast_json)
+                for forecast_json in forecasts_json_list]
 
 
     def forecast_for_pk(self, forecast_pk):
@@ -302,15 +303,11 @@ class Model(ZoltarResource):
 
 
 class Forecast(ZoltarResource):
-    _repr_keys = ('source',)
+    _repr_keys = ('source', 'created_at')
 
 
-    def __init__(self, zoltar_connection, uri):
-        super().__init__(zoltar_connection, uri)
-
-
-    def __repr__(self):
-        return str((self.__class__.__name__, self.uri, self.id, self.source)) if self._json else super().__repr__()
+    def __init__(self, zoltar_connection, uri, initial_json=None):
+        super().__init__(zoltar_connection, uri, initial_json)
 
 
     @property
@@ -347,12 +344,8 @@ class Unit(ZoltarResource):
     _repr_keys = ('name',)
 
 
-    def __init__(self, zoltar_connection, uri):
-        super().__init__(zoltar_connection, uri)
-
-
-    def __repr__(self):
-        return str((self.__class__.__name__, self.uri, self.id, self.name)) if self._json else super().__repr__()
+    def __init__(self, zoltar_connection, uri, initial_json=None):
+        super().__init__(zoltar_connection, uri, initial_json)
 
 
     @property
@@ -364,13 +357,8 @@ class Target(ZoltarResource):
     _repr_keys = ('name', 'type', 'is_step_ahead', 'step_ahead_increment', 'unit')
 
 
-    def __init__(self, zoltar_connection, uri):
-        super().__init__(zoltar_connection, uri)
-
-
-    def __repr__(self):
-        return str((self.__class__.__name__, self.uri, self.id, self.name, self.type)) if self._json \
-            else super().__repr__()
+    def __init__(self, zoltar_connection, uri, initial_json=None):
+        super().__init__(zoltar_connection, uri, initial_json)
 
 
     @property
@@ -399,16 +387,11 @@ class Target(ZoltarResource):
 
 
 class TimeZero(ZoltarResource):
-    _repr_keys = ('name', 'timezero_date', 'data_version_date', 'is_season_start', 'season_name')
+    _repr_keys = ('timezero_date', 'data_version_date', 'is_season_start', 'season_name')
 
 
-    def __init__(self, zoltar_connection, uri):
-        super().__init__(zoltar_connection, uri)
-
-
-    def __repr__(self):
-        return str((self.__class__.__name__, self.uri, self.id, self.timezero_date)) if self._json \
-            else super().__repr__()
+    def __init__(self, zoltar_connection, uri, initial_json=None):
+        super().__init__(zoltar_connection, uri, initial_json)
 
 
     @property

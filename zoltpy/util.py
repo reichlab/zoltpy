@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 
 
 def create_project(conn, project_json):
-    """Creates a project from a json file.
+    """
+    Creates a project from a json file.
 
     :param conn: a ZoltarConnection
     :param project_json: configuration json file for the project of interest. see zoltar documentation for details,
@@ -50,7 +51,7 @@ def create_project(conn, project_json):
         raise RuntimeError(f"status_code was not 200. status_code={response.status_code}, text={response.text}")
 
     new_project_json = response.json()
-    new_project = Project(conn, new_project_json["url"])
+    new_project = Project(conn, new_project_json["url"], new_project_json)
     print(f"created new project: {new_project}")
 
 
