@@ -127,7 +127,7 @@ class ZoltarResource(ABC):
         repr_keys = getattr(self, '_repr_keys', None)
         repr_list = [self.__class__.__name__, self.uri, self.id]
         if repr_keys and self._json:
-            repr_list.extend([self._json[repr_key] for repr_key in repr_keys])
+            repr_list.extend([self._json[repr_key] for repr_key in repr_keys if repr_key in self._json])
         return str(tuple(repr_list))
 
 
