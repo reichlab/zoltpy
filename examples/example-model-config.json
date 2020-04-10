@@ -1,0 +1,8 @@
+{
+  "name": "a model_name",
+  "abbreviation": "an abbreviation",
+  "team_name": "a team_name",
+  "description": "a description",
+  "home_url": "http://example.com/",
+  "aux_data_url": "http://example.com/"
+}

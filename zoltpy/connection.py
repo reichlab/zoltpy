@@ -232,8 +232,6 @@ class Project(ZoltarResource):
         if actual_keys != expected_keys:
             raise RuntimeError(f"Wrong keys in 'model_config'. expected={expected_keys}, actual={actual_keys}")
 
-        # POST. note that we throw away the new model's JSON that's returned once we extract its pk b/c it will be
-        # cached by the Model() call
         response = requests.post(f'{self.uri}models/',
                                  headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
                                  json={'model_config': model_config})
@@ -241,9 +239,7 @@ class Project(ZoltarResource):
             raise RuntimeError(f"status_code was not 200. status_code={response.status_code}, text={response.text}")
 
         new_model_json = response.json()
-        new_model_pk = new_model_json['id']
-        new_model_url = f'{self.zoltar_connection.host}/api/model/{new_model_pk}'
-        return Model(self.zoltar_connection, new_model_url, new_model_json)
+        return Model(self.zoltar_connection, new_model_json['url'], new_model_json)
 
 
 class Model(ZoltarResource):
@@ -273,26 +269,17 @@ class Model(ZoltarResource):
                 for forecast_json in forecasts_json_list]
 
 
-    def forecast_for_pk(self, forecast_pk):
-        forecast_uri = self.zoltar_connection.host + f'/api/forecast/{forecast_pk}/'
-        return Forecast(self.zoltar_connection, forecast_uri)
+    def upload_forecast(self, forecast_json_fp, source, timezero_date):
+        """
+        Uploads a forecast file to me.
 
-
-    def upload_forecast(self, forecast_json_fp, source, timezero_date, data_version_date=None):
-        """Uploads a forecast file.
-
-        :param forecast_json_fp: a JSON file in the "JSON IO dict" format accepted by
-            utils.forecast.load_predictions_from_json_io_dict()
-        :param timezero_date: YYYY-MM-DD DATE FORMAT
-        :param data_version_date: YYYY-MM-DD DATE FORMAT
+        :param forecast_json_fp: an open JSON file in the "JSON IO dict" format as documented elsewhere
+        :param timezero_date: timezero to upload to YYYY-MM-DD DATE FORMAT
         :return: an UploadFileJob
         """
-        data = {'timezero_date': timezero_date}
-        if data_version_date:
-            data['data_version_date'] = data_version_date
         response = requests.post(self.uri + 'forecasts/',
                                  headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
-                                 data=data,
+                                 data={'timezero_date': timezero_date},
                                  files={'data_file': (source, forecast_json_fp, 'application/json')})
         if response.status_code != 200:  # HTTP_200_OK
             raise RuntimeError(f"upload_forecast(): status code was not 200. status_code={response.status_code}. "
@@ -435,6 +422,11 @@ class UploadFileJob(ZoltarResource):
 
 
     @property
+    def input_json(self):
+        return self.json['input_json']
+
+
+    @property
     def output_json(self):
         return self.json['output_json']
 
@@ -443,3 +435,18 @@ class UploadFileJob(ZoltarResource):
     def status_as_str(self):
         status_int = self.json['status']
         return UploadFileJob.STATUS_ID_TO_STR[status_int]
+
+
+    def created_forecast(self):
+        """
+        A helper function that returns the newly-uploaded Forecast.
+
+        :return: the new Forecast that this uploaded created, or None if the UploadFileJob was for a non-forecast
+            upload.
+        """
+        if 'forecast_pk' not in self.output_json:
+            return None
+
+        forecast_pk = self.output_json['forecast_pk']
+        forecast_uri = self.zoltar_connection.host + f'/api/forecast/{forecast_pk}/'
+        return Forecast(self.zoltar_connection, forecast_uri)

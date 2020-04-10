@@ -1,17 +1,19 @@
 import csv
 import io
-import os
 import json
 import logging
+import os
+import sys
 import tempfile
 import time
-import requests
-import pandas as pd
-import sys
 from pathlib import Path
+
+import pandas as pd
+import requests
+
+from zoltpy.cdc import json_io_dict_from_cdc_csv_file, csv_rows_from_json_io_dict
 from zoltpy.connection import ZoltarConnection, Project
-from zoltpy.cdc import cdc_csv_rows_from_json_io_dict, json_io_dict_from_cdc_csv_file, monday_date_from_ew_and_season_start_year
-from zoltpy.csv_util import csv_rows_from_json_io_dict
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +26,10 @@ logger = logging.getLogger(__name__)
 
 def create_project(conn, project_json):
     """
-    Creates a project from a json file.
+    Creates a project from a json configuration file.
 
     :param conn: a ZoltarConnection
-    :param project_json: configuration json file for the project of interest. see zoltar documentation for details,
-        esp. utils.project.create_project_from_json()
+    :param project_json: configuration json file for the project of interest. see zoltar documentation for details
     """
     conn.re_authenticate_if_necessary()
     with open(project_json) as fp:
@@ -38,12 +39,12 @@ def create_project(conn, project_json):
     existing_project = [project for project in conn.projects if project.name == project_dict["name"]]
     if existing_project:
         existing_project = existing_project[0]
-        print(f"deleting existing project: {existing_project}")
+        logger.info(f"deleting existing project: {existing_project}")
         existing_project.delete()
-        print("delete done")
+        logger.info("delete done")
 
     # create new project
-    print(f"creating new project. project name={project_dict['name']}")
+    logger.info(f"creating new project. project name={project_dict['name']}")
     response = requests.post(f'{conn.host}/api/projects/',
                              headers={'Authorization': f'JWT {conn.session.token}'},
                              json={'project_config': project_dict})
@@ -52,7 +53,8 @@ def create_project(conn, project_json):
 
     new_project_json = response.json()
     new_project = Project(conn, new_project_json["url"], new_project_json)
-    print(f"created new project: {new_project}")
+    logger.info(f"created new project: {new_project}")
+    return new_project
 
 
 def delete_forecast(conn, project_name, model_name, timezero_date):
@@ -93,12 +95,12 @@ def delete_model(conn, project_name, model_name):
         proceed = input("%s may have forecasts - these WILL BE DELETED.\nReturn Y to Proceed, N to Cancel: "
                         % (model_name))
         if proceed == "Y":
-            print(
+            logger.info(
                 f"delete_model(): deleting existing model. model={model.id}, ")
             model.delete()
-            print(f"delete_model(): delete done")
+            logger.info(f"delete_model(): delete done")
     else:
-        print(f"delete_model(): no existing model. model={model_name}")
+        logger.info(f"delete_model(): no existing model. model={model_name}")
 
 
 def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_name, timezero_date,
@@ -153,7 +155,7 @@ def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_n
 
 
 def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, project_name, model_name,
-                          timezero_date_batch, data_version_date=None, overwrite=False,):
+                          timezero_date_batch, data_version_date=None, overwrite=False, ):
     """Uploads a batch (list) of JSON dictionaries to the model corresponding
     to the args. This only iterates through timezeros, not models or projects.
 
@@ -195,17 +197,16 @@ def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, pro
                 upload_file_job = model.upload_forecast(
                     json_fp, forecast_filename_batch[i],
                     timezero_date_batch[i],
-                    data_version_date,)
+                    data_version_date, )
             print("upload complete")
         return busy_poll_upload_file_job(upload_file_job)
 
 
 def download_forecast(conn, project_name, model_name, timezero_date):
-    """Downloads the data for the forecast corresponding to the args, in
-    Zoltar's native json format, AKA a "json_io_dict". The resulting dict can
-    then be passed to dataframe_from_json_io_dict(), or to either of the
-    underlying csv utility functions:csv_rows_from_json_io_dict(),
-    cdc_csv_rows_from_json_io_dict().
+    """
+    Downloads the data for the forecast corresponding to the args, in Zoltar's native json format, AKA a "json_io_dict".
+    The resulting dict can then be passed to dataframe_from_json_io_dict(), or to the underlying csv utility function
+    `csv_rows_from_json_io_dict()`
 
     :param conn: a ZoltarConnection
     :param project_name: name of the Project that contains model_name
@@ -227,19 +228,16 @@ def download_forecast(conn, project_name, model_name, timezero_date):
     return existing_forecast.data()
 
 
-def dataframe_from_json_io_dict(json_io_dict, is_cdc_format=False):
+def dataframe_from_json_io_dict(json_io_dict):
     """Converts the passed native Zoltar json_io_dict to CSV data, returned as
     a Pandas DataFrame.
 
     :param json_io_dict: a json_io_dict as returned by download_forecast()
-    :param is_cdc_format: flag that specifies CDC CSV format (if True) or generic Zoltar format o/w
     :return: a Pandas DataFrame
     """
     string_io = io.StringIO()
     csv_writer = csv.writer(string_io, delimiter=",")
-    csv_rows = cdc_csv_rows_from_json_io_dict(
-        json_io_dict) if is_cdc_format else csv_rows_from_json_io_dict(json_io_dict)
-    for row in csv_rows:
+    for row in csv_rows_from_json_io_dict(json_io_dict):
         csv_writer.writerow(row)
     string_io.seek(0)
     dataset = pd.read_csv(string_io, delimiter=",")
@@ -267,8 +265,8 @@ def busy_poll_upload_file_job(upload_file_job):
 def authenticate(env_user="Z_USERNAME", env_pass="Z_PASSWORD"):
     """Authenticate the user ID and password for connection to Zoltar.
 
-    :param Z_USERNAME environment variable: username of account in Zoltar
-    :param Z_PASSWORD environment variable: password for
+    :param env_user: username of account in Zoltar
+    :param env_pass: password ""
     """
     # Ensure environment variables exist
     env_vars = [env_user, env_pass]

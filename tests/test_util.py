@@ -1,10 +1,10 @@
-import csv
+import datetime
 import json
 from pathlib import Path
 from unittest import TestCase
 
-from zoltpy.cdc import cdc_csv_rows_from_json_io_dict, json_io_dict_from_cdc_csv_file
-from zoltpy.csv_util import csv_rows_from_json_io_dict
+from zoltpy.cdc import json_io_dict_from_cdc_csv_file, monday_date_from_ew_and_season_start_year, \
+    csv_rows_from_json_io_dict
 
 
 class UtilsTestCase(TestCase):
@@ -12,41 +12,39 @@ class UtilsTestCase(TestCase):
     """
 
 
+    def test_monday_date_from_ew_and_season_start_year(self):
+        ew_week_ss_year_exp_monday_date = [(1, 2010, datetime.date(2011, 1, 3)),  # Monday of: EW01 2011
+                                           (29, 2010, datetime.date(2011, 7, 18)),  # "" EW29 2011
+                                           (30, 2010, datetime.date(2010, 7, 26)),  # "" EW30 2010
+                                           (31, 2010, datetime.date(2010, 8, 2)),  # "" EW31 2010
+                                           (52, 2010, datetime.date(2010, 12, 27)),  # "" EW52 2010
+                                           (1, 2011, datetime.date(2012, 1, 2)),  # "" EW01 2012
+                                           (29, 2011, datetime.date(2012, 7, 16)),  # "" EW29 2012
+                                           (30, 2011, datetime.date(2011, 7, 25)),  # "" EW30 2011
+                                           (31, 2011, datetime.date(2011, 8, 1)),  # "" EW31 2011
+                                           (52, 2011, datetime.date(2011, 12, 26))]  # "" EW52 2011
+        for ew_week, season_start_year, exp_monday_date in ew_week_ss_year_exp_monday_date:
+            self.assertEqual(exp_monday_date, monday_date_from_ew_and_season_start_year(ew_week, season_start_year))
+
+
     def test_json_io_dict_from_cdc_csv_file(self):
-        with open('tests/EW1-KoTsarima-2017-01-17-small.csv') as cdc_csv_fp, \
-                open('tests/exp-predictions.json') as exp_json_fp:
-            exp_json_io_dict = json.load(exp_json_fp)  # converted from EW1-KoTsarima-2017-01-17-small.csv
-            act_json_io_dict = json_io_dict_from_cdc_csv_file(cdc_csv_fp)
+        cdc_csv_path = Path('tests/EW01-2011-ReichLab_kde_US_National.csv')
+        exp_json_path = Path('tests/EW01-2011-ReichLab_kde_US_National.json')
+        with open(cdc_csv_path) as cdc_csv_fp, \
+                open(exp_json_path) as exp_json_fp:
+            exp_json_io_dict = json.load(exp_json_fp)
+            act_json_io_dict = json_io_dict_from_cdc_csv_file(2011, cdc_csv_fp)
             self.assertEqual(exp_json_io_dict, act_json_io_dict)
 
-        # test a test larger csv file that has >1 bin rows
-        with open('tests/20161023-KoTstable-20161109-small.cdc.csv') as cdc_csv_fp, \
-                open('tests/20161023-KoTstable-20161109-small-exp-predictions.json') \
-                        as exp_json_fp:
-            exp_json_io_dict = json.load(exp_json_fp)
-            act_json_io_dict = json_io_dict_from_cdc_csv_file(cdc_csv_fp)
-            self.assertEqual(exp_json_io_dict, act_json_io_dict)
-
-        # test a csv file with blank cells
-        with open('tests/EW43-2019-FluOutlook_Mech.csv') as cdc_csv_fp, \
-                open('tests/EW43-2019-FluOutlook_Mech-exp-predictions.json') \
-                        as exp_json_fp:
-            exp_json_io_dict = json.load(exp_json_fp)
-            act_json_io_dict = json_io_dict_from_cdc_csv_file(cdc_csv_fp)
-            self.assertEqual(exp_json_io_dict, act_json_io_dict)
+        # test a larger csv file
+        with open('tests/EW01-2011-ReichLab_kde.csv') as cdc_csv_fp:
+            act_json_io_dict = json_io_dict_from_cdc_csv_file(2011, cdc_csv_fp)
+            # each unit/target pair has 2 prediction dicts: one point and one bin
+            # there are 11 units and 7 targets = 77 * 2 = 154 dicts total
+            self.assertEqual(154, len(act_json_io_dict['predictions']))
 
 
     def test_csv_rows_from_json_io_dict(self):
-        # no meta
-        with self.assertRaises(RuntimeError) as context:
-            csv_rows_from_json_io_dict({})
-        self.assertIn('no meta section found in json_io_dict', str(context.exception))
-
-        # no meta > targets
-        with self.assertRaises(RuntimeError) as context:
-            csv_rows_from_json_io_dict({'meta': {}})
-        self.assertIn('no targets section found in json_io_dict meta section', str(context.exception))
-
         # invalid prediction class. ok: forecast-repository.utils.forecast.PREDICTION_CLASS_TO_JSON_IO_DICT_CLASS
         with self.assertRaises(RuntimeError) as context:
             json_io_dict = {'meta': {'targets': []},
@@ -54,89 +52,64 @@ class UtilsTestCase(TestCase):
             csv_rows_from_json_io_dict(json_io_dict)
         self.assertIn('invalid prediction_dict class', str(context.exception))
 
-        with open('tests/predictions-example.json') as fp:
-            json_io_dict = json.load(fp)
-        with self.assertRaises(RuntimeError) as context:
-            # remove arbitrary meta target. doesn't matter b/c all are referenced
-            del (json_io_dict['meta']['targets'][0])
-            csv_rows_from_json_io_dict(json_io_dict)
-        self.assertIn('prediction_dict target not found in meta targets', str(context.exception))
-
-        with open('tests/predictions-example.json') as fp:
-            json_io_dict = json.load(fp)
-        # location,target,unit,class,cat,family,lwr,param1,param2,param3,prob,sample,value
+        # blue sky
         exp_rows = [
-            ['unit', 'target', 'unit', 'class', 'cat', 'family', 'lwr', 'param1', 'param2', 'param3', 'prob',
-             'sample', 'value'],
-            ['US National', '1 wk ahead', 'percent', 'BinCat', 'cat1', '', '', '', '', '', 0.0, '', ''],
-            ['US National', '1 wk ahead', 'percent', 'BinCat', 'cat2', '', '', '', '', '', 0.1, '', ''],
-            ['US National', '1 wk ahead', 'percent', 'BinCat', 'cat3', '', '', '', '', '', 0.9, '', ''],
-            ['HHS Region 1', '2 wk ahead', 'percent', 'BinLwr', '', '', 0.0, '', '', '', 0.0, '', ''],
-            ['HHS Region 1', '2 wk ahead', 'percent', 'BinLwr', '', '', 0.1, '', '', '', 0.1, '', ''],
-            ['HHS Region 1', '2 wk ahead', 'percent', 'BinLwr', '', '', 0.2, '', '', '', 0.9, '', ''],
-            ['HHS Region 2', '3 wk ahead', 'percent', 'Binary', '', '', '', '', '', '', 0.5, '', ''],
-            ['HHS Region 3', '4 wk ahead', 'percent', 'Named', '', 'gamma', '', 1.1, 2.2, 3.3, '', '', ''],
-            ['HHS Region 4', 'Season onset', 'week', 'Point', '', '', '', '', '', '', '', '', '1'],
-            ['HHS Region 5', 'Season peak percentage', 'percent', 'Sample', '', '', '', '', '', '', '', 1.1, ''],
-            ['HHS Region 5', 'Season peak percentage', 'percent', 'Sample', '', '', '', '', '', '', '', 2.2, ''],
-            ['HHS Region 6', 'Season peak week', 'week', 'SampleCat', 'cat1', '', '', '', '', '', '', 'cat1 sample',
-             ''],
-            ['HHS Region 6', 'Season peak week', 'week', 'SampleCat', 'cat2', '', '', '', '', '', '', 'cat2 sample',
-             '']]
+            ['location', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'family', 'param1', 'param2', 'param3'],
+            ['location1', 'pct next week', 'point', 2.1, '', '', '', '', '', '', ''],
+            ['location1', 'pct next week', 'named', '', '', '', '', 'norm', 1.1, 2.2, ''],
+            ['location2', 'pct next week', 'point', 2.0, '', '', '', '', '', '', ''],
+            ['location2', 'pct next week', 'bin', '', 1.1, 0.3, '', '', '', '', ''],
+            ['location2', 'pct next week', 'bin', '', 2.2, 0.2, '', '', '', '', ''],
+            ['location2', 'pct next week', 'bin', '', 3.3, 0.5, '', '', '', '', ''],
+            ['location3', 'pct next week', 'point', 3.567, '', '', '', '', '', '', ''],
+            ['location3', 'pct next week', 'sample', '', '', '', 2.3, '', '', '', ''],
+            ['location3', 'pct next week', 'sample', '', '', '', 6.5, '', '', '', ''],
+            ['location3', 'pct next week', 'sample', '', '', '', 0.0, '', '', '', ''],
+            ['location3', 'pct next week', 'sample', '', '', '', 10.0234, '', '', '', ''],
+            ['location3', 'pct next week', 'sample', '', '', '', 0.0001, '', '', '', ''],
+            ['location1', 'cases next week', 'named', '', '', '', '', 'pois', 1.1, '', ''],
+            ['location2', 'cases next week', 'point', 5, '', '', '', '', '', '', ''],
+            ['location2', 'cases next week', 'sample', '', '', '', 0, '', '', '', ''],
+            ['location2', 'cases next week', 'sample', '', '', '', 2, '', '', '', ''],
+            ['location2', 'cases next week', 'sample', '', '', '', 5, '', '', '', ''],
+            ['location3', 'cases next week', 'point', 10, '', '', '', '', '', '', ''],
+            ['location3', 'cases next week', 'bin', '', 0, 0.0, '', '', '', '', ''],
+            ['location3', 'cases next week', 'bin', '', 2, 0.1, '', '', '', '', ''],
+            ['location3', 'cases next week', 'bin', '', 50, 0.9, '', '', '', '', ''],
+            ['location1', 'season severity', 'point', 'mild', '', '', '', '', '', '', ''],
+            ['location1', 'season severity', 'bin', '', 'mild', 0.0, '', '', '', '', ''],
+            ['location1', 'season severity', 'bin', '', 'moderate', 0.1, '', '', '', '', ''],
+            ['location1', 'season severity', 'bin', '', 'severe', 0.9, '', '', '', '', ''],
+            ['location2', 'season severity', 'point', 'moderate', '', '', '', '', '', '', ''],
+            ['location2', 'season severity', 'sample', '', '', '', 'moderate', '', '', '', ''],
+            ['location2', 'season severity', 'sample', '', '', '', 'severe', '', '', '', ''],
+            ['location2', 'season severity', 'sample', '', '', '', 'high', '', '', '', ''],
+            ['location2', 'season severity', 'sample', '', '', '', 'moderate', '', '', '', ''],
+            ['location2', 'season severity', 'sample', '', '', '', 'mild', '', '', '', ''],
+            ['location1', 'above baseline', 'point', True, '', '', '', '', '', '', ''],
+            ['location2', 'above baseline', 'bin', '', True, 0.9, '', '', '', '', ''],
+            ['location2', 'above baseline', 'bin', '', False, 0.1, '', '', '', '', ''],
+            ['location2', 'above baseline', 'sample', '', '', '', True, '', '', '', ''],
+            ['location2', 'above baseline', 'sample', '', '', '', False, '', '', '', ''],
+            ['location2', 'above baseline', 'sample', '', '', '', True, '', '', '', ''],
+            ['location3', 'above baseline', 'sample', '', '', '', False, '', '', '', ''],
+            ['location3', 'above baseline', 'sample', '', '', '', True, '', '', '', ''],
+            ['location3', 'above baseline', 'sample', '', '', '', True, '', '', '', ''],
+            ['location1', 'Season peak week', 'point', '2019-12-22', '', '', '', '', '', '', ''],
+            ['location1', 'Season peak week', 'bin', '', '2019-12-15', 0.01, '', '', '', '', ''],
+            ['location1', 'Season peak week', 'bin', '', '2019-12-22', 0.1, '', '', '', '', ''],
+            ['location1', 'Season peak week', 'bin', '', '2019-12-29', 0.89, '', '', '', '', ''],
+            ['location1', 'Season peak week', 'sample', '', '', '', '2020-01-05', '', '', '', ''],
+            ['location1', 'Season peak week', 'sample', '', '', '', '2019-12-15', '', '', '', ''],
+            ['location2', 'Season peak week', 'point', '2020-01-05', '', '', '', '', '', '', ''],
+            ['location2', 'Season peak week', 'bin', '', '2019-12-15', 0.01, '', '', '', '', ''],
+            ['location2', 'Season peak week', 'bin', '', '2019-12-22', 0.05, '', '', '', '', ''],
+            ['location2', 'Season peak week', 'bin', '', '2019-12-29', 0.05, '', '', '', '', ''],
+            ['location2', 'Season peak week', 'bin', '', '2020-01-05', 0.89, '', '', '', '', ''],
+            ['location3', 'Season peak week', 'point', '2019-12-29', '', '', '', '', '', '', ''],
+            ['location3', 'Season peak week', 'sample', '', '', '', '2020-01-06', '', '', '', ''],
+            ['location3', 'Season peak week', 'sample', '', '', '', '2019-12-16', '', '', '', '']]
+        with open('tests/docs-predictions.json') as fp:
+            json_io_dict = json.load(fp)
         act_rows = csv_rows_from_json_io_dict(json_io_dict)
         self.assertEqual(exp_rows, act_rows)
-
-
-    def test_cdc_csv_rows_from_json_io_dict(self):
-        # no predictions
-        with self.assertRaises(RuntimeError) as context:
-            cdc_csv_rows_from_json_io_dict({})
-        self.assertIn('no predictions section found in json_io_dict', str(context.exception))
-
-        # invalid prediction class
-        for invalid_prediction_class in ['Binary', 'Named', 'Sample', 'SampleCat']:  # ok: 'BinCat', 'BinLwr', 'Point'
-            with self.assertRaises(RuntimeError) as context:
-                cdc_csv_rows_from_json_io_dict({'predictions': [{'class': invalid_prediction_class}]})
-            self.assertIn('invalid prediction_dict class', str(context.exception))
-
-        # prediction_dict target not recognized
-        with self.assertRaises(RuntimeError) as context:
-            cdc_csv_rows_from_json_io_dict({'predictions': [{'class': 'Point', 'target': 'non-CDC target'}]})
-        self.assertIn('prediction_dict target not recognized', str(context.exception))
-
-        # blue sky
-        with open(Path('tests/EW1-KoTsarima-2017-01-17-small.csv')) as csv_fp:
-            csv_reader = csv.reader(csv_fp, delimiter=',')
-            exp_rows = list(csv_reader)
-            exp_rows[0] = list(map(str.lower, exp_rows[0]))  # fix header case difference
-            exp_rows = list(map(_xform_cdc_csv_row, sorted(exp_rows)))
-        with open('tests/EW1-KoTsarima-2017-01-17-small.json') as fp:
-            json_io_dict = json.load(fp)
-        act_rows = sorted(cdc_csv_rows_from_json_io_dict(json_io_dict))
-        self.assertEqual(exp_rows, act_rows)
-
-
-# test_cdc_csv_rows_from_json_io_dict() helper that transforms expected row values to float() as needed to match actual
-def _xform_cdc_csv_row(row):
-    location, target, row_type, unit, bin_start_incl, bin_end_notincl, value = row
-    if row_type == 'Bin' and unit == 'percent':
-        try:
-            bin_start_incl = float(bin_start_incl)
-            bin_end_notincl = float(bin_end_notincl)
-            value = float(value)
-        except ValueError:
-            pass
-
-    if row_type == 'Bin' and unit == 'week':
-        try:
-            value = float(value)
-        except ValueError:
-            pass
-
-    if row_type == 'Point' and unit == 'percent':
-        try:
-            value = float(value)
-        except ValueError:
-            pass
-
-    return [location, target, row_type, unit, bin_start_incl, bin_end_notincl, value]
