@@ -1,13 +1,12 @@
 import datetime
 import json
-from pathlib import Path
 from unittest import TestCase
 
 from zoltpy.cdc import json_io_dict_from_cdc_csv_file, monday_date_from_ew_and_season_start_year, \
     csv_rows_from_json_io_dict
 
 
-class UtilsTestCase(TestCase):
+class CdcIOTestCase(TestCase):
     """
     """
 
@@ -28,10 +27,8 @@ class UtilsTestCase(TestCase):
 
 
     def test_json_io_dict_from_cdc_csv_file(self):
-        cdc_csv_path = Path('tests/EW01-2011-ReichLab_kde_US_National.csv')
-        exp_json_path = Path('tests/EW01-2011-ReichLab_kde_US_National.json')
-        with open(cdc_csv_path) as cdc_csv_fp, \
-                open(exp_json_path) as exp_json_fp:
+        with open('tests/EW01-2011-ReichLab_kde_US_National.csv') as cdc_csv_fp, \
+                open('tests/EW01-2011-ReichLab_kde_US_National.json') as exp_json_fp:
             exp_json_io_dict = json.load(exp_json_fp)
             act_json_io_dict = json_io_dict_from_cdc_csv_file(2011, cdc_csv_fp)
             self.assertEqual(exp_json_io_dict, act_json_io_dict)

@@ -38,9 +38,9 @@ SEASON_START_EW_NUMBER = 30
 
 def json_io_dict_from_cdc_csv_file(season_start_year, cdc_csv_file_fp):
     """
-    Utility that extracts the two types of predictions found in CDC CSV files (PointPredictions, BinDistributions),
+    Utility that extracts the two types of predictions found in CDC CSV files (PointPredictions and BinDistributions),
     returning them as a "JSON IO dict" suitable for loading into the database (see
-    load_predictions_from_json_io_dict()). Note that the returned dict's "meta" section is empty.
+    `load_predictions_from_json_io_dict()`). Note that the returned dict's "meta" section is empty.
 
     :param season_start_year
     :param cdc_csv_file_fp: an open cdc csv file-like object. the CDC CSV file format is documented at
@@ -304,7 +304,7 @@ def csv_rows_from_json_io_dict(json_io_dict):
 
 def parse_value(value_str):
     """
-    Tries to parse value_str (a string) in this order: int, float. Returns None o/w.
+    Tries to parse value_str (a string) in this order: int, float, or date in YYYY_MM_DD_DATE_FORMAT. Returns None o/w.
     """
     try:
         return int(value_str)
@@ -316,7 +316,10 @@ def parse_value(value_str):
     except ValueError as ve:
         pass
 
-    return None
+    try:
+        return datetime.datetime.strptime(value_str, YYYY_MM_DD_DATE_FORMAT).date()
+    except ValueError as ve:
+        return None
 
 
 #

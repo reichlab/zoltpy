@@ -3,6 +3,7 @@ import os
 
 from zoltpy.cdc import json_io_dict_from_cdc_csv_file
 from zoltpy.connection import ZoltarConnection
+from zoltpy.quantile import json_io_dict_from_quantile_csv_file
 from zoltpy.util import busy_poll_upload_file_job, create_project, dataframe_from_json_io_dict
 
 
@@ -59,6 +60,13 @@ def zoltar_connection_app():
     with open(cdc_csv_file) as fp:
         json_io_dict = json_io_dict_from_cdc_csv_file(2011, fp)
     print(f"- converted cdc data to json: {len(json_io_dict['predictions'])} predictions")  # 154 predictions
+
+    # work with a quantile csv file
+    quantile_csv_file = "tests/quantile-predictions.csv"
+    print(f'\n* working with a quantile csv file: {quantile_csv_file}')
+    with open(quantile_csv_file) as fp:
+        json_io_dict = json_io_dict_from_quantile_csv_file(fp)
+    print(f"- converted quantile data to json: {len(json_io_dict['predictions'])} predictions")  # 5 predictions
 
     # convert to a Pandas DataFrame
     print(f'\n* working with a pandas data frame')

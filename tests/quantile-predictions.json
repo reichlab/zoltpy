@@ -1,0 +1,43 @@
+{
+  "meta": {},
+  "predictions": [
+    {"unit": "New York",
+      "target": "1 wk ahead",
+      "class": "point",
+      "prediction": {
+        "value": 10
+      }
+    },
+    {"unit": "New York",
+      "target": "1 wk ahead",
+      "class": "quantile",
+      "prediction": {
+        "quantile": [0.1, 0.5, 0.9],
+        "value": [3, 10, 67]
+      }
+    },
+    {"unit": "New York",
+      "target": "2 wk ahead",
+      "class": "point",
+      "prediction": {
+        "value": 3.24
+      }
+    },
+    {"unit": "New York",
+      "target": "2 wk ahead",
+      "class": "quantile",
+      "prediction": {
+        "quantile": [0.025, 0.25, 0.5, 0.75, 0.975],
+        "value": [-9.23, 0.23461, 1.2, 3, 8852.2347]
+      }
+    },
+    {"unit": "location2",
+      "target": "Season peak week",
+      "class": "quantile",
+      "prediction": {
+        "quantile": [0.5, 0.75, 0.975],
+        "value": ["2019-12-22", "2019-12-29", "2020-01-05"]
+      }
+    }
+  ]
+}
