@@ -269,7 +269,7 @@ def csv_rows_from_json_io_dict(json_io_dict):
     rows = [CSV_HEADER]  # returned value. filled next
     for prediction_dict in json_io_dict['predictions']:
         prediction_class = prediction_dict['class']
-        if prediction_class not in ['bin', 'named', 'point', 'sample']:
+        if prediction_class not in ['bin', 'named', 'point', 'sample', 'quantile']:
             raise RuntimeError(f"invalid prediction_dict class: {prediction_class}")
 
         location = prediction_dict['unit']
@@ -277,23 +277,27 @@ def csv_rows_from_json_io_dict(json_io_dict):
         prediction = prediction_dict['prediction']
 
         # class-specific columns all default to empty:
-        value, cat, prob, sample, family, param1, param2, param3 = '', '', '', '', '', '', '', ''
+        value, cat, prob, sample, quantile, family, param1, param2, param3 = '', '', '', '', '', '', '', '', ''
         if prediction_class == 'bin':  # BinDistribution
             for cat, prob in zip(prediction['cat'], prediction['prob']):
-                rows.append([location, target, prediction_class, value, cat, prob, sample,
+                rows.append([location, target, prediction_class, value, cat, prob, sample, quantile,
                              family, param1, param2, param3])
         elif prediction_class == 'named':  # NamedDistribution
-            rows.append([location, target, prediction_class, value, cat, prob, sample,
+            rows.append([location, target, prediction_class, value, cat, prob, sample, quantile,
                          prediction['family'],
                          prediction['param1'] if 'param1' in prediction else '',
                          prediction['param2'] if 'param2' in prediction else '',
                          prediction['param3'] if 'param3' in prediction else ''])
         elif prediction_class == 'point':  # PointPrediction
-            rows.append([location, target, prediction_class, prediction['value'], cat, prob, sample,
+            rows.append([location, target, prediction_class, prediction['value'], cat, prob, sample, quantile,
                          family, param1, param2, param3])
-        else:  # prediction_class == 'sample'  # SampleDistribution
+        elif prediction_class == 'sample':  # SamplePrediction
             for sample in prediction['sample']:
-                rows.append([location, target, prediction_class, value, cat, prob, sample,
+                rows.append([location, target, prediction_class, value, cat, prob, sample, quantile,
+                             family, param1, param2, param3])
+        else:  # prediction_class == 'quantile'  # QuantileDistribution
+            for quantile, value in zip(prediction['quantile'], prediction['value']):
+                rows.append([location, target, prediction_class, value, cat, prob, sample, quantile,
                              family, param1, param2, param3])
     return rows
 

@@ -128,7 +128,8 @@ class ZoltarResource(ABC):
         repr_keys = getattr(self, '_repr_keys', None)
         repr_list = [self.__class__.__name__, self.uri, self.id]
         if repr_keys and self._json:
-            repr_list.extend([self._json[repr_key] for repr_key in repr_keys if repr_key in self._json])
+            repr_list.extend([self._json[repr_key] for repr_key in repr_keys
+                              if repr_key in self._json and self._json[repr_key]])
         return str(tuple(repr_list))
 
 
@@ -244,7 +245,7 @@ class Project(ZoltarResource):
     def score_data(self):
         """
         :return: the Project's score data as CSV rows with these columns:
-            `model`, `timezero`, `season`, `unit`, `target`. the header row is included
+            `model`, `timezero`, `season`, `unit`, `target`, plus a column for each score. the header row is included
         """
         score_data_url = self.json['score_data']
         score_data_response = self.zoltar_connection.json_for_uri(score_data_url, False, 'text/csv')
@@ -303,17 +304,19 @@ class Model(ZoltarResource):
                 for forecast_json in forecasts_json_list]
 
 
-    def upload_forecast(self, forecast_json_fp, source, timezero_date):
+    def upload_forecast(self, forecast_json_fp, source, timezero_date, notes=''):
         """
         Uploads a forecast file to me.
 
         :param forecast_json_fp: an open JSON file in the "JSON IO dict" format as documented elsewhere
         :param timezero_date: timezero to upload to YYYY-MM-DD DATE FORMAT
+        :param timezero_date: timezero to upload to YYYY-MM-DD DATE FORMAT
+        :param notes: optional user notes for the new forecast
         :return: an UploadFileJob
         """
         response = requests.post(self.uri + 'forecasts/',
                                  headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
-                                 data={'timezero_date': timezero_date},
+                                 data={'timezero_date': timezero_date, 'notes': notes},
                                  files={'data_file': (source, forecast_json_fp, 'application/json')})
         if response.status_code != 200:  # HTTP_200_OK
             raise RuntimeError(f"upload_forecast(): status code was not 200. status_code={response.status_code}. "
@@ -324,7 +327,7 @@ class Model(ZoltarResource):
 
 
 class Forecast(ZoltarResource):
-    _repr_keys = ('source', 'created_at')
+    _repr_keys = ('source', 'created_at', 'notes')
 
 
     def __init__(self, zoltar_connection, uri, initial_json=None):
@@ -344,6 +347,11 @@ class Forecast(ZoltarResource):
     @property
     def created_at(self):
         return self.json['created_at']
+
+
+    @property
+    def notes(self):
+        return self.json['notes']
 
 
     def data(self):
