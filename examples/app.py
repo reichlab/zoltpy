@@ -4,7 +4,7 @@ import os
 from zoltpy.cdc import json_io_dict_from_cdc_csv_file
 from zoltpy.connection import ZoltarConnection
 from zoltpy.quantile import json_io_dict_from_quantile_csv_file
-from zoltpy.util import busy_poll_upload_file_job, create_project, dataframe_from_json_io_dict
+from zoltpy.util import busy_poll_upload_file_job, create_project, dataframe_from_json_io_dict, dataframe_from_rows
 
 
 def zoltar_connection_app():
@@ -41,6 +41,21 @@ def zoltar_connection_app():
           f"  = targets: {project.targets}\n"
           f"  = timezeros: {project.timezeros}\n"
           f"  = models: {project.models}")
+
+    # get the project's truth detail and data as both rows and a dataframe
+    truth_data_rows = project.truth_data()
+    truth_data_df = dataframe_from_rows(truth_data_rows)
+    print(f'\n* truth for {project}')
+    print(f'- truth_csv_filename: {project.truth_csv_filename}')
+    print(f'- truth data as rows: {len(truth_data_rows)} rows')
+    print(f'- truth data as df:\n{truth_data_df.describe()}')
+
+    # get the project's score data as both rows and a dataframe
+    score_data_rows = project.score_data()
+    score_data_df = dataframe_from_rows(score_data_rows)
+    print(f'\n* scores for {project}')
+    print(f'- score data as rows: {len(score_data_rows)} rows')
+    print(f'- score data as df:\n{score_data_df.describe()}')
 
     # work with a model
     model = [model for model in project.models if model.name == 'docs forecast model'][0]

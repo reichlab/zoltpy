@@ -228,6 +228,15 @@ def download_forecast(conn, project_name, model_name, timezero_date):
     return existing_forecast.data()
 
 
+def dataframe_from_rows(rows):
+    string_io = io.StringIO()
+    csv_writer = csv.writer(string_io, delimiter=",")
+    for row in rows:
+        csv_writer.writerow(row)
+    string_io.seek(0)
+    return pd.read_csv(string_io, delimiter=",")
+
+
 def dataframe_from_json_io_dict(json_io_dict):
     """Converts the passed native Zoltar json_io_dict to CSV data, returned as
     a Pandas DataFrame.
@@ -235,13 +244,8 @@ def dataframe_from_json_io_dict(json_io_dict):
     :param json_io_dict: a json_io_dict as returned by download_forecast()
     :return: a Pandas DataFrame
     """
-    string_io = io.StringIO()
-    csv_writer = csv.writer(string_io, delimiter=",")
-    for row in csv_rows_from_json_io_dict(json_io_dict):
-        csv_writer.writerow(row)
-    string_io.seek(0)
-    dataset = pd.read_csv(string_io, delimiter=",")
-    return dataset
+    rows = csv_rows_from_json_io_dict(json_io_dict)
+    return dataframe_from_rows(rows)
 
 
 def busy_poll_upload_file_job(upload_file_job):

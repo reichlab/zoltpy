@@ -1,3 +1,4 @@
+import csv
 import json
 import logging
 from abc import ABC
@@ -53,18 +54,18 @@ class ZoltarConnection:
         return [Project(self, project_json['url'], project_json) for project_json in projects_json_list]
 
 
-    def json_for_uri(self, uri):
+    def json_for_uri(self, uri, is_return_json=True, accept='application/json; indent=4'):
         logger.info(f"json_for_uri(): {uri!r}")
         if not self.session:
             raise RuntimeError("json_for_uri(): no session")
 
-        response = requests.get(uri, headers={'Accept': 'application/json; indent=4',
+        response = requests.get(uri, headers={'Accept': accept,
                                               'Authorization': 'JWT {}'.format(self.session.token)})
         if response.status_code != 200:  # HTTP_200_OK
             raise RuntimeError(f"json_for_uri(): status code was not 200. status_code={response.status_code}. "
                                f"text={response.text}")
 
-        return response.json()
+        return response.json() if is_return_json else response
 
 
 class ZoltarSession:  # internal use
@@ -217,6 +218,39 @@ class Project(ZoltarResource):
         timezeros_json_list = self.zoltar_connection.json_for_uri(self.uri + 'timezeros/')
         return [TimeZero(self.zoltar_connection, timezero_json['url'], timezero_json)
                 for timezero_json in timezeros_json_list]
+
+
+    @property
+    def truth_csv_filename(self):
+        """
+        :return: the Project's truth_csv_filename
+        """
+        # recall the json contains these keys: 'id', 'url', 'project', 'truth_csv_filename', 'truth_data'
+        return self.zoltar_connection.json_for_uri(self.uri + 'truth/')['truth_csv_filename']
+
+
+    def truth_data(self):
+        """
+        :return: the Project's truth data as CSV rows with these columns: `timezero`, `unit`, `target`, `value`. the
+            header row is included
+        """
+        truth_data_url = self.zoltar_connection.json_for_uri(self.uri + 'truth/')['truth_data']
+        truth_data_response = self.zoltar_connection.json_for_uri(truth_data_url, False, 'text/csv')
+        decoded_content = truth_data_response.content.decode('utf-8')
+        csv_reader = csv.reader(decoded_content.splitlines(), delimiter=',')
+        return list(csv_reader)
+
+
+    def score_data(self):
+        """
+        :return: the Project's score data as CSV rows with these columns:
+            `model`, `timezero`, `season`, `unit`, `target`. the header row is included
+        """
+        score_data_url = self.json['score_data']
+        score_data_response = self.zoltar_connection.json_for_uri(score_data_url, False, 'text/csv')
+        decoded_content = score_data_response.content.decode('utf-8')
+        csv_reader = csv.reader(decoded_content.splitlines(), delimiter=',')
+        return list(csv_reader)
 
 
     def create_model(self, model_config):
