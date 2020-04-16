@@ -40,7 +40,7 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
     elif (len(header) == 5) and (header != short_header):
         raise RuntimeError(f"invalid header. had five columns, but not the expected ones. header={header!r}, "
                            f"expected={short_header}")
-    elif header != QUANTILE_CSV_HEADER:  # len(header) == 6
+    elif (len(header) == 6) and (header != QUANTILE_CSV_HEADER):
         raise RuntimeError(f"invalid header. had six columns, but not the expected ones. header={header!r}, "
                            f"expected={QUANTILE_CSV_HEADER}")
 
