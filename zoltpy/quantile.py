@@ -56,16 +56,19 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
         else:
             target_name, location_fips, _, row_type, quantile, value = row  # skip location_name
 
-        # validate location_fips (state-level) - https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt
-        # - '01' through '56', and 'US'
+        # validate location_fips - https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code
+        # - '01' through '95', and 'US'
         if len(location_fips) != 2:
             raise RuntimeError(f"invalid FIPS: not two characters: {location_fips!r}")
 
-        if location_fips != 'US':  # must be a number b/w 1 and 56 inclusive
+        if location_fips != 'US':  # must be a number b/w 1 and 95 inclusive
+            FIPS_MIN = 1
+            FIPS_MAX = 95
             try:
                 fips_int = int(location_fips)
-                if (fips_int < 1) or (fips_int > 56):
-                    raise RuntimeError(f"invalid FIPS: two characters int but out of range 1-56: {location_fips!r}")
+                if (fips_int < FIPS_MIN) or (fips_int > FIPS_MAX):
+                    raise RuntimeError(f"invalid FIPS: two character int but out of range {FIPS_MIN}-{FIPS_MAX}: "
+                                       f"{location_fips!r}")
             except ValueError as ve:
                 raise RuntimeError(f"invalid FIPS: two characters but not an int: {location_fips!r}")
 

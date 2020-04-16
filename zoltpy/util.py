@@ -205,9 +205,8 @@ def download_forecast(conn, project_name, model_name, timezero_date):
     model = [model for model in project.models if model.name == model_name][0]
     forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
     if not forecast_for_tz_date:
-        raise RuntimeError(
-            f"forecast not found. project_name={project_name}, model_name={model_name}, "
-            f"timezero_date={timezero_date}")
+        raise RuntimeError(f"forecast not found. project_name={project_name}, model_name={model_name}, "
+                           f"timezero_date={timezero_date}")
 
     existing_forecast = forecast_for_tz_date[0]
     return existing_forecast.data()

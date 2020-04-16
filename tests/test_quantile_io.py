@@ -28,7 +28,7 @@ class QuantileIOTestCase(TestCase):
             ('quantiles-bad-row-count.csv', 'invalid number of items in row. expected: 6 but got 5'),
             ('quantiles-bad-row-fip-one-digit.csv', 'invalid FIPS: not two characters'),
             ('quantiles-bad-row-fip-three-digits.csv', 'invalid FIPS: not two characters'),
-            ('quantiles-bad-row-fip-bad-two-digits.csv', 'invalid FIPS: two characters int but out of range'),
+            ('quantiles-bad-row-fip-bad-two-digits.csv', 'invalid FIPS: two character int but out of range'),
         ]
         for csv_file, exp_error in csv_file_exp_errors:
             with open('tests/' + csv_file) as quantile_csv_fp:
