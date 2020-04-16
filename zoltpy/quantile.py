@@ -87,13 +87,16 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
     rows.sort(key=lambda _: (_[0], _[1], _[2]))  # sorted for groupby()
     for (target_name, location_fips, is_point_row), quantile_val_grouper in \
             groupby(rows, key=lambda _: (_[0], _[1], _[2])):
-        # fill values for points and bins. NB: should only be one point row per location/target pair, but collect all
-        # (i.e., don't validate here)
-        point_values = []
+        # fill values for points and bins. NB: should only be one point row per location/target pair
+        point_values = []  # should be at most one, but use a list to help validate
         quant_quantiles, quant_values = [], []
         for _, _, _, quantile, value in quantile_val_grouper:
-            if is_point_row:
+            if is_point_row and not point_values:
                 point_values.append(value)  # quantile is NA
+            elif is_point_row:
+                raise RuntimeError(f"found more than one point value for the same target_name, location_fips. "
+                                   f"target_name={target_name!r}, location_fips={location_fips!r}, "
+                                   f"this point value={value}, previous point_value={point_values[0]}")
             else:
                 quant_quantiles.append(quantile)
                 quant_values.append(value)

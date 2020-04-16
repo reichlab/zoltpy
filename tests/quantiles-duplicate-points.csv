@@ -1,0 +1,5 @@
+target,location,location_name,type,quantile,value
+1 day ahead cum death,01,Alabama,point,NA,55
+1 day ahead cum death,02,Alaska,point,NA,6
+1 day ahead cum death,04,Arizona,point,NA,78
+1 day ahead cum death,04,Arkansas,point,NA,17

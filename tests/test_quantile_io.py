@@ -35,5 +35,11 @@ class QuantileIOTestCase(TestCase):
             with open('tests/' + csv_file) as quantile_csv_fp:
                 with self.assertRaises(RuntimeError) as context:
                     json_io_dict_from_quantile_csv_file(quantile_csv_fp)
-                print('xx', csv_file, exp_error, context.exception)
                 self.assertIn(exp_error, str(context.exception))
+
+
+    def test_json_io_dict_from_quantile_csv_file_dup_points(self):
+        with open('tests/quantiles-duplicate-points.csv') as quantile_csv_fp:
+            with self.assertRaises(RuntimeError) as context:
+                json_io_dict_from_quantile_csv_file(quantile_csv_fp)
+            self.assertIn('found more than one point value for the same target_name', str(context.exception))
