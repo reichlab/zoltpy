@@ -109,12 +109,12 @@ util.delete_forecast(conn, `'Impetus Province Forecasts','gam_lag1_tops3','20181
 project_name = 'Docs Example Project'
 model_name = 'docs forecast model'
 timezero_date = '2011-10-09'
-predx_json = 'examples/docs-predictions.json'
+predx_json_file = 'examples/docs-predictions.json'
 forecast_filename = 'docs-predictions'
 
 conn = util.authenticate()
 
-util.upload_forecast(conn, predx_json, forecast_filename, project_name, model_name, timezero_date overwrite=True)
+util.upload_forecast(conn, predx_json_file, forecast_filename, project_name, model_name, timezero_date overwrite=True)
 ```
 
 ### Uploading Multiple Forecasts
@@ -143,15 +143,15 @@ for csv_file in '/Users/my/forecast/directory':
     timezero = timezero.strftime('%Y%m%d')
 
     # generate predx_json and forecast_filename
-    predx_json, forecast_filename = util.convert_cdc_csv_to_json_io_dict(csv_file)
+    predx_json, forecast_filename = util.convert_cdc_csv_to_json_io_dict(2016, csv_file)
     
     # save batch variables
     predx_batch += [predx_json]
     forecast_filename_batch += [forecast_filename]
     timezero_batch += [timezero]
 
-util.upload_forecast_batch(conn, predx_batch, forecast_filename_batch, 
-                           project_name, model_name, timezero_batch, overwrite=False)
+util.upload_forecast_batch(conn, predx_batch, forecast_filename_batch, project_name, model_name, timezero_batch,
+                           overwrite=False)
 ```
 
 ### Return Forecast as a Pandas Dataframe

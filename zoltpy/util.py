@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import sys
-import tempfile
 import time
 from pathlib import Path
 
@@ -22,7 +21,6 @@ logger = logging.getLogger(__name__)
 # This file defines some higher-level functions that try to simplify zoltpy use, rather than having to call individual
 # ZoltarConnection operations.
 #
-
 
 def create_project(conn, project_json):
     """
@@ -144,57 +142,49 @@ def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_n
             predx_json, forecast_filename = util.convert_cdc_csv_to_json_io_dict(forecast_file_path)""")
             sys.exit(1)
 
-    # note that this app accepts a *.cdc.csv file, but zoltar requires a native json file. so we first convert to a
-    # temp json file and then pass it
-    with tempfile.TemporaryFile("r+") as json_fp:
-        json.dump(json_io_dict, json_fp)
-        json_fp.seek(0)
-        upload_file_job = model.upload_forecast(json_fp, forecast_filename, timezero_date, notes)
-
+    upload_file_job = model.upload_forecast(json_io_dict, forecast_filename, timezero_date, notes)
     return busy_poll_upload_file_job(upload_file_job)
 
 
 def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, project_name, model_name,
                           timezero_date_batch, overwrite=False):
-    """Uploads a batch (list) of JSON dictionaries to the model corresponding
+    """
+    Uploads a batch (list) of JSON dictionaries to the model corresponding
     to the args. This only iterates through timezeros, not models or projects.
 
     :param conn: a ZoltarConnection
-    :param json_io_dict_batch: an list of a JSON dictionaries
-    :param forecast_filename_batch: a list of filenames of original forecast
+    :param json_io_dict_batch: an list of a JSON dictionaries,
+    :param forecast_filename_batch: a list of filenames of original forecast, paired with json_io_dict_batch
     :param project_name: name of the Project that contains model_name
     :param model_name: name of the Model that contains a Forecast for timezero_date
-    :param timezero_date_batch: an list of YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
+    :param timezero_date_batch: an list of YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03', , paired with json_io_dict_batch
     :param overwrite: True if you would like to overwrite the existing forecast for that timezero_date. Default is False
-    :return: an UploadFileJob. it can be polled for status via busy_poll_upload_file_job(), and then the new forecast
-        can be obtained via upload_file_job.output_json['forecast_pk']
+    :return: the last UploadFileJob. it can be polled for status via busy_poll_upload_file_job(), and then the new
+        forecast can be obtained via upload_file_job.output_json['forecast_pk']. returns None if no uploads were done
     """
+    if not (len(json_io_dict_batch) == len(forecast_filename_batch) == len(timezero_date_batch)):
+        raise RuntimeError(f"batch args had different lengths: json_io_dict_batch, forecast_filename_batch, "
+                           f"timezero_date_batch: {len(json_io_dict_batch)}, {len(forecast_filename_batch)}, "
+                           f"{len(timezero_date_batch)}")
+    elif not json_io_dict_batch:
+        raise RuntimeError(f"no forecasts to upload")
+
     conn.re_authenticate_if_necessary()
-
-    # get projects
-    projects = conn.projects
-    project = [project for project in projects if project.name == project_name][0]
-
-    # get models for project
+    project = [project for project in conn.projects if project.name == project_name][0]
     models = project.models
     model = [model for model in models if model.name == model_name][0]
 
-    print("uploading %i forecasts..." % len(forecast_filename_batch))
-    if len(json_io_dict_batch) > 0:
-        for i in range(len(json_io_dict_batch)):
-            print("uploading %s project, %s model, %s timezero..." % (project_name, model_name, timezero_date_batch[i]))
-            if overwrite == True:
-                delete_forecast(conn, project_name, model_name, timezero_date_batch[i])
-
-            # note that this app accepts a *.cdc.csv file, but zoltar requires a native json file. so we first convert
-            # to a temp json file and then pass it
-            with tempfile.TemporaryFile("r+") as json_fp:
-                json.dump(json_io_dict_batch[i], json_fp)
-                json_fp.seek(0)
-                conn.re_authenticate_if_necessary()
-                upload_file_job = model.upload_forecast(json_fp, forecast_filename_batch[i], timezero_date_batch[i])
-            print("upload complete")
-        return busy_poll_upload_file_job(upload_file_job)
+    print(f"uploading {len(json_io_dict_batch)} forecasts...")
+    upload_file_jobs = []
+    for json_io_dict, forecast_filename, timezero_date in \
+            zip(json_io_dict_batch, forecast_filename_batch, timezero_date_batch):
+        print(f"uploading {project_name!r} project, {model_name!r} model, {timezero_date !r} timezero...")
+        if overwrite:
+            delete_forecast(conn, project_name, model_name, timezero_date)
+        upload_file_job = model.upload_forecast(json_io_dict, forecast_filename, timezero_date)
+        upload_file_jobs.append(upload_file_job)
+        print("upload complete")
+    return upload_file_jobs[-1] if upload_file_jobs else None
 
 
 def download_forecast(conn, project_name, model_name, timezero_date):

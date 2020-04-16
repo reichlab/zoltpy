@@ -247,7 +247,7 @@ def _process_csv_bin_row(season_start_year, target_name, value, bin_start_incl, 
 # csv_rows_from_json_io_dict()
 #
 
-CSV_HEADER = ['location', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'family', 'param1', 'param2', 'param3']
+CSV_HEADER = ['location', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'quantile', 'family', 'param1', 'param2', 'param3']
 
 
 def csv_rows_from_json_io_dict(json_io_dict):

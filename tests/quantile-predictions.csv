@@ -1,14 +1,7 @@
-location,target,type,quantile,value
-New York,1 wk ahead,point,NA,10
-New York,1 wk ahead,quantile,0.1,3
-New York,1 wk ahead,quantile,0.5,10
-New York,1 wk ahead,quantile,0.9,67
-New York,2 wk ahead,point,NA,3.24
-New York,2 wk ahead,quantile,0.025,-9.23
-New York,2 wk ahead,quantile,0.25,0.23461
-New York,2 wk ahead,quantile,0.5,1.2
-New York,2 wk ahead,quantile,0.75,3
-New York,2 wk ahead,quantile,0.975,8852.2347
-location2,Season peak week,quantile,0.5,2019-12-22
-location2,Season peak week,quantile,0.75,2019-12-29
-location2,Season peak week,quantile,0.975,2020-01-05
+target,location,location_name,type,quantile,value
+1 wk ahead cum death,02,Alaska,point,NA,7.74526423651839
+1 day ahead cum death,01,Alabama,quantile,0.01,46.0743989840204
+"1 day ahead cum death","US","US National","point",NA,90717
+"1 day ahead cum death","51","Virginia","point",NA,432
+"1 day ahead cum death","51","Virginia","quantile",0.01,9
+"1 day ahead cum death","51","Virginia","quantile",0.025,15

@@ -112,7 +112,8 @@ def zoltar_connection_app():
 
     print(f"\n* uploading forecast. pre-upload forecasts: {model.forecasts}")
     with open("examples/docs-predictions.json") as fp:
-        upload_file_job = model.upload_forecast(fp, "docs-predictions.json", "2011-10-02", "a few predictions")
+        json_io_dict = json.load(fp)
+        upload_file_job = model.upload_forecast(json_io_dict, "docs-predictions.json", "2011-10-02", "some predictions")
     busy_poll_upload_file_job(upload_file_job)
     print(f"- uploaded forecast: {upload_file_job.created_forecast()}")
 

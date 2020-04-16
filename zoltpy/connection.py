@@ -1,12 +1,20 @@
 import csv
 import json
 import logging
+import tempfile
 from abc import ABC
 
 import requests
 
 
 logger = logging.getLogger(__name__)
+
+
+def basic_str(obj):
+    """
+    Handy for writing quick and dirty __str__() implementations.
+    """
+    return obj.__class__.__name__ + ': ' + obj.__repr__()
 
 
 class ZoltarConnection:
@@ -30,6 +38,14 @@ class ZoltarConnection:
         self.host = host
         self.username, self.password = None, None
         self.session = None
+
+
+    def __repr__(self):
+        return str((self.host, self.session))
+
+
+    def __str__(self):  # todo
+        return basic_str(self)
 
 
     def authenticate(self, username, password):
@@ -304,26 +320,30 @@ class Model(ZoltarResource):
                 for forecast_json in forecasts_json_list]
 
 
-    def upload_forecast(self, forecast_json_fp, source, timezero_date, notes=''):
+    def upload_forecast(self, forecast_json, source, timezero_date, notes=''):
         """
-        Uploads a forecast file to me.
+        Uploads forecast data to this connection.
 
-        :param forecast_json_fp: an open JSON file in the "JSON IO dict" format as documented elsewhere
+        :param forecast_json: "JSON IO dict" to upload. format as documented at https://docs.zoltardata.com/
         :param timezero_date: timezero to upload to YYYY-MM-DD DATE FORMAT
-        :param timezero_date: timezero to upload to YYYY-MM-DD DATE FORMAT
+        :param source: source to associate with the uploaded data
         :param notes: optional user notes for the new forecast
         :return: an UploadFileJob
         """
-        response = requests.post(self.uri + 'forecasts/',
-                                 headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
-                                 data={'timezero_date': timezero_date, 'notes': notes},
-                                 files={'data_file': (source, forecast_json_fp, 'application/json')})
-        if response.status_code != 200:  # HTTP_200_OK
-            raise RuntimeError(f"upload_forecast(): status code was not 200. status_code={response.status_code}. "
-                               f"text={response.text}")
+        self.zoltar_connection.re_authenticate_if_necessary()
+        with tempfile.TemporaryFile("r+") as forecast_json_fp:
+            json.dump(forecast_json, forecast_json_fp)
+            forecast_json_fp.seek(0)
+            response = requests.post(self.uri + 'forecasts/',
+                                     headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
+                                     data={'timezero_date': timezero_date, 'notes': notes},
+                                     files={'data_file': (source, forecast_json_fp, 'application/json')})
+            if response.status_code != 200:  # HTTP_200_OK
+                raise RuntimeError(f"upload_forecast(): status code was not 200. status_code={response.status_code}. "
+                                   f"text={response.text}")
 
-        upload_file_job_json = response.json()
-        return UploadFileJob(self.zoltar_connection, upload_file_job_json['url'])
+            upload_file_job_json = response.json()
+            return UploadFileJob(self.zoltar_connection, upload_file_job_json['url'])
 
 
 class Forecast(ZoltarResource):
