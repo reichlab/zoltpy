@@ -18,7 +18,10 @@ MOCK_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjozLCJ1c2VybmFtZ
 
 
 class TestConnection(unittest.TestCase):
-    """"""
+    """
+    todo xx implement additional tests:
+    - xx
+    """
 
 
     def test_authenticate(self):

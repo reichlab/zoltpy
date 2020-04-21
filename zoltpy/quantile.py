@@ -5,21 +5,20 @@ from itertools import groupby
 from zoltpy.cdc import CDC_POINT_ROW_TYPE, parse_value, YYYY_MM_DD_DATE_FORMAT
 
 
-QUANTILE_CSV_HEADER = ['target', 'location', 'location_name', 'type', 'quantile', 'value']  # `location_name`: optional
+REQUIRED_COLUMNS = ['location', 'target', 'type', 'quantile', 'value']
 
 
 def json_io_dict_from_quantile_csv_file(csv_fp):
     """
-    Utility that extracts the two types of predictions found in quantile CSV files (PointPredictions and
+    Utility that validates and extracts the two types of predictions found in quantile CSV files (PointPredictions and
     QuantileDistributions), returning them as a "JSON IO dict" suitable for loading into the database (see
-    `load_predictions_from_json_io_dict()`). Note that the returned dict's "meta" section is empty.
+    `load_predictions_from_json_io_dict()`). Note that the returned dict's "meta" section is empty. This function is
+    flexible with respect to the inputted column contents and order: It allows the required columns to be in any
+    position, and it ignores all other columns. The required columns are:
 
-    Summary of the CSV format's 5 or 6 columns:
     - `target`: a unique id for the target
-    - `location`: a unique id for the location (we have standardized to FIPS codes)
-    - `location_name`: (optional) if desired to have a human-readable name for the location, this column may be
-        specified. Note that the `location` column will be considered to be authoritative and for programmatic reading
-        and importing of data, this column will be ignored.
+    - `location`: a FIPS code: https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code -
+        that is, '01' through '95', and 'US'
     - `type`: one of either `point` or `quantile`
     - `quantile`: a value between 0 and 1 (inclusive), representing the quantile displayed in this row. if
         `type=="point"` then `NULL`.
@@ -34,27 +33,15 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
     # load and validate the rows
     csv_reader = csv.reader(csv_fp, delimiter=',')
     header = next(csv_reader)
-    short_header = QUANTILE_CSV_HEADER[:2] + QUANTILE_CSV_HEADER[3:]  # no `location_name`
-    if (len(header) != 5) and (len(header) != 6):
-        raise RuntimeError(f"invalid header. number of columns was not 5 or 6: {header!r}")
-    elif (len(header) == 5) and (header != short_header):
-        raise RuntimeError(f"invalid header. had five columns, but not the expected ones. header={header!r}, "
-                           f"expected={short_header}")
-    elif (len(header) == 6) and (header != QUANTILE_CSV_HEADER):
-        raise RuntimeError(f"invalid header. had six columns, but not the expected ones. header={header!r}, "
-                           f"expected={QUANTILE_CSV_HEADER}")
+    location_idx, target_idx, row_type_idx, quantile_idx, value_idx = _validate_header(header)
 
-    is_short_header = len(header) == 5
     rows = []  # list of parsed and validated rows. filled next
     for row in csv_reader:  # either 5 or 6 columns
         if len(row) != len(header):
-            raise RuntimeError(f"invalid number of items in row. expected: {len(header)} but got {len(row)}. "
-                               f"row={row!r}")
+            raise RuntimeError(f"invalid number of items in row. expected: {len(header)} but got {len(row)}. row={row}")
 
-        if is_short_header:
-            target_name, location_fips, row_type, quantile, value = row  # no location_name
-        else:
-            target_name, location_fips, _, row_type, quantile, value = row  # skip location_name
+        target_name, location_fips, row_type, quantile, value = \
+            row[target_idx], row[location_idx], row[row_type_idx], row[quantile_idx], row[value_idx]
 
         # validate location_fips - https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code
         # - '01' through '95', and 'US'
@@ -122,3 +109,18 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
 
     # done
     return {'meta': {}, 'predictions': prediction_dicts}
+
+
+def _validate_header(header):
+    """
+    `json_io_dict_from_quantile_csv_file()` helper function.
+
+    :param header: first rows from the csv file
+    :return: location_idx, target_idx, row_type_idx, quantile_idx, value_idx
+    """
+    counts = [header.count(required_column) == 1 for required_column in REQUIRED_COLUMNS]
+    if not all(counts):
+        raise RuntimeError(f"invalid header. did not contain the required columns. header={header}, "
+                           f"REQUIRED_COLUMNS={REQUIRED_COLUMNS}")
+
+    return [header.index(required_column) for required_column in REQUIRED_COLUMNS]
