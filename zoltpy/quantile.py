@@ -1,8 +1,11 @@
 import csv
 from itertools import groupby
-
-
 # prediction classes for use in "JSON IO dict" conversion
+from pathlib import Path
+
+import click
+
+
 BIN_DISTRIBUTION_CLASS = 'bin'
 NAMED_DISTRIBUTION_CLASS = 'named'
 POINT_PREDICTION_CLASS = 'point'
@@ -20,6 +23,36 @@ REQUIRED_COLUMNS = ['location', 'target', 'type', 'quantile', 'value']
 # - validation functions return lists of error messages, formatted for output during processing. processing continues
 #   as long as possible (ideally the entire file) so that all errors can be reported to the user. however, catastrophic
 #   errors (such as an invalid header) must terminate immediately
+#
+
+
+#
+# validate_quantile_csv_file()
+#
+
+def validate_quantile_csv_file(csv_fp):
+    """
+    A simple wrapper of `json_io_dict_from_quantile_csv_file()` that tosses the json_io_dict and just prints validation
+    error_messages.
+
+    :param csv_fp: as passed to `json_io_dict_from_quantile_csv_file()`
+    :return: error_messages: a list of strings
+    """
+    quantile_csv_file = Path(csv_fp)
+    click.echo(f"* validating quantile_csv_file={quantile_csv_file}...")
+    with open(quantile_csv_file) as cdc_csv_fp:
+        _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp)  # toss json_io_dict
+        if error_messages:
+            click.echo(f"found {len(error_messages)} errors:")
+            for error_message in error_messages:
+                click.echo(error_message, err=True)
+        else:
+            click.echo(f"no errors")
+    click.echo(f"validating done. quantile_csv_file={quantile_csv_file}")
+
+
+#
+# json_io_dict_from_quantile_csv_file()
 #
 
 def json_io_dict_from_quantile_csv_file(csv_fp):
