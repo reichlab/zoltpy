@@ -178,9 +178,18 @@ def _validated_rows_for_quantile_csv(csv_fp):
             except ValueError:
                 error_messages.append(f"invalid FIPS: two characters but not an int: {location_fips!r}. row={row}")
 
+        # validate target_name. b/c there are so many possible targets, we generate using a range
+        valid_target_names = [f"{_} day ahead inc death" for _ in range(1, 121)] + \
+                             [f"{_} day ahead cum death" for _ in range(1, 121)] + \
+                             [f"{_} wk ahead inc death" for _ in range(21)] + \
+                             [f"{_} wk ahead cum death" for _ in range(21)] + \
+                             [f"{_} day ahead inc hosp" for _ in range(121)]
+        if target_name not in valid_target_names:
+            error_messages.append(f"invalid target name: {target_name!r}. row={row}")
+
         row_type = row_type.lower()
         is_point_row = (row_type == CDC_POINT_ROW_TYPE.lower())
-        quantile = parse_value(quantile)
+        quantile = parse_value(quantile)  # None if 'NA'
         value = parse_value(value)
 
         # convert parsed date back into string suitable for JSON.
