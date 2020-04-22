@@ -1,12 +1,26 @@
 import csv
-import datetime
 from itertools import groupby
 
-from zoltpy.cdc import CDC_POINT_ROW_TYPE, parse_value, YYYY_MM_DD_DATE_FORMAT
 
+# prediction classes for use in "JSON IO dict" conversion
+BIN_DISTRIBUTION_CLASS = 'bin'
+NAMED_DISTRIBUTION_CLASS = 'named'
+POINT_PREDICTION_CLASS = 'point'
+SAMPLE_PREDICTION_CLASS = 'sample'
+QUANTILE_PREDICTION_CLASS = 'quantile'
 
+# quantile csv I/O
 REQUIRED_COLUMNS = ['location', 'target', 'type', 'quantile', 'value']
 
+
+#
+# Notes:
+# - below code is a temporary solution to validation during COVID-19 crunch time. todo it will be refactored later
+# - as such, we hard-code target information: all targets are: "type": "discrete", "is_step_ahead": true
+# - validation functions return lists of error messages, formatted for output during processing. processing continues
+#   as long as possible (ideally the entire file) so that all errors can be reported to the user. however, catastrophic
+#   errors (such as an invalid header) must terminate immediately
+#
 
 def json_io_dict_from_quantile_csv_file(csv_fp):
     """
@@ -27,46 +41,15 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
 
     :param csv_fp: an open quantile csv file-like object. the quantile CSV file format is documented at
         https://docs.zoltardata.com/
-    :return a "JSON IO dict" (aka 'json_io_dict' by callers) that contains the two types of predictions. see
-        https://docs.zoltardata.com/ for details
+    :return 2-tuple: (json_io_dict, error_messages) where the former is a "JSON IO dict" (aka 'json_io_dict' by callers)
+        that contains the two types of predictions. see https://docs.zoltardata.com/ for details. json_io_dict is None
+        if there were errors
     """
-    # load and validate the rows
-    csv_reader = csv.reader(csv_fp, delimiter=',')
-    header = next(csv_reader)
-    location_idx, target_idx, row_type_idx, quantile_idx, value_idx = _validate_header(header)
+    # load and validate the rows (validation step 1/2). error_messages is one of the the return values (filled next)
+    rows, error_messages = _validated_rows_for_quantile_csv(csv_fp)
 
-    rows = []  # list of parsed and validated rows. filled next
-    for row in csv_reader:  # either 5 or 6 columns
-        if len(row) != len(header):
-            raise RuntimeError(f"invalid number of items in row. expected: {len(header)} but got {len(row)}. row={row}")
-
-        target_name, location_fips, row_type, quantile, value = \
-            row[target_idx], row[location_idx], row[row_type_idx], row[quantile_idx], row[value_idx]
-
-        # validate location_fips - https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code
-        # - '01' through '95', and 'US'
-        if len(location_fips) != 2:
-            raise RuntimeError(f"invalid FIPS: not two characters: {location_fips!r}")
-
-        if location_fips != 'US':  # must be a number b/w 1 and 95 inclusive
-            FIPS_MIN = 1
-            FIPS_MAX = 95
-            try:
-                fips_int = int(location_fips)
-                if (fips_int < FIPS_MIN) or (fips_int > FIPS_MAX):
-                    raise RuntimeError(f"invalid FIPS: two character int but out of range {FIPS_MIN}-{FIPS_MAX}: "
-                                       f"{location_fips!r}")
-            except ValueError as ve:
-                raise RuntimeError(f"invalid FIPS: two characters but not an int: {location_fips!r}")
-
-        row_type = row_type.lower()
-        is_point_row = (row_type == CDC_POINT_ROW_TYPE.lower())
-        quantile = parse_value(quantile)
-        value = parse_value(value)
-        # convert parsed date back into string suitable for JSON
-        if isinstance(value, datetime.date):
-            value = value.strftime(YYYY_MM_DD_DATE_FORMAT)
-        rows.append([target_name, location_fips, is_point_row, quantile, value])
+    if error_messages:
+        return None, error_messages  # terminate processing b/c we can't proceed to step 1/2 with invalid rows
 
     # collect point and quantile values for each row and then add the actual prediction dicts. each point row has its
     # own dict, but quantile rows are grouped into one dict
@@ -81,9 +64,9 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
             if is_point_row and not point_values:
                 point_values.append(value)  # quantile is NA
             elif is_point_row:
-                raise RuntimeError(f"found more than one point value for the same target_name, location_fips. "
-                                   f"target_name={target_name!r}, location_fips={location_fips!r}, "
-                                   f"this point value={value}, previous point_value={point_values[0]}")
+                error_messages.append(f"found more than one point value for the same target_name, location_fips. "
+                                      f"target_name={target_name!r}, location_fips={location_fips!r}, "
+                                      f"this point value={value}, previous point_value={point_values[0]}")
             else:
                 quant_quantiles.append(quantile)
                 quant_values.append(value)
@@ -91,31 +74,97 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
         # add the actual prediction dicts
         if point_values:
             if len(point_values) > 1:
-                raise RuntimeError(f"len(point_values) > 1: {point_values}")
+                error_messages.append(f"len(point_values) > 1: {point_values}")
 
             point_value = point_values[0]
-            prediction_dicts.append({"unit": location_fips,
-                                     "target": target_name,
-                                     'class': 'point',  # PointPrediction
+            prediction_dicts.append({'unit': location_fips,
+                                     'target': target_name,
+                                     'class': POINT_PREDICTION_CLASS,  # PointPrediction
                                      'prediction': {
                                          'value': point_value}})
         if quant_quantiles:
-            prediction_dicts.append({"unit": location_fips,
-                                     "target": target_name,
-                                     'class': 'quantile',  # QuantileDistribution
+            prediction_dicts.append({'unit': location_fips,
+                                     'target': target_name,
+                                     'class': QUANTILE_PREDICTION_CLASS,  # QuantileDistribution
                                      'prediction': {
-                                         "quantile": quant_quantiles,
-                                         "value": quant_values}})
+                                         'quantile': quant_quantiles,
+                                         'value': quant_values}})
+
+    # validate prediction_dicts (validation step 2/2)
+    for prediction_dict in prediction_dicts:
+        if prediction_dict['class'] == QUANTILE_PREDICTION_CLASS:
+            pred_dict_error_messages = _validate_quantile_predictions(prediction_dict)  # raises o/w
+            error_messages.extend(pred_dict_error_messages)
 
     # done
-    return {'meta': {}, 'predictions': prediction_dicts}
+    return {'meta': {}, 'predictions': prediction_dicts}, error_messages
+
+
+def _validated_rows_for_quantile_csv(csv_fp):
+    """
+    `json_io_dict_from_quantile_csv_file()` helper function.
+
+    :param csv_fp: as passed to caller
+    :return: 2-tuple: (validated_rows, error_messages)
+    """
+    from zoltpy.cdc import CDC_POINT_ROW_TYPE, parse_value  # avoid circular imports
+
+
+    error_messages = []  # list of strings. return value. set below if any issues
+
+    csv_reader = csv.reader(csv_fp, delimiter=',')
+    header = next(csv_reader)
+    try:
+        location_idx, target_idx, row_type_idx, quantile_idx, value_idx = _validate_header(header)
+    except RuntimeError as re:
+        error_messages.append(re.args)
+        return [], error_messages  # terminate processing
+
+    rows = []  # list of parsed and validated rows. filled next
+    for row in csv_reader:  # either 5 or 6 columns
+        if len(row) != len(header):
+            error_messages.append(f"invalid number of items in row. len(header)={len(header)} but len(row)={len(row)}. "
+                                  f"row={row}")
+            return [], error_messages  # terminate processing
+
+        target_name, location_fips, row_type, quantile, value = \
+            row[target_idx], row[location_idx], row[row_type_idx], row[quantile_idx], row[value_idx]
+
+        # validate location_fips - https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code
+        # - '01' through '95', and 'US'
+        if len(location_fips) != 2:
+            error_messages.append(f"invalid FIPS: not two characters: {location_fips!r}. row={row}")
+
+        if location_fips != 'US':  # must be a number b/w 1 and 95 inclusive
+            fips_min, fips_max = 1, 95
+            try:
+                fips_int = int(location_fips)
+                if (fips_int < fips_min) or (fips_int > fips_max):
+                    error_messages.append(f"invalid FIPS: two character int but out of range {fips_min}-{fips_max}: "
+                                          f"{location_fips!r}")
+            except ValueError:
+                error_messages.append(f"invalid FIPS: two characters but not an int: {location_fips!r}. row={row}")
+
+        row_type = row_type.lower()
+        is_point_row = (row_type == CDC_POINT_ROW_TYPE.lower())
+        quantile = parse_value(quantile)
+        value = parse_value(value)
+
+        # convert parsed date back into string suitable for JSON.
+        # NB: recall all targets are "type": "discrete", so we only accept ints and floats
+        # if isinstance(value, datetime.date):
+        #     value = value.strftime(YYYY_MM_DD_DATE_FORMAT)
+
+        rows.append([target_name, location_fips, is_point_row, quantile, value])
+
+    return rows, error_messages
 
 
 def _validate_header(header):
     """
     `json_io_dict_from_quantile_csv_file()` helper function.
 
-    :param header: first rows from the csv file
+    :param header: first row from the csv file
     :return: location_idx, target_idx, row_type_idx, quantile_idx, value_idx
     """
     counts = [header.count(required_column) == 1 for required_column in REQUIRED_COLUMNS]
@@ -124,3 +173,70 @@ def _validate_header(header):
                            f"REQUIRED_COLUMNS={REQUIRED_COLUMNS}")
 
     return [header.index(required_column) for required_column in REQUIRED_COLUMNS]
+
+
+def _validate_quantile_predictions(prediction_dict):
+    """
+    `json_io_dict_from_quantile_csv_file()` helper function. Implements the quantile checks at
+    https://docs.zoltardata.com/validation/#quantile-prediction-elements . NB: this function is a copy/paste (with
+    simplifications) of Zoltar's `utils.forecast._validate_quantile_predictions()`
+
+    :param prediction_dict: as documented at https://docs.zoltardata.com/
+    :return list of strings, one per error. [] if prediction_dict is valid
+    """
+    error_messages = []  # list of strings. return value. set below if any issues
+
+    # validate: "The number of elements in the `quantile` and `value` vectors should be identical."
+    prediction_data = prediction_dict['prediction']
+    pred_data_quantiles = prediction_data['quantile']
+    pred_data_values = prediction_data['value']
+    if len(pred_data_quantiles) != len(pred_data_values):
+        # note that this error must stop processing b/c subsequent steps rely on their being the same lengths
+        # (e.g., `zip()`)
+        error_messages.append(f"The number of elements in the `quantile` and `value` vectors should be identical. "
+                              f"|quantile|={len(pred_data_quantiles)}, |value|={len(pred_data_values)}, "
+                              f"prediction_dict={prediction_dict}")
+        return error_messages  # terminate processing
+
+    # validate: "Entries in the database rows in the `quantile` column must be numbers in [0, 1].
+    quantile_types_set = set(map(type, pred_data_quantiles))
+    if not (quantile_types_set <= {int, float}):
+        error_messages.append(f"wrong data type in `quantile` column, which should only contain ints or floats. "
+                              f"quantile column={pred_data_quantiles}, quantile_types_set={quantile_types_set}, "
+                              f"prediction_dict={prediction_dict}")
+    elif (min(pred_data_quantiles) < 0.0) or (max(pred_data_quantiles) > 1.0):
+        error_messages.append(f"Entries in the database rows in the `quantile` column must be numbers in [0, 1]. "
+                              f"quantile column={pred_data_quantiles}, prediction_dict={prediction_dict}")
+
+    # validate: `quantile`s must be unique."
+    if len(set(pred_data_quantiles)) != len(pred_data_quantiles):
+        error_messages.append(f"`quantile`s must be unique. quantile column={pred_data_quantiles}, "
+                              f"prediction_dict={prediction_dict}")
+
+    # validate: "The data format of `value` should correspond or be translatable to the `type` as in the target
+    # definition."
+    # NB: recall all targets are "type": "discrete", so we only accept ints and floats
+
+    prob_values_set = set(map(type, pred_data_values))
+    if not (prob_values_set <= {int, float}):
+        error_messages.append(f"The data format of `value` should correspond or be translatable to the `type` as "
+                              f"in the target definition, but one of the value values was not. "
+                              f"values={pred_data_values}, prediction_dict={prediction_dict}")
+
+    # validate: "Entries in `value` must be non-decreasing as quantiles increase." (i.e., are monotonic).
+    # note: there are no date targets, so we format as strings for the comparison (incoming are strings).
+    # note: we do not assume quantiles are sorted, so we first sort before checking for non-decreasing
+
+    # per https://stackoverflow.com/questions/7558908/unpacking-a-list-tuple-of-pairs-into-two-lists-tuples
+    pred_data_quantiles, pred_data_values = zip(*sorted(zip(pred_data_quantiles, pred_data_values), key=lambda _: _[0]))
+
+    if not all([x <= y for x, y in zip(pred_data_values, pred_data_values[1:])]):
+        error_messages.append(f"Entries in `value` must be non-decreasing as quantiles increase. "
+                              f"value column={pred_data_values}, prediction_dict={prediction_dict}")
+
+    # validate: "Entries in `value` must obey existing ranges for targets." recall: "The range is assumed to be
+    # inclusive on the lower bound and open on the upper bound, # e.g. [a, b)."
+    # NB: range is not tested per @nick: "All of these should be [0, Inf]"
+
+    # done
+    return error_messages

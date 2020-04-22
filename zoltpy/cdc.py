@@ -4,10 +4,12 @@ from itertools import groupby
 
 import pymmwr
 
-
 #
 # date formats
 #
+from zoltpy.quantile import POINT_PREDICTION_CLASS, BIN_DISTRIBUTION_CLASS, NAMED_DISTRIBUTION_CLASS, \
+    SAMPLE_PREDICTION_CLASS
+
 
 YYYY_MM_DD_DATE_FORMAT = '%Y-%m-%d'  # e.g., '2017-01-17'
 
@@ -171,13 +173,13 @@ def _prediction_dicts_for_csv_rows(season_start_year, rows):
             point_value = point_values[0]
             prediction_dicts.append({"unit": location_name,
                                      "target": target_name,
-                                     'class': 'point',  # PointPrediction
+                                     'class': POINT_PREDICTION_CLASS,  # PointPrediction
                                      'prediction': {
                                          'value': point_value}})
         if bin_cats:
             prediction_dicts.append({"unit": location_name,
                                      "target": target_name,
-                                     'class': 'bin',  # BinDistribution
+                                     'class': BIN_DISTRIBUTION_CLASS,  # BinDistribution
                                      'prediction': {
                                          "cat": bin_cats,
                                          "prob": bin_probs}})
@@ -247,7 +249,8 @@ def _process_csv_bin_row(season_start_year, target_name, value, bin_start_incl, 
 # csv_rows_from_json_io_dict()
 #
 
-CSV_HEADER = ['location', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'quantile', 'family', 'param1', 'param2', 'param3']
+CSV_HEADER = ['location', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'quantile', 'family', 'param1', 'param2',
+              'param3']
 
 
 def csv_rows_from_json_io_dict(json_io_dict):
@@ -278,24 +281,24 @@ def csv_rows_from_json_io_dict(json_io_dict):
 
         # class-specific columns all default to empty:
         value, cat, prob, sample, quantile, family, param1, param2, param3 = '', '', '', '', '', '', '', '', ''
-        if prediction_class == 'bin':  # BinDistribution
+        if prediction_class == BIN_DISTRIBUTION_CLASS:  # BinDistribution
             for cat, prob in zip(prediction['cat'], prediction['prob']):
                 rows.append([location, target, prediction_class, value, cat, prob, sample, quantile,
                              family, param1, param2, param3])
-        elif prediction_class == 'named':  # NamedDistribution
+        elif prediction_class == NAMED_DISTRIBUTION_CLASS:  # NamedDistribution
             rows.append([location, target, prediction_class, value, cat, prob, sample, quantile,
                          prediction['family'],
                          prediction['param1'] if 'param1' in prediction else '',
                          prediction['param2'] if 'param2' in prediction else '',
                          prediction['param3'] if 'param3' in prediction else ''])
-        elif prediction_class == 'point':  # PointPrediction
+        elif prediction_class == POINT_PREDICTION_CLASS:  # PointPrediction
             rows.append([location, target, prediction_class, prediction['value'], cat, prob, sample, quantile,
                          family, param1, param2, param3])
-        elif prediction_class == 'sample':  # SamplePrediction
+        elif prediction_class == SAMPLE_PREDICTION_CLASS:  # SamplePrediction
             for sample in prediction['sample']:
                 rows.append([location, target, prediction_class, value, cat, prob, sample, quantile,
                              family, param1, param2, param3])
-        else:  # prediction_class == 'quantile'  # QuantileDistribution
+        else:  # prediction_class == QUANTILE_PREDICTION_CLASS  # QuantileDistribution
             for quantile, value in zip(prediction['quantile'], prediction['value']):
                 rows.append([location, target, prediction_class, value, cat, prob, sample, quantile,
                              family, param1, param2, param3])
@@ -312,17 +315,17 @@ def parse_value(value_str):
     """
     try:
         return int(value_str)
-    except ValueError as ve:
+    except ValueError:
         pass
 
     try:
         return float(value_str)
-    except ValueError as ve:
+    except ValueError:
         pass
 
     try:
         return datetime.datetime.strptime(value_str, YYYY_MM_DD_DATE_FORMAT).date()
-    except ValueError as ve:
+    except ValueError:
         return None
 
 

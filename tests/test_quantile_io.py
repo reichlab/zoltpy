@@ -50,37 +50,64 @@ class QuantileIOTestCase(TestCase):
             with open(quantile_csv_file) as quantile_csv_fp, \
                     open('tests/quantile-predictions.json') as exp_json_fp:
                 exp_json_io_dict = json.load(exp_json_fp)
-                act_json_io_dict = json_io_dict_from_quantile_csv_file(quantile_csv_fp)
+                act_json_io_dict, error_messages = json_io_dict_from_quantile_csv_file(quantile_csv_fp)
                 exp_json_io_dict['predictions'].sort(key=lambda _: (_['unit'], _['target'], _['class']))
                 act_json_io_dict['predictions'].sort(key=lambda _: (_['unit'], _['target'], _['class']))
                 self.assertEqual(exp_json_io_dict, act_json_io_dict)
 
 
     def test_other_ok_quantile_files(self):
-        ok_quantile_files = ['tests/quantiles-CU-60contact.csv']
-        for ok_quantile_file in ok_quantile_files:
-            with open(ok_quantile_file) as quantile_csv_fp:
-                try:
-                    json_io_dict_from_quantile_csv_file(quantile_csv_fp)
-                except Exception as ex:
-                    self.fail(f"unexpected exception: {ex}")
+        with open('tests/quantiles-CU-60contact.csv') as quantile_csv_fp:
+            json_io_dict, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_csv_fp)
+            self.assertEqual(0, len(act_error_messages))
+
+
+    def test_error_messages_actual_files_no_errors(self):
+        # test large-ish actual files
+        ok_quantile_files = [
+            # '2020-04-12-IHME-CurveFit.csv',  # only file with errors. tested below
+            '2020-04-13-COVIDhub-ensemble.csv',
+            '2020-04-13-Imperial-ensemble1.csv',
+            '2020-04-13-MOBS_NEU-GLEAM_COVID.csv',
+            '2020-04-15-Geneva-DeterministicGrowth.csv']
+        for ok_quantile_files in ok_quantile_files:
+            with open('tests/covid19-forecast-hub_data-processed_examples/' + ok_quantile_files) as quantile_csv_fp:
+                json_io_dict, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_csv_fp)
+                self.assertEqual(0, len(act_error_messages))
+
+
+    def test_error_messages_actual_file_with_errors(self):
+        # test, and try printing a min-report:
+        with open('tests/covid19-forecast-hub_data-processed_examples/2020-04-12-IHME-CurveFit.csv') as quantile_csv_fp:
+            json_io_dict, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_csv_fp)
+            self.assertEqual(10, len(act_error_messages))
+
 
     def test_json_io_dict_from_quantile_csv_file_bad_header(self):
         csv_file_exp_errors = [
-            ('quantiles-bad-row-count.csv', 'invalid number of items in row. expected: 6 but got 5'),
-            ('quantiles-bad-row-fip-one-digit.csv', 'invalid FIPS: not two characters'),
-            ('quantiles-bad-row-fip-three-digits.csv', 'invalid FIPS: not two characters'),
-            ('quantiles-bad-row-fip-bad-two-digits.csv', 'invalid FIPS: two character int but out of range'),
+            ('quantiles-bad-row-count.csv', [
+                "invalid number of items in row. len(header)=6 but len(row)=5. "
+                "row=['1 wk ahead cum death', 'Alaska', 'point', 'NA', '7.74526423651839']"]),
+            ('quantiles-bad-row-fip-one-digit.csv', [
+                "invalid FIPS: not two characters: '2'. "
+                "row=['1 wk ahead cum death', '2', 'Alaska', 'point', 'NA', '7.74526423651839']"]),
+            ('quantiles-bad-row-fip-three-digits.csv', [
+                "invalid FIPS: not two characters: '222'. "
+                "row=['1 wk ahead cum death', '222', 'Alaska', 'point', 'NA', '7.74526423651839']",
+                "invalid FIPS: two character int but out of range 1-95: '222'"]),
+            ('quantiles-bad-row-fip-bad-two-digits.csv', [
+                "invalid FIPS: two character int but out of range 1-95: '99'"]),
         ]
-        for csv_file, exp_error in csv_file_exp_errors:
+        for csv_file, exp_errors in csv_file_exp_errors:
             with open('tests/' + csv_file) as quantile_csv_fp:
-                with self.assertRaises(RuntimeError) as context:
-                    json_io_dict_from_quantile_csv_file(quantile_csv_fp)
-                self.assertIn(exp_error, str(context.exception))
+                json_io_dict, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_csv_fp)
+                self.assertEqual(exp_errors, act_error_messages)
 
 
     def test_json_io_dict_from_quantile_csv_file_dup_points(self):
         with open('tests/quantiles-duplicate-points.csv') as quantile_csv_fp:
-            with self.assertRaises(RuntimeError) as context:
-                json_io_dict_from_quantile_csv_file(quantile_csv_fp)
-            self.assertIn('found more than one point value for the same target_name', str(context.exception))
+            json_io_dict, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_csv_fp)
+            exp_error_messages = ["found more than one point value for the same target_name, location_fips. "
+                                  "target_name='1 day ahead cum death', location_fips='04', this point value=17, "
+                                  "previous point_value=78"]
+            self.assertEqual(exp_error_messages, act_error_messages)
