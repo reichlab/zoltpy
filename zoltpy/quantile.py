@@ -39,16 +39,13 @@ def validate_quantile_csv_file(csv_fp):
     :return: error_messages: a list of strings
     """
     quantile_csv_file = Path(csv_fp)
-    click.echo(f"* validating quantile_csv_file={quantile_csv_file}...")
+    click.echo(f"* validating quantile_csv_file '{quantile_csv_file}'...")
     with open(quantile_csv_file) as cdc_csv_fp:
         _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp)  # toss json_io_dict
         if error_messages:
-            click.echo(f"found {len(error_messages)} errors:")
-            for error_message in error_messages:
-                click.echo(error_message, err=True)
+            return error_messages
         else:
-            click.echo(f"no errors")
-    click.echo(f"validating done. quantile_csv_file={quantile_csv_file}")
+            return "no errors"
 
 
 #
@@ -141,7 +138,6 @@ def _validated_rows_for_quantile_csv(csv_fp):
     :return: 2-tuple: (validated_rows, error_messages)
     """
     from zoltpy.cdc import CDC_POINT_ROW_TYPE, parse_value  # avoid circular imports
-
 
     error_messages = []  # list of strings. return value. set below if any issues
 
