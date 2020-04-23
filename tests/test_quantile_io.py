@@ -80,7 +80,7 @@ class QuantileIOTestCase(TestCase):
         # test, and try printing a min-report:
         csv_file_exp_error_count_message = [
             ('2020-04-12-IHME-CurveFit.csv', 10, "Entries in `value` must be non-decreasing as quantiles increase"),
-            ('2020-04-15-Geneva-DeterministicGrowth.csv', 8, "invalid target name")]
+            ('2020-04-15-Geneva-DeterministicGrowth.csv', 1, "invalid target name(s)")]
         for quantile_file, exp_num_errors, exp_message in csv_file_exp_error_count_message:
             with open('tests/covid19-forecast-hub_data-processed_examples/' + quantile_file) as quantile_fp:
                 json_io_dict, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp)

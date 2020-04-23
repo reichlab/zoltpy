@@ -17,23 +17,31 @@ from zoltpy.connection import ZoltarConnection, ZoltarSession, ZoltarResource, P
 MOCK_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjozLCJ1c2VybmFtZSI6Im1vZGVsX293bmVyMSIsImV4cCI6MTU1ODQ0MjgwNSwiZW1haWwiOiIifQ.o03V2RxkFpA5ThhRAidwDWCdcQNeJzr1wwFkOFKUI74"
 
 
+def mock_authenticate(conn, username='', password=''):
+    with patch('requests.post') as post_mock:
+        post_mock.return_value.status_code = 200
+        post_mock.return_value.json = MagicMock(return_value={'token': MOCK_TOKEN})
+        conn.authenticate(username, password)
+        return conn
+
+
 class TestConnection(unittest.TestCase):
     """
-    todo xx implement additional tests:
-    - xx
+    todo implement additional tests
     """
 
 
     def test_authenticate(self):
         conn = ZoltarConnection('')
-        u = 'Z_USERNAME'
-        p = 'Z_PASSWORD'
+        username = 'Z_USERNAME'
+        password = 'Z_PASSWORD'
+        mock_authenticate(conn, username, password)
         with patch('requests.post') as post_mock:
             post_mock.return_value.status_code = 200
             post_mock.return_value.json = MagicMock(return_value={'token': MOCK_TOKEN})
-            conn.authenticate(u, p)
-            self.assertEqual(u, conn.username)
-            self.assertEqual(p, conn.password)
+            conn.authenticate(username, password)
+            self.assertEqual(username, conn.username)
+            self.assertEqual(password, conn.password)
             self.assertIsInstance(conn.session, ZoltarSession)
             self.assertEqual(MOCK_TOKEN, conn.session.token)
             post_mock.assert_called_once_with('/api-token-auth/', {'username': 'Z_USERNAME', 'password': 'Z_PASSWORD'})
@@ -130,6 +138,58 @@ class TestConnection(unittest.TestCase):
         forecast_0 = forecasts[0]
         self.assertIsInstance(forecast_0, Forecast)
         self.assertEqual("docs-predictions.json", forecast_0.source)
+
+
+    def test_create_timezero(self):
+        conn = mock_authenticate(ZoltarConnection('http://example.com'))
+        with patch('zoltpy.connection.ZoltarConnection.json_for_uri', return_value=PROJECTS_LIST_DICTS):
+            project = conn.projects[0]
+
+        # test valid arg combinations
+        valid_args_tuples = [("2011-10-02", None, False, ''),
+                             ("2011-10-02", "2011-10-03", False, ''),
+                             ("2011-10-02", "2011-10-03", True, "'tis the season")]
+        for timezero_date, data_version_date, is_season_start, season_name in valid_args_tuples:
+            with patch('requests.post') as post_mock:
+                post_mock.return_value.status_code = 200
+                post_mock.return_value.json = MagicMock(return_value={
+                    "url": "http://example.com/api/timezero/497/"})
+                try:
+                    project.create_timezero(timezero_date, data_version_date, is_season_start, season_name)
+                    post_mock.assert_called_once()
+                except Exception as ex:
+                    self.fail(f"unexpected exception: {ex}")
+
+        # test valid POST arg
+        with patch('requests.post') as post_mock:
+            post_mock.return_value.status_code = 200
+            post_return_value = {"id": 705,
+                                 "url": "http://example.com/api/timezero/705/",
+                                 "timezero_date": "2011-10-02",
+                                 "data_version_date": "2011-10-03",
+                                 "is_season_start": True,
+                                 "season_name": "2011-2012"}
+            post_mock.return_value.json = MagicMock(return_value=post_return_value, )
+            try:
+                project.create_timezero("2011-10-02", "2011-10-03", True, "2011-2012")
+                post_mock.assert_called_once()
+                exp_timezero_config = dict(post_return_value)  # copy
+                del exp_timezero_config['id']
+                del exp_timezero_config['url']
+                act_timezero_config = post_mock.call_args[1]['json']['timezero_config']
+                self.assertEqual(exp_timezero_config, act_timezero_config)
+            except Exception as ex:
+                self.fail(f"unexpected exception: {ex}")
+
+        # test yes is_season_start but no season_name
+        with self.assertRaises(RuntimeError) as context:
+            project.create_timezero("2011-10-02", "2011-10-03", True)
+        self.assertIn('season_name not found but is required when is_season_start is passed', str(context.exception))
+
+        # test no is_season_start but yes season_name
+        with self.assertRaises(RuntimeError) as context:
+            project.create_timezero("2011-10-02", False, "'tis the season")
+        self.assertIn('season_name not found but is required when is_season_start is passed', str(context.exception))
 
 
 PROJECTS_LIST_DICTS = [

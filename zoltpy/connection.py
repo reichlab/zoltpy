@@ -1,10 +1,13 @@
 import csv
+import datetime
 import json
 import logging
 import tempfile
 from abc import ABC
 
 import requests
+
+from zoltpy.cdc import YYYY_MM_DD_DATE_FORMAT, parse_value
 
 
 logger = logging.getLogger(__name__)
@@ -271,7 +274,8 @@ class Project(ZoltarResource):
 
 
     def create_model(self, model_config):
-        """Creates a forecast Model with the passed configuration.
+        """
+        Creates a forecast Model with the passed configuration.
 
         :param model_config: a dict used to initialize the new model. it must contain these fields: ['name'], and can
             optionally contain: ['abbreviation', 'team_name', 'description', 'home_url', 'aux_data_url']
@@ -291,6 +295,46 @@ class Project(ZoltarResource):
 
         new_model_json = response.json()
         return Model(self.zoltar_connection, new_model_json['url'], new_model_json)
+
+
+    def create_timezero(self, timezero_date, data_version_date=None, is_season_start=False, season_name=''):
+        """
+        Creates a timezero in me with the passed parameters.
+
+        :param timezero_date: YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
+        :param data_version_date: optional. same format as timezero_date
+        :param is_season_start: optional boolean indicating season start
+        :param season_name: optional season name. required if is_season_start
+        :return: the new TimeZero
+        """
+        # validate args
+        if not isinstance(parse_value(timezero_date), datetime.date):  # returns a date if valid
+            raise RuntimeError(f"invalid timezero_date={timezero_date}. "
+                               f"was not in the format {YYYY_MM_DD_DATE_FORMAT}")
+        elif data_version_date and (not isinstance(parse_value(data_version_date), datetime.date)):
+            raise RuntimeError(f"invalid data_version_date={data_version_date}. "
+                               f"was not in the format {YYYY_MM_DD_DATE_FORMAT}")
+        elif is_season_start and not season_name:
+            raise RuntimeError(f"season_name not found but is required when is_season_start is passed")
+        elif not is_season_start and season_name:
+            raise RuntimeError(f"season_name was found but is_season_start was not True")
+
+        # POST. 'timezero_config' args:
+        # - required: 'timezero_date', 'data_version_date', 'is_season_start'
+        # - optional: 'season_name'
+        timezero_config = {'timezero_date': timezero_date,
+                           'data_version_date': data_version_date,
+                           'is_season_start': is_season_start}
+        if is_season_start:
+            timezero_config['season_name'] = season_name
+        response = requests.post(f'{self.uri}timezeros/',
+                                 headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
+                                 json={'timezero_config': timezero_config})
+        if response.status_code != 200:  # HTTP_200_OK
+            raise RuntimeError(f"status_code was not 200. status_code={response.status_code}, text={response.text}")
+
+        new_timezero_json = response.json()
+        return TimeZero(self.zoltar_connection, new_timezero_json['url'], new_timezero_json)
 
 
 class Model(ZoltarResource):
