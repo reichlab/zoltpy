@@ -177,11 +177,11 @@ def _validated_rows_for_quantile_csv(csv_fp):
                 error_messages.append(f"invalid FIPS: two characters but not an int: {location_fips!r}. row={row}")
 
         # validate target_name. b/c there are so many possible targets, we generate using a range
-        valid_target_names = [f"{_} day ahead inc death" for _ in range(1, 130)] + \
-                             [f"{_} day ahead cum death" for _ in range(1, 130)] + \
+        valid_target_names = [f"{_} day ahead inc death" for _ in range(1, 131)] + \
+                             [f"{_} day ahead cum death" for _ in range(1, 131)] + \
                              [f"{_} wk ahead inc death" for _ in range(21)] + \
                              [f"{_} wk ahead cum death" for _ in range(21)] + \
-                             [f"{_} day ahead inc hosp" for _ in range(130)]
+                             [f"{_} day ahead inc hosp" for _ in range(131)]
         if target_name not in valid_target_names:
             error_targets.add(target_name)
 
