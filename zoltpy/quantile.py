@@ -149,6 +149,8 @@ def _validated_rows_for_quantile_csv(csv_fp):
         error_messages.append(re.args)
         return [], error_messages  # terminate processing
 
+    error_targets = set()  # output set of invalid target names
+
     rows = []  # list of parsed and validated rows. filled next
     for row in csv_reader:  # either 5 or 6 columns
         if len(row) != len(header):
@@ -175,13 +177,13 @@ def _validated_rows_for_quantile_csv(csv_fp):
                 error_messages.append(f"invalid FIPS: two characters but not an int: {location_fips!r}. row={row}")
 
         # validate target_name. b/c there are so many possible targets, we generate using a range
-        valid_target_names = [f"{_} day ahead inc death" for _ in range(1, 121)] + \
-                             [f"{_} day ahead cum death" for _ in range(1, 121)] + \
+        valid_target_names = [f"{_} day ahead inc death" for _ in range(1, 130)] + \
+                             [f"{_} day ahead cum death" for _ in range(1, 130)] + \
                              [f"{_} wk ahead inc death" for _ in range(21)] + \
                              [f"{_} wk ahead cum death" for _ in range(21)] + \
-                             [f"{_} day ahead inc hosp" for _ in range(121)]
+                             [f"{_} day ahead inc hosp" for _ in range(130)]
         if target_name not in valid_target_names:
-            error_messages.append(f"invalid target name: {target_name!r}. row={row}")
+            error_targets.add(target_name)
 
         row_type = row_type.lower()
         is_point_row = (row_type == CDC_POINT_ROW_TYPE.lower())
@@ -192,8 +194,11 @@ def _validated_rows_for_quantile_csv(csv_fp):
         # NB: recall all targets are "type": "discrete", so we only accept ints and floats
         # if isinstance(value, datetime.date):
         #     value = value.strftime(YYYY_MM_DD_DATE_FORMAT)
-
         rows.append([target_name, location_fips, is_point_row, quantile, value])
+
+    # Add invalid targets to errors
+    if len(error_targets) > 0:
+        error_messages.append(f"invalid target name(s): {error_targets!r}")
 
     return rows, error_messages
 
