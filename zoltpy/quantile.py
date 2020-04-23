@@ -1,11 +1,11 @@
 import csv
 from itertools import groupby
-# prediction classes for use in "JSON IO dict" conversion
 from pathlib import Path
 
 import click
 
 
+# prediction classes for use in "JSON IO dict" conversion
 BIN_DISTRIBUTION_CLASS = 'bin'
 NAMED_DISTRIBUTION_CLASS = 'named'
 POINT_PREDICTION_CLASS = 'point'
@@ -14,6 +14,13 @@ QUANTILE_PREDICTION_CLASS = 'quantile'
 
 # quantile csv I/O
 REQUIRED_COLUMNS = ['location', 'target', 'type', 'quantile', 'value']
+
+# b/c there are so many possible targets, we generate using a range
+VALID_TARGET_NAMES = [f"{_} day ahead inc death" for _ in range(1, 131)] + \
+                     [f"{_} day ahead cum death" for _ in range(1, 131)] + \
+                     [f"{_} wk ahead inc death" for _ in range(21)] + \
+                     [f"{_} wk ahead cum death" for _ in range(21)] + \
+                     [f"{_} day ahead inc hosp" for _ in range(131)]
 
 
 #
@@ -139,6 +146,7 @@ def _validated_rows_for_quantile_csv(csv_fp):
     """
     from zoltpy.cdc import CDC_POINT_ROW_TYPE, parse_value  # avoid circular imports
 
+
     error_messages = []  # list of strings. return value. set below if any issues
 
     csv_reader = csv.reader(csv_fp, delimiter=',')
@@ -176,13 +184,8 @@ def _validated_rows_for_quantile_csv(csv_fp):
             except ValueError:
                 error_messages.append(f"invalid FIPS: two characters but not an int: {location_fips!r}. row={row}")
 
-        # validate target_name. b/c there are so many possible targets, we generate using a range
-        valid_target_names = [f"{_} day ahead inc death" for _ in range(1, 131)] + \
-                             [f"{_} day ahead cum death" for _ in range(1, 131)] + \
-                             [f"{_} wk ahead inc death" for _ in range(21)] + \
-                             [f"{_} wk ahead cum death" for _ in range(21)] + \
-                             [f"{_} day ahead inc hosp" for _ in range(131)]
-        if target_name not in valid_target_names:
+        # validate target_name
+        if target_name not in VALID_TARGET_NAMES:
             error_targets.add(target_name)
 
         row_type = row_type.lower()
