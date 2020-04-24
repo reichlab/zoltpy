@@ -6,6 +6,10 @@ from pathlib import Path
 import click
 
 
+#
+# project-independent variables
+#
+
 # prediction classes for use in "JSON IO dict" conversion
 BIN_DISTRIBUTION_CLASS = 'bin'
 NAMED_DISTRIBUTION_CLASS = 'named'
@@ -16,12 +20,36 @@ QUANTILE_PREDICTION_CLASS = 'quantile'
 # quantile csv I/O
 REQUIRED_COLUMNS = ['location', 'target', 'type', 'quantile', 'value']
 
+#
+# variables specific to the COVID19 project
+#
+
 # b/c there are so many possible targets, we generate using a range
-VALID_TARGET_NAMES = [f"{_} day ahead inc death" for _ in range(1, 131)] + \
-                     [f"{_} day ahead cum death" for _ in range(1, 131)] + \
-                     [f"{_} wk ahead inc death" for _ in range(21)] + \
-                     [f"{_} wk ahead cum death" for _ in range(21)] + \
-                     [f"{_} day ahead inc hosp" for _ in range(131)]
+COVID19_TARGET_NAMES = [f"{_} day ahead inc death" for _ in range(1, 131)] + \
+                       [f"{_} day ahead cum death" for _ in range(1, 131)] + \
+                       [f"{_} wk ahead inc death" for _ in range(21)] + \
+                       [f"{_} wk ahead cum death" for _ in range(21)] + \
+                       [f"{_} day ahead inc hosp" for _ in range(131)]
+
+
+def covid19_row_validator(row, error_messages, target_name, location, row_type, quantile, value):
+    """
+    Does COVID19-specific row validation.
+    """
+    # validate location - https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code
+    # - '01' through '95', and 'US'
+    if len(location) != 2:
+        error_messages.append(f"invalid FIPS: not two characters: {location!r}. row={row}")
+
+    if location != 'US':  # must be a number b/w 1 and 95 inclusive
+        fips_min, fips_max = 1, 95
+        try:
+            fips_int = int(location)
+            if (fips_int < fips_min) or (fips_int > fips_max):
+                error_messages.append(f"invalid FIPS: two character int but out of range {fips_min}-{fips_max}: "
+                                      f"{location!r}")
+        except ValueError:
+            error_messages.append(f"invalid FIPS: two characters but not an int: {location!r}. row={row}")
 
 
 #
@@ -49,7 +77,8 @@ def validate_quantile_csv_file(csv_fp):
     quantile_csv_file = Path(csv_fp)
     click.echo(f"* validating quantile_csv_file '{quantile_csv_file}'...")
     with open(quantile_csv_file) as cdc_csv_fp:
-        _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp)  # toss json_io_dict
+        # toss json_io_dict:
+        _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp, COVID19_TARGET_NAMES, covid19_row_validator)
         if error_messages:
             return error_messages
         else:
@@ -60,7 +89,10 @@ def validate_quantile_csv_file(csv_fp):
 # json_io_dict_from_quantile_csv_file()
 #
 
-def json_io_dict_from_quantile_csv_file(csv_fp):
+# a FIPS code: https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code -
+#         that is, '01' through '95', and 'US'
+
+def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validator=None):
     """
     Utility that validates and extracts the two types of predictions found in quantile CSV files (PointPredictions and
     QuantileDistributions), returning them as a "JSON IO dict" suitable for loading into the database (see
@@ -69,8 +101,7 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
     position, and it ignores all other columns. The required columns are:
 
     - `target`: a unique id for the target
-    - `location`: a FIPS code: https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code -
-        that is, '01' through '95', and 'US'
+    - `location`: translated to Zoltar's `unit` concept.
     - `type`: one of either `point` or `quantile`
     - `quantile`: a value between 0 and 1 (inclusive), representing the quantile displayed in this row. if
         `type=="point"` then `NULL`.
@@ -79,12 +110,24 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
 
     :param csv_fp: an open quantile csv file-like object. the quantile CSV file format is documented at
         https://docs.zoltardata.com/
+    :param valid_target_names: list of strings of valid targets to validate against
+    :param row_validator: an optional function of these seven args that is run to perform additional project-specific
+        validations:
+        - row: the raw row being validated. NB: the order of columns is variable. however, the five application-
+            independent ones are passed separately: target_name, location, row_type, quantile, and value
+        - error_messages: a list of messages that can be appended to as a side effect. callers should be well-behaved
+            and not make any other changes to this list
+        - target_name: application-independent value extracted from row for convenience
+        - location: ""
+        - row_type: ""
+        - quantile: ""
+        - value: ""
     :return 2-tuple: (json_io_dict, error_messages) where the former is a "JSON IO dict" (aka 'json_io_dict' by callers)
         that contains the two types of predictions. see https://docs.zoltardata.com/ for details. json_io_dict is None
         if there were errors
     """
     # load and validate the rows (validation step 1/2). error_messages is one of the the return values (filled next)
-    rows, error_messages = _validated_rows_for_quantile_csv(csv_fp)
+    rows, error_messages = _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator)
 
     if error_messages:
         return None, error_messages  # terminate processing b/c we can't proceed to step 1/2 with invalid rows
@@ -93,7 +136,7 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
     # own dict, but quantile rows are grouped into one dict
     prediction_dicts = []  # the 'predictions' section of the returned value. filled next
     rows.sort(key=lambda _: (_[0], _[1], _[2]))  # sorted for groupby()
-    for (target_name, location_fips, is_point_row), quantile_val_grouper in \
+    for (target_name, location, is_point_row), quantile_val_grouper in \
             groupby(rows, key=lambda _: (_[0], _[1], _[2])):
         # fill values for points and bins. NB: should only be one point row per location/target pair
         point_values = []  # should be at most one, but use a list to help validate
@@ -102,8 +145,8 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
             if is_point_row and not point_values:
                 point_values.append(value)  # quantile is NA
             elif is_point_row:
-                error_messages.append(f"found more than one point value for the same target_name, location_fips. "
-                                      f"target_name={target_name!r}, location_fips={location_fips!r}, "
+                error_messages.append(f"found more than one point value for the same target_name, location. "
+                                      f"target_name={target_name!r}, location={location!r}, "
                                       f"this point value={value}, previous point_value={point_values[0]}")
             else:
                 quant_quantiles.append(quantile)
@@ -115,13 +158,13 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
                 error_messages.append(f"len(point_values) > 1: {point_values}")
 
             point_value = point_values[0]
-            prediction_dicts.append({'unit': location_fips,
+            prediction_dicts.append({'unit': location,
                                      'target': target_name,
                                      'class': POINT_PREDICTION_CLASS,  # PointPrediction
                                      'prediction': {
                                          'value': point_value}})
         if quant_quantiles:
-            prediction_dicts.append({'unit': location_fips,
+            prediction_dicts.append({'unit': location,
                                      'target': target_name,
                                      'class': QUANTILE_PREDICTION_CLASS,  # QuantileDistribution
                                      'prediction': {
@@ -138,11 +181,13 @@ def json_io_dict_from_quantile_csv_file(csv_fp):
     return {'meta': {}, 'predictions': prediction_dicts}, error_messages
 
 
-def _validated_rows_for_quantile_csv(csv_fp):
+def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator):
     """
     `json_io_dict_from_quantile_csv_file()` helper function.
 
     :param csv_fp: as passed to caller
+    :param valid_target_names: as passed to caller
+    :param row_validator: ""
     :return: 2-tuple: (validated_rows, error_messages)
     """
     from zoltpy.cdc import CDC_POINT_ROW_TYPE, parse_value  # avoid circular imports
@@ -161,32 +206,21 @@ def _validated_rows_for_quantile_csv(csv_fp):
     error_targets = set()  # output set of invalid target names
 
     rows = []  # list of parsed and validated rows. filled next
-    for row in csv_reader:  # either 5 or 6 columns
+    for row in csv_reader:
         if len(row) != len(header):
             error_messages.append(f"invalid number of items in row. len(header)={len(header)} but len(row)={len(row)}. "
                                   f"row={row}")
             return [], error_messages  # terminate processing
 
-        target_name, location_fips, row_type, quantile, value = \
+        target_name, location, row_type, quantile, value = \
             row[target_idx], row[location_idx], row[row_type_idx], row[quantile_idx], row[value_idx]
 
-        # validate location_fips - https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code
-        # - '01' through '95', and 'US'
-        if len(location_fips) != 2:
-            error_messages.append(f"invalid FIPS: not two characters: {location_fips!r}. row={row}")
-
-        if location_fips != 'US':  # must be a number b/w 1 and 95 inclusive
-            fips_min, fips_max = 1, 95
-            try:
-                fips_int = int(location_fips)
-                if (fips_int < fips_min) or (fips_int > fips_max):
-                    error_messages.append(f"invalid FIPS: two character int but out of range {fips_min}-{fips_max}: "
-                                          f"{location_fips!r}")
-            except ValueError:
-                error_messages.append(f"invalid FIPS: two characters but not an int: {location_fips!r}. row={row}")
+        # do optional application-specific row validation. NB: error_messages is modified in-place as a side-effect
+        if row_validator:
+            row_validator(row, error_messages, target_name, location, row_type, quantile, value)
 
         # validate target_name
-        if target_name not in VALID_TARGET_NAMES:
+        if target_name not in valid_target_names:
             error_targets.add(target_name)
 
         row_type = row_type.lower()
@@ -198,7 +232,7 @@ def _validated_rows_for_quantile_csv(csv_fp):
         # NB: recall all targets are "type": "discrete", so we only accept ints and floats
         # if isinstance(value, datetime.date):
         #     value = value.strftime(YYYY_MM_DD_DATE_FORMAT)
-        rows.append([target_name, location_fips, is_point_row, quantile, value])
+        rows.append([target_name, location, is_point_row, quantile, value])
 
     # Add invalid targets to errors
     if len(error_targets) > 0:
