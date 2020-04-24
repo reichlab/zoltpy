@@ -18,6 +18,13 @@ class QuantileIOTestCase(TestCase):
                 self.assertEqual(1, mock.call_count)
 
 
+    def test_json_io_dict_from_quantile_csv_file_small_tolerance(self):
+        with open('tests/covid19-forecast-hub_data-processed_examples/2020-04-20-YYG-ParamSearch-small.csv') \
+                as quantile_fp:
+            json_io_dict, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp)
+            self.assertEqual(0, len(act_error_messages))
+
+
     def test_validate_header(self):
         # test various valid headers
         for columns in [REQUIRED_COLUMNS,  # canonical order

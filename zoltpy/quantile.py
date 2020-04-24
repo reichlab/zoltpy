@@ -1,4 +1,5 @@
 import csv
+import math
 from itertools import groupby
 from pathlib import Path
 
@@ -276,7 +277,12 @@ def _validate_quantile_predictions(prediction_dict):
     # per https://stackoverflow.com/questions/7558908/unpacking-a-list-tuple-of-pairs-into-two-lists-tuples
     pred_data_quantiles, pred_data_values = zip(*sorted(zip(pred_data_quantiles, pred_data_values), key=lambda _: _[0]))
 
-    if not all([x <= y for x, y in zip(pred_data_values, pred_data_values[1:])]):
+
+    def le_with_tolerance(a, b):  # a <= b ?
+        return True if math.isclose(a, b, rel_tol=1e-05) else a <= b  # default: rel_tol=1e-09
+
+
+    if not all([le_with_tolerance(a, b) for a, b in zip(pred_data_values, pred_data_values[1:])]):
         error_messages.append(f"Entries in `value` must be non-decreasing as quantiles increase. "
                               f"value column={pred_data_values}, prediction_dict={prediction_dict}")
 
