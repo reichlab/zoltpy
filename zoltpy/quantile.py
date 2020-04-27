@@ -1,4 +1,5 @@
 import csv
+import datetime
 import math
 from itertools import groupby
 from pathlib import Path
@@ -18,7 +19,7 @@ SAMPLE_PREDICTION_CLASS = 'sample'
 QUANTILE_PREDICTION_CLASS = 'quantile'
 
 # quantile csv I/O
-REQUIRED_COLUMNS = ['location', 'target', 'type', 'quantile', 'value']
+REQUIRED_COLUMNS = ('location', 'target', 'type', 'quantile', 'value')
 
 #
 # variables specific to the COVID19 project
@@ -32,12 +33,20 @@ COVID19_TARGET_NAMES = [f"{_} day ahead inc death" for _ in range(1, 131)] + \
                        [f"{_} day ahead inc hosp" for _ in range(131)]
 
 
-def covid19_row_validator(row, error_messages, target_name, location, row_type, quantile, value):
+def covid19_row_validator(column_index_dict, row, error_messages):
     """
-    Does COVID19-specific row validation.
+    Does COVID19-specific row validation. Notes:
+
+    - expects these `valid_target_names` passed to `json_io_dict_from_quantile_csv_file()`: COVID19_TARGET_NAMES
+    - expects these `addl_req_cols` passed to `json_io_dict_from_quantile_csv_file()`: ['forecast_date', 'target_end_date']
+
     """
+    from zoltpy.cdc import YYYY_MM_DD_DATE_FORMAT  # avoid circular imports
+
+
     # validate location - https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code
     # - '01' through '95', and 'US'
+    location = row[column_index_dict['location']]
     if len(location) != 2:
         error_messages.append(f"invalid FIPS: not two characters: {location!r}. row={row}")
 
@@ -50,6 +59,16 @@ def covid19_row_validator(row, error_messages, target_name, location, row_type, 
                                       f"{location!r}")
         except ValueError:
             error_messages.append(f"invalid FIPS: two characters but not an int: {location!r}. row={row}")
+
+    # validate forecast_date and target_end_date date formats
+    forecast_date = row[column_index_dict['forecast_date']]
+    target_end_date = row[column_index_dict['target_end_date']]
+    try:
+        datetime.datetime.strptime(forecast_date, YYYY_MM_DD_DATE_FORMAT)
+        datetime.datetime.strptime(target_end_date, YYYY_MM_DD_DATE_FORMAT)
+    except ValueError:
+        error_messages.append(f"invalid forecast_date or target_end_date format. forecast_date={forecast_date!r}. "
+                              f"target_end_date={target_end_date}. row={row}")
 
 
 #
@@ -92,7 +111,7 @@ def validate_quantile_csv_file(csv_fp):
 # a FIPS code: https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code -
 #         that is, '01' through '95', and 'US'
 
-def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validator=None):
+def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validator=None, addl_req_cols=()):
     """
     Utility that validates and extracts the two types of predictions found in quantile CSV files (PointPredictions and
     QuantileDistributions), returning them as a "JSON IO dict" suitable for loading into the database (see
@@ -111,23 +130,20 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
     :param csv_fp: an open quantile csv file-like object. the quantile CSV file format is documented at
         https://docs.zoltardata.com/
     :param valid_target_names: list of strings of valid targets to validate against
-    :param row_validator: an optional function of these seven args that is run to perform additional project-specific
+    :param row_validator: an optional function of these args that is run to perform additional project-specific
         validations:
-        - row: the raw row being validated. NB: the order of columns is variable. however, the five application-
-            independent ones are passed separately: target_name, location, row_type, quantile, and value
+        - column_index_dict: as returned by _validate_header(): a dict that maps column_name -> its index in header (row)
+        - row: the raw row being validated. NB: the order of columns is variable, but callers can use column_index_dict
+            to index into row
         - error_messages: a list of messages that can be appended to as a side effect. callers should be well-behaved
             and not make any other changes to this list
-        - target_name: application-independent value extracted from row for convenience
-        - location: ""
-        - row_type: ""
-        - quantile: ""
-        - value: ""
+    :param addl_req_cols: an optional list of strings naming columns in addition to REQUIRED_COLUMNS that are required
     :return 2-tuple: (json_io_dict, error_messages) where the former is a "JSON IO dict" (aka 'json_io_dict' by callers)
         that contains the two types of predictions. see https://docs.zoltardata.com/ for details. json_io_dict is None
         if there were errors
     """
     # load and validate the rows (validation step 1/2). error_messages is one of the the return values (filled next)
-    rows, error_messages = _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator)
+    rows, error_messages = _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, addl_req_cols)
 
     if error_messages:
         return None, error_messages  # terminate processing b/c we can't proceed to step 1/2 with invalid rows
@@ -181,16 +197,13 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
     return {'meta': {}, 'predictions': prediction_dicts}, error_messages
 
 
-def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator):
+def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, addl_req_cols):
     """
     `json_io_dict_from_quantile_csv_file()` helper function.
 
-    :param csv_fp: as passed to caller
-    :param valid_target_names: as passed to caller
-    :param row_validator: ""
     :return: 2-tuple: (validated_rows, error_messages)
     """
-    from zoltpy.cdc import CDC_POINT_ROW_TYPE, parse_value  # avoid circular imports
+    from zoltpy.cdc import CDC_POINT_ROW_TYPE, _parse_value  # avoid circular imports
 
 
     error_messages = []  # list of strings. return value. set below if any issues
@@ -198,9 +211,9 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator):
     csv_reader = csv.reader(csv_fp, delimiter=',')
     header = next(csv_reader)
     try:
-        location_idx, target_idx, row_type_idx, quantile_idx, value_idx = _validate_header(header)
+        column_index_dict = _validate_header(header, addl_req_cols)
     except RuntimeError as re:
-        error_messages.append(re.args)
+        error_messages.append(re.args[0])
         return [], error_messages  # terminate processing
 
     error_targets = set()  # output set of invalid target names
@@ -212,12 +225,11 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator):
                                   f"row={row}")
             return [], error_messages  # terminate processing
 
-        target_name, location, row_type, quantile, value = \
-            row[target_idx], row[location_idx], row[row_type_idx], row[quantile_idx], row[value_idx]
-
         # do optional application-specific row validation. NB: error_messages is modified in-place as a side-effect
+        location, target_name, row_type, quantile, value = [row[column_index_dict[column]] for column in
+                                                            REQUIRED_COLUMNS]
         if row_validator:
-            row_validator(row, error_messages, target_name, location, row_type, quantile, value)
+            row_validator(column_index_dict, row, error_messages)
 
         # validate target_name
         if target_name not in valid_target_names:
@@ -225,8 +237,8 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator):
 
         row_type = row_type.lower()
         is_point_row = (row_type == CDC_POINT_ROW_TYPE.lower())
-        quantile = parse_value(quantile)  # None if 'NA'
-        value = parse_value(value)
+        quantile = _parse_value(quantile)  # None if 'NA'
+        value = _parse_value(value)
 
         # convert parsed date back into string suitable for JSON.
         # NB: recall all targets are "type": "discrete", so we only accept ints and floats
@@ -241,19 +253,22 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator):
     return rows, error_messages
 
 
-def _validate_header(header):
+def _validate_header(header, addl_req_cols):
     """
     `json_io_dict_from_quantile_csv_file()` helper function.
 
     :param header: first row from the csv file
-    :return: location_idx, target_idx, row_type_idx, quantile_idx, value_idx
+    :param addl_req_cols: an optional list of strings naming columns in addition to REQUIRED_COLUMNS that are required
+    :return: column_index_dict: a dict that maps column_name -> its index in header
     """
-    counts = [header.count(required_column) == 1 for required_column in REQUIRED_COLUMNS]
+    required_columns = list(REQUIRED_COLUMNS)
+    required_columns.extend(addl_req_cols)
+    counts = [header.count(required_column) == 1 for required_column in required_columns]
     if not all(counts):
         raise RuntimeError(f"invalid header. did not contain the required columns. header={header}, "
-                           f"REQUIRED_COLUMNS={REQUIRED_COLUMNS}")
+                           f"required_columns={required_columns}")
 
-    return [header.index(required_column) for required_column in REQUIRED_COLUMNS]
+    return {column: header.index(column) for column in header}
 
 
 def _validate_quantile_predictions(prediction_dict):

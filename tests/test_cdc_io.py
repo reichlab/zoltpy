@@ -2,7 +2,7 @@ import datetime
 import json
 from unittest import TestCase
 
-from zoltpy.cdc import json_io_dict_from_cdc_csv_file, monday_date_from_ew_and_season_start_year, \
+from zoltpy.cdc import json_io_dict_from_cdc_csv_file, _monday_date_from_ew_and_season_start_year, \
     csv_rows_from_json_io_dict
 
 
@@ -23,7 +23,7 @@ class CdcIOTestCase(TestCase):
                                            (31, 2011, datetime.date(2011, 8, 1)),  # "" EW31 2011
                                            (52, 2011, datetime.date(2011, 12, 26))]  # "" EW52 2011
         for ew_week, season_start_year, exp_monday_date in ew_week_ss_year_exp_monday_date:
-            self.assertEqual(exp_monday_date, monday_date_from_ew_and_season_start_year(ew_week, season_start_year))
+            self.assertEqual(exp_monday_date, _monday_date_from_ew_and_season_start_year(ew_week, season_start_year))
 
 
     def test_json_io_dict_from_cdc_csv_file(self):

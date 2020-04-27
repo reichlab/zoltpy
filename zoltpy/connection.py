@@ -7,13 +7,13 @@ from abc import ABC
 
 import requests
 
-from zoltpy.cdc import YYYY_MM_DD_DATE_FORMAT, parse_value
+from zoltpy.cdc import YYYY_MM_DD_DATE_FORMAT, _parse_value
 
 
 logger = logging.getLogger(__name__)
 
 
-def basic_str(obj):
+def _basic_str(obj):
     """
     Handy for writing quick and dirty __str__() implementations.
     """
@@ -48,7 +48,7 @@ class ZoltarConnection:
 
 
     def __str__(self):  # todo
-        return basic_str(self)
+        return _basic_str(self)
 
 
     def authenticate(self, username, password):
@@ -308,10 +308,10 @@ class Project(ZoltarResource):
         :return: the new TimeZero
         """
         # validate args
-        if not isinstance(parse_value(timezero_date), datetime.date):  # returns a date if valid
+        if not isinstance(_parse_value(timezero_date), datetime.date):  # returns a date if valid
             raise RuntimeError(f"invalid timezero_date={timezero_date}. "
                                f"was not in the format {YYYY_MM_DD_DATE_FORMAT}")
-        elif data_version_date and (not isinstance(parse_value(data_version_date), datetime.date)):
+        elif data_version_date and (not isinstance(_parse_value(data_version_date), datetime.date)):
             raise RuntimeError(f"invalid data_version_date={data_version_date}. "
                                f"was not in the format {YYYY_MM_DD_DATE_FORMAT}")
         elif is_season_start and not season_name:
