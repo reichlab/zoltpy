@@ -139,7 +139,116 @@ class QuantileIOTestCase(TestCase):
             self.assertEqual(exp_error_messages, act_error_messages)
 
 
-    def test_covid_date_validation(self):
+    def test_covid_validation_date_alignment(self):
+        # test [add additional validations #56] - https://github.com/reichlab/covid19-forecast-hub/issues/56
+        # (ensure that people are aligning forecast_date and target_end_date correctly)
+
+        # 2020-04-13-MOBS_NEU-GLEAM_COVID.csv:
+        column_index_dict = {'forecast_date': 0, 'target': 1, 'target_end_date': 2, 'location': 3, 'location_name': 4,
+                             'type': 5, 'quantile': 6, 'value': 7}
+
+        # 1/4) for x day ahead targets the target_end_date should be forecast_date + x
+        row = ["2020-04-13", "1 day ahead cum death", "2020-04-14", "01", "Alabama", "point", "NA",
+               "45.824147927692344"]  # ok: +1
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(0, len(act_error_messages))
+
+        row = ["2020-04-13", "2 day ahead cum death", "2020-04-15", "01", "Alabama", "point", "NA",
+               "48.22952942521442"]  # ok: +2
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(0, len(act_error_messages))
+
+        row = ["2020-04-13", "1 day ahead cum death", "2020-04-15", "01", "Alabama", "point", "NA",
+               "45.824147927692344"]  # bad: +2, not 1
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(1, len(act_error_messages))
+        self.assertIn("invalid target_end_date: was not 1 day(s) after forecast_date", act_error_messages[0])
+
+        # 2/4) for x week ahead targets, weekday(target_end_date) should be a Saturday (case: Sun or Mon)
+        row = ["2020-04-13", "1 wk ahead cum death", "2020-04-18", "01", "Alabama", "point", "NA",
+               "55.800809050176994"]  # ok: Mon -> Sat
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(0, len(act_error_messages))
+
+        row = ["2020-04-13", "2 wk ahead cum death", "2020-04-25", "01", "Alabama", "point", "NA",
+               "71.82206014865048"]  # ok: Mon -> Sat
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(0, len(act_error_messages))
+
+        row = ["2020-04-13", "1 wk ahead cum death", "2020-04-19", "01", "Alabama", "point", "NA",
+               "55.800809050176994"]  # bad: target_end_date is a Sun
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(1, len(act_error_messages))
+        self.assertIn("target_end_date was not a Saturday", act_error_messages[0])
+
+        # 3/4) (case: Sun or Mon) for x week ahead targets, ensure that the 1-week ahead forecast is for the next Sat
+        row = ["2020-04-12", "1 wk ahead cum death", "2020-04-18", "01", "Alabama", "point", "NA",
+               "55.800809050176994"]  # ok: 1 wk ahead Sun -> Sat
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(0, len(act_error_messages))
+
+        row = ["2020-04-13", "1 wk ahead cum death", "2020-04-18", "01", "Alabama", "point", "NA",
+               "55.800809050176994"]  # ok: 1 wk ahead Mon -> Sat
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(0, len(act_error_messages))
+
+        row = ["2020-04-14", "1 wk ahead cum death", "2020-04-18", "01", "Alabama", "point", "NA",
+               "55.800809050176994"]  # bad: 1 wk ahead Tue -> this Sat but s/b next Sat
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(1, len(act_error_messages))
+        self.assertIn("target_end_date was not the expected Saturday", act_error_messages[0])
+
+        row = ["2020-04-13", "2 wk ahead cum death", "2020-04-25", "01", "Alabama", "point", "NA",
+               "71.82206014865048"]  # ok: 2 wk ahead Mon -> next Sat
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(0, len(act_error_messages))
+
+        row = ["2020-04-13", "2 wk ahead cum death", "2020-04-18", "01", "Alabama", "point", "NA",
+               "71.82206014865048"]  # bad: 2 wk ahead Mon -> next Sat
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(1, len(act_error_messages))
+        self.assertIn("target_end_date was not the expected Saturday", act_error_messages[0])
+
+        # 4/4) (case: Tue through Sat) for x week ahead targets, ensures that the 1-week ahead forecast is for the Sat after next
+        row = ["2020-04-14", "1 wk ahead cum death", "2020-04-25", "01", "Alabama", "point", "NA",
+               "55.800809050176994"]  # ok: 1 wk ahead Tue -> next Sat
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(0, len(act_error_messages))
+
+        row = ["2020-04-14", "1 wk ahead cum death", "2020-04-18", "01", "Alabama", "point", "NA",
+               "55.800809050176994"]  # bad: 1 wk ahead Tue -> this Sat, but should be next Sat (2020-04-25)
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(1, len(act_error_messages))
+        self.assertIn("target_end_date was not the expected Saturday", act_error_messages[0])
+
+        row = ["2020-04-13", "2 wk ahead cum death", "2020-04-25", "01", "Alabama", "point", "NA",
+               "71.82206014865048"]  # ok: 2 wk ahead Mon -> next Sat
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(0, len(act_error_messages))
+
+        row = ["2020-04-14", "2 wk ahead cum death", "2020-04-25", "01", "Alabama", "point", "NA",
+               "71.82206014865048"]  # bad: 2 wk ahead Tue -> next Sat
+        act_error_messages = []
+        covid19_row_validator(column_index_dict, row, act_error_messages)
+        self.assertEqual(1, len(act_error_messages))
+        self.assertIn("target_end_date was not the expected Saturday", act_error_messages[0])
+
+
+    def test_covid_validation_date_format(self):
         # test that `covid19_row_validator()` checks these columns are YYYY-MM-DD format: forecast_date, target_end_date
 
         # ok dates: '2020-04-15-Geneva-DeterministicGrowth.csv'
@@ -156,19 +265,14 @@ class QuantileIOTestCase(TestCase):
             _, act_error_messages = \
                 json_io_dict_from_quantile_csv_file(quantile_fp, COVID19_TARGET_NAMES, covid19_row_validator)
             self.assertEqual(1, len(act_error_messages))
-            exp_error_messages = ["invalid forecast_date or target_end_date format. forecast_date='20200415'. "
-                                  "target_end_date=2020-04-16. row=['20200415', '1 day ahead inc death', "
-                                  "'2020-04-16', 'US', 'US', 'point', 'NA', '2232']"]
-            self.assertEqual(exp_error_messages, act_error_messages)
+            self.assertIn("invalid forecast_date or target_end_date format", act_error_messages[0])
 
         # bad date: '2020-04-15-Geneva-DeterministicGrowth_bad_target_end_date.csv'
         with open(test_dir + '2020-04-15-Geneva-DeterministicGrowth_bad_target_end_date.csv') as quantile_fp:
             _, act_error_messages = \
                 json_io_dict_from_quantile_csv_file(quantile_fp, COVID19_TARGET_NAMES, covid19_row_validator)
-            exp_error_messages = ["invalid forecast_date or target_end_date format. forecast_date='2020-04-15'. "
-                                  "target_end_date=20200416. row=['2020-04-15', '1 day ahead inc death', "
-                                  "'20200416', 'US', 'US', 'point', 'NA', '2232']"]
-            self.assertEqual(exp_error_messages, act_error_messages)
+            self.assertEqual(1, len(act_error_messages))
+            self.assertIn("invalid forecast_date or target_end_date format", act_error_messages[0])
 
 
     def test_json_io_dict_from_quantile_csv_file_bad_covid(self):

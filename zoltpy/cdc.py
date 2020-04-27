@@ -306,8 +306,18 @@ def csv_rows_from_json_io_dict(json_io_dict):
 
 
 #
-# numeric functions
+# utility functions
 #
+
+def _parse_date(value_str):
+    """
+    Tries to parse value_str as a date in YYYY_MM_DD_DATE_FORMAT. Returns a datetime.date if valid, or None o/w
+    """
+    try:
+        return datetime.datetime.strptime(value_str, YYYY_MM_DD_DATE_FORMAT).date()
+    except ValueError:
+        return None
+
 
 def _parse_value(value_str):
     """
@@ -323,10 +333,7 @@ def _parse_value(value_str):
     except ValueError:
         pass
 
-    try:
-        return datetime.datetime.strptime(value_str, YYYY_MM_DD_DATE_FORMAT).date()
-    except ValueError:
-        return None
+    return _parse_date(value_str)
 
 
 #
