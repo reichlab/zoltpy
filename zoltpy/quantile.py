@@ -33,7 +33,7 @@ COVID19_TARGET_NAMES = [f"{_} day ahead inc death" for _ in range(1, 131)] + \
                        [f"{_} day ahead inc hosp" for _ in range(131)]
 
 
-def covid19_row_validator(column_index_dict, row, error_messages):
+def covid19_row_validator(column_index_dict, row):
     """
     Does COVID19-specific row validation. Notes:
 
@@ -42,6 +42,8 @@ def covid19_row_validator(column_index_dict, row, error_messages):
     """
     from zoltpy.cdc import _parse_date  # avoid circular imports
 
+
+    error_messages = []  # returned value. filled next
 
     # validate location - https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code
     # - '01' through '95', and 'US'
@@ -67,7 +69,7 @@ def covid19_row_validator(column_index_dict, row, error_messages):
     if not forecast_date or not target_end_date:
         error_messages.append(f"invalid forecast_date or target_end_date format. forecast_date={forecast_date!r}. "
                               f"target_end_date={target_end_date}. row={row}")
-        return  # terminate - remaining validation depends on valid dates
+        return error_messages  # terminate - remaining validation depends on valid dates
 
     # formats are valid. next: validate "__ day ahead" or "__ week ahead" increment - must be an int
     target = row[column_index_dict['target']]
@@ -76,7 +78,7 @@ def covid19_row_validator(column_index_dict, row, error_messages):
             else int(target.split('wk ahead')[0].strip())
     except ValueError:
         error_messages.append(f"non-integer number of weeks ahead in 'wk ahead' target: {target!r}. row={row}")
-        return  # terminate - remaining validation depends on valid step_ahead_increment
+        return error_messages  # terminate - remaining validation depends on valid step_ahead_increment
 
     # validate date alignment
     # 1/4) for x day ahead targets the target_end_date should be forecast_date + x
@@ -91,7 +93,7 @@ def covid19_row_validator(column_index_dict, row, error_messages):
         # 2/4) for x week ahead targets, weekday(target_end_date) should be a Sat
         if weekday_to_sun_based[target_end_date.weekday()] != 7:  # Sat
             error_messages.append(f"target_end_date was not a Saturday: {target_end_date}. row={row}")
-            return  # terminate - remaining validation depends on valid target_end_date
+            return error_messages  # terminate - remaining validation depends on valid target_end_date
 
         # set exp_target_end_date and then validate it
         weekday_diff = datetime.timedelta(days=(abs(weekday_to_sun_based[target_end_date.weekday()] -
@@ -108,6 +110,9 @@ def covid19_row_validator(column_index_dict, row, error_messages):
             error_messages.append(f"target_end_date was not the expected Saturday. forecast_date={forecast_date}, "
                                   f"target_end_date={target_end_date}. exp_target_end_date={exp_target_end_date}, "
                                   f"row={row}")
+
+    # done!
+    return error_messages
 
 
 #
@@ -136,7 +141,8 @@ def validate_quantile_csv_file(csv_fp):
     click.echo(f"* validating quantile_csv_file '{quantile_csv_file}'...")
     with open(quantile_csv_file) as cdc_csv_fp:
         # toss json_io_dict:
-        _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp, COVID19_TARGET_NAMES, covid19_row_validator)
+        _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp, COVID19_TARGET_NAMES, covid19_row_validator,
+                                                                ['forecast_date', 'target_end_date'])
         if error_messages:
             return error_messages
         else:
@@ -167,12 +173,10 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
         https://docs.zoltardata.com/
     :param valid_target_names: list of strings of valid targets to validate against
     :param row_validator: an optional function of these args that is run to perform additional project-specific
-        validations:
+        validations. returns a list of `error_messages`.
         - column_index_dict: as returned by _validate_header(): a dict that maps column_name -> its index in header (row)
         - row: the raw row being validated. NB: the order of columns is variable, but callers can use column_index_dict
             to index into row
-        - error_messages: a list of messages that can be appended to as a side effect. callers should be well-behaved
-            and not make any other changes to this list
     :param addl_req_cols: an optional list of strings naming columns in addition to REQUIRED_COLUMNS that are required
     :return 2-tuple: (json_io_dict, error_messages) where the former is a "JSON IO dict" (aka 'json_io_dict' by callers)
         that contains the two types of predictions. see https://docs.zoltardata.com/ for details. json_io_dict is None
@@ -265,7 +269,7 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
         location, target_name, row_type, quantile, value = [row[column_index_dict[column]] for column in
                                                             REQUIRED_COLUMNS]
         if row_validator:
-            row_validator(column_index_dict, row, error_messages)
+            error_messages.extend(row_validator(column_index_dict, row))
 
         # validate target_name
         if target_name not in valid_target_names:

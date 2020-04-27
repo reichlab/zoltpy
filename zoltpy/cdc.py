@@ -269,7 +269,7 @@ def csv_rows_from_json_io_dict(json_io_dict):
     if 'predictions' not in json_io_dict:
         raise RuntimeError("no predictions section found in json_io_dict")
 
-    rows = [CSV_HEADER]  # returned value. filled next
+    rows = [CSV_HEADER]  # return value. filled next
     for prediction_dict in json_io_dict['predictions']:
         prediction_class = prediction_dict['class']
         if prediction_class not in ['bin', 'named', 'point', 'sample', 'quantile']:
