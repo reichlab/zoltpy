@@ -2,8 +2,10 @@ import json
 from unittest import TestCase
 from unittest.mock import patch
 
-from zoltpy.quantile import json_io_dict_from_quantile_csv_file, _validate_header, REQUIRED_COLUMNS
 from zoltpy.covid19 import COVID19_TARGET_NAMES, covid19_row_validator
+from zoltpy.quantile import json_io_dict_from_quantile_csv_file, _validate_header, REQUIRED_COLUMNS, \
+    quantile_csv_rows_from_json_io_dict
+from zoltpy.util import dataframe_from_json_io_dict
 
 
 class QuantileIOTestCase(TestCase):
@@ -269,3 +271,44 @@ class QuantileIOTestCase(TestCase):
                                                         ['forecast_date', 'target_end_date'])
             self.assertEqual(1, len(error_messages))
             self.assertIn("invalid FIPS location", error_messages[0])
+
+
+    def test_quantile_csv_rows_from_json_io_dict(self):
+        with open('tests/docs-predictions.json') as fp:
+            json_io_dict = json.load(fp)
+
+        # blue sky. note that we hard-code the rows here instead of loading from an expected csv file b/c the latter
+        # reads all values as strings, which means we'd have to cast types based on target. it became too painful :-)
+        exp_rows = [['location', 'target', 'type', 'quantile', 'value'],
+                    ['location1', 'pct next week', 'point', '', 2.1],
+                    ['location2', 'pct next week', 'point', '', 2.0],
+                    ['location2', 'pct next week', 'quantile', 0.025, 1.0],
+                    ['location2', 'pct next week', 'quantile', 0.25, 2.2],
+                    ['location2', 'pct next week', 'quantile', 0.5, 2.2],
+                    ['location2', 'pct next week', 'quantile', 0.75, 5.0],
+                    ['location2', 'pct next week', 'quantile', 0.975, 50.0],
+                    ['location3', 'pct next week', 'point', '', 3.567],
+                    ['location2', 'cases next week', 'point', '', 5],
+                    ['location3', 'cases next week', 'point', '', 10],
+                    ['location3', 'cases next week', 'quantile', 0.25, 0],
+                    ['location3', 'cases next week', 'quantile', 0.75, 50],
+                    ['location1', 'season severity', 'point', '', 'mild'],
+                    ['location2', 'season severity', 'point', '', 'moderate'],
+                    ['location1', 'above baseline', 'point', '', True],
+                    ['location1', 'Season peak week', 'point', '', '2019-12-22'],
+                    ['location2', 'Season peak week', 'point', '', '2020-01-05'],
+                    ['location2', 'Season peak week', 'quantile', 0.5, '2019-12-22'],
+                    ['location2', 'Season peak week', 'quantile', 0.75, '2019-12-29'],
+                    ['location2', 'Season peak week', 'quantile', 0.975, '2020-01-05'],
+                    ['location3', 'Season peak week', 'point', '', '2019-12-29']]
+        act_rows = quantile_csv_rows_from_json_io_dict(json_io_dict)
+        self.assertEqual(exp_rows, act_rows)
+
+
+    # todo move to test_util.py
+    def test_dataframe_from_json_io_dict(self):
+        with open('tests/docs-predictions.json') as fp:
+            json_io_dict = json.load(fp)
+
+        df = dataframe_from_json_io_dict(json_io_dict)
+        self.assertEqual((64, 12), df.shape)

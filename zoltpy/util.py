@@ -10,8 +10,9 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from zoltpy.cdc import json_io_dict_from_cdc_csv_file, csv_rows_from_json_io_dict
+from zoltpy.cdc import json_io_dict_from_cdc_csv_file
 from zoltpy.connection import ZoltarConnection, Project
+from zoltpy.csv_io import csv_rows_from_json_io_dict
 
 
 logger = logging.getLogger(__name__)
@@ -218,18 +219,19 @@ def dataframe_from_rows(rows):
     for row in rows:
         csv_writer.writerow(row)
     string_io.seek(0)
-    return pd.read_csv(string_io, delimiter=",")
+    # dtype=str -> don't convert any numbers. o/w it only coverts columns with uniform type:
+    return pd.read_csv(string_io, delimiter=",", dtype=str)
 
 
 def dataframe_from_json_io_dict(json_io_dict):
-    """Converts the passed native Zoltar json_io_dict to CSV data, returned as
-    a Pandas DataFrame.
+    """
+    Converts the passed native Zoltar json_io_dict to CSV data, returned as a Pandas DataFrame. Does not cast cells to
+    their appropriate type based on target types b/c we do not have target information here.
 
     :param json_io_dict: a json_io_dict as returned by download_forecast()
     :return: a Pandas DataFrame
     """
-    rows = csv_rows_from_json_io_dict(json_io_dict)
-    return dataframe_from_rows(rows)
+    return dataframe_from_rows(csv_rows_from_json_io_dict(json_io_dict))
 
 
 def busy_poll_upload_file_job(upload_file_job):

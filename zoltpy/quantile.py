@@ -9,7 +9,6 @@ from itertools import groupby
 #
 
 # prediction classes for use in "JSON IO dict" conversion
-
 BIN_DISTRIBUTION_CLASS = 'bin'
 NAMED_DISTRIBUTION_CLASS = 'named'
 POINT_PREDICTION_CLASS = 'point'
@@ -270,3 +269,35 @@ def _validate_quantile_prediction_dict(prediction_dict):
 
     # done
     return error_messages
+
+
+#
+# quantile_csv_rows_from_json_io_dict()
+#
+
+QUANTILE_CSV_HEADER = ['location', 'target', 'type', 'value', 'cat', 'prob', 'sample', 'quantile', 'family', 'param1',
+                       'param2', 'param3']
+
+
+def quantile_csv_rows_from_json_io_dict(json_io_dict):
+    """
+    The same as `csv_rows_from_json_io_dict()`, but only returns data in REQUIRED_COLUMNS ('location', 'target', 'type',
+    'quantile', 'value'). However, this function does not cast cells to their appropriate type based on target types b/c
+    we do not have target information here.
+
+    :param json_io_dict: a "JSON IO dict" to load from. see docs for details. the "meta" section is ignored
+    :return: a list of CSV rows including header - see CSV_HEADER
+    """
+    from zoltpy.util import csv_rows_from_json_io_dict  # avoid circular imports
+
+
+    # since we've already implemented `csv_rows_from_json_io_dict()`, our approach is to use it, transforming as needed
+    csv_rows = csv_rows_from_json_io_dict(json_io_dict)
+    csv_rows.pop()  # skip header
+    rows = [list(REQUIRED_COLUMNS)]  # rename the 'class' column to 'type'
+    for location, target, pred_class, value, cat, prob, sample, quantile, family, param1, param2, param3 in csv_rows:
+        if pred_class not in ['point', 'quantile']:  # keep only rows whose 'type' is 'point' or 'quantile'
+            continue
+
+        rows.append([location, target, pred_class, quantile, value])  # keep only quantile-related columns
+    return rows

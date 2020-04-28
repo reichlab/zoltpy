@@ -2,8 +2,8 @@ import datetime
 import json
 from unittest import TestCase
 
-from zoltpy.cdc import json_io_dict_from_cdc_csv_file, _monday_date_from_ew_and_season_start_year, \
-    csv_rows_from_json_io_dict
+from zoltpy.cdc import json_io_dict_from_cdc_csv_file, _monday_date_from_ew_and_season_start_year
+from zoltpy.csv_io import csv_rows_from_json_io_dict
 
 
 class CdcIOTestCase(TestCase):
@@ -49,7 +49,8 @@ class CdcIOTestCase(TestCase):
             csv_rows_from_json_io_dict(json_io_dict)
         self.assertIn('invalid prediction_dict class', str(context.exception))
 
-        # blue sky
+        # blue sky. note that we hard-code the rows here instead of loading from an expected csv file b/c the latter
+        # reads all values as strings, which means we'd have to cast types based on target. it became too painful :-)
         exp_rows = [
             ['location', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'quantile', 'family', 'param1', 'param2',
              'param3'],

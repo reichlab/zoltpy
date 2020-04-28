@@ -25,7 +25,7 @@ def mock_authenticate(conn, username='', password=''):
         return conn
 
 
-class TestConnection(unittest.TestCase):
+class ConnectionTestCase(unittest.TestCase):
     """
     todo implement additional tests
     """
