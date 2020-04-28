@@ -2,8 +2,8 @@ import json
 from unittest import TestCase
 from unittest.mock import patch
 
-from zoltpy.quantile import json_io_dict_from_quantile_csv_file, _validate_header, REQUIRED_COLUMNS, \
-    COVID19_TARGET_NAMES, covid19_row_validator
+from zoltpy.quantile import json_io_dict_from_quantile_csv_file, _validate_header, REQUIRED_COLUMNS
+from zoltpy.covid19 import COVID19_TARGET_NAMES, covid19_row_validator
 
 
 class QuantileIOTestCase(TestCase):

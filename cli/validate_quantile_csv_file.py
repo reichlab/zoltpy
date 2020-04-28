@@ -1,6 +1,6 @@
 import click
 
-from zoltpy.quantile import validate_quantile_csv_file
+from zoltpy.covid19 import validate_quantile_csv_file
 
 
 @click.command()
