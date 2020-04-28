@@ -133,9 +133,9 @@ class QuantileIOTestCase(TestCase):
     def test_json_io_dict_from_quantile_csv_file_dup_points(self):
         with open('tests/quantiles-duplicate-points.csv') as quantile_fp:
             _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, ['1 day ahead cum death'])
-            exp_error_messages = ["found more than one point value for the same target_name, location. "
-                                  "target_name='1 day ahead cum death', location='04', this point value=17, "
-                                  "previous point_value=78"]
+            exp_error_messages = ["Within a Prediction, there cannot be more than 1 Prediction Element of the same "
+                                  "class. Found these duplicate unit/target tuples: "
+                                  "[('04', '1 day ahead cum death', ['point', 'point'])]"]
             self.assertEqual(exp_error_messages, act_error_messages)
 
 
@@ -260,21 +260,12 @@ class QuantileIOTestCase(TestCase):
             self.assertIn("invalid forecast_date or target_end_date format", act_error_messages[0])
 
 
-    def test_json_io_dict_from_quantile_csv_file_bad_covid(self):
-        csv_file_exp_errors = [
-            ('quantiles-bad-row-fip-one-digit.csv', [
-                "invalid FIPS: not two characters: '2'. "
-                "row=['2020-04-15', '1 day ahead inc death', '2020-04-16', '2', 'US', 'point', 'NA', '2232']"]),
-            ('quantiles-bad-row-fip-three-digits.csv', [
-                "invalid FIPS: not two characters: '222'. "
-                "row=['2020-04-15', '1 day ahead inc death', '2020-04-16', '222', 'US', 'point', 'NA', '2232']",
-                "invalid FIPS: two character int but out of range 1-95: '222'"]),
-            ('quantiles-bad-row-fip-bad-two-digits.csv', [
-                "invalid FIPS: two character int but out of range 1-95: '99'"]),
-        ]
-        for csv_file, exp_errors in csv_file_exp_errors:
+    def test_json_io_dict_from_quantile_csv_file_bad_covid_fips_code(self):
+        for csv_file in ['quantiles-bad-row-fip-one-digit.csv', 'quantiles-bad-row-fip-three-digits.csv',
+                         'quantiles-bad-row-fip-bad-two-digits.csv']:
             with open('tests/' + csv_file) as quantile_fp:
-                _, act_error_messages = \
+                _, error_messages = \
                     json_io_dict_from_quantile_csv_file(quantile_fp, COVID19_TARGET_NAMES, covid19_row_validator,
                                                         ['forecast_date', 'target_end_date'])
-                self.assertEqual(exp_errors, act_error_messages)
+            self.assertEqual(1, len(error_messages))
+            self.assertIn("invalid FIPS location", error_messages[0])

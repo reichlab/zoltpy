@@ -1,6 +1,7 @@
 import csv
 import datetime
 import math
+from collections import defaultdict
 from itertools import groupby
 from pathlib import Path
 
@@ -32,6 +33,13 @@ COVID19_TARGET_NAMES = [f"{_} day ahead inc death" for _ in range(1, 131)] + \
                        [f"{_} wk ahead cum death" for _ in range(21)] + \
                        [f"{_} day ahead inc hosp" for _ in range(131)]
 
+# from https://github.com/reichlab/covid19-forecast-hub/blob/master/template/state_fips_codes.csv
+# (probably via https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code )
+VALID_FIPS_STATE_CODES = ['01', '02', '04', '05', '06', '08', '09', '10', '11', '12', '13', '15', '16', '17', '18',
+                          '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33',
+                          '34', '35', '36', '37', '38', '39', '40', '41', '42', '44', '45', '46', '47', '48', '49',
+                          '50', '51', '53', '54', '55', '56', '60', '66', '69', '72', '74', '78', 'US']  # 'US' is extra
+
 
 def covid19_row_validator(column_index_dict, row):
     """
@@ -45,21 +53,10 @@ def covid19_row_validator(column_index_dict, row):
 
     error_messages = []  # returned value. filled next
 
-    # validate location - https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code
-    # - '01' through '95', and 'US'
+    # validate location (FIPS code)
     location = row[column_index_dict['location']]
-    if len(location) != 2:
-        error_messages.append(f"invalid FIPS: not two characters: {location!r}. row={row}")
-
-    if location != 'US':  # must be a number b/w 1 and 95 inclusive
-        fips_min, fips_max = 1, 95
-        try:
-            fips_int = int(location)
-            if (fips_int < fips_min) or (fips_int > fips_max):
-                error_messages.append(f"invalid FIPS: two character int but out of range {fips_min}-{fips_max}: "
-                                      f"{location!r}")
-        except ValueError:
-            error_messages.append(f"invalid FIPS: two characters but not an int: {location!r}. row={row}")
+    if location not in VALID_FIPS_STATE_CODES:
+        error_messages.append(f"invalid FIPS location: {location!r}. row={row}")
 
     # validate forecast_date and target_end_date date formats
     forecast_date = row[column_index_dict['forecast_date']]
@@ -188,32 +185,24 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
     if error_messages:
         return None, error_messages  # terminate processing b/c we can't proceed to step 1/2 with invalid rows
 
-    # collect point and quantile values for each row and then add the actual prediction dicts. each point row has its
-    # own dict, but quantile rows are grouped into one dict
+    # step 1/3: process rows, validating and collecting point and quantile values for each row. then add the actual
+    # prediction dicts. each point row has its own dict, but quantile rows are grouped into one dict.
     prediction_dicts = []  # the 'predictions' section of the returned value. filled next
     rows.sort(key=lambda _: (_[0], _[1], _[2]))  # sorted for groupby()
     for (target_name, location, is_point_row), quantile_val_grouper in \
             groupby(rows, key=lambda _: (_[0], _[1], _[2])):
-        # fill values for points and bins. NB: should only be one point row per location/target pair
-        point_values = []  # should be at most one, but use a list to help validate
+        # fill values for points and bins
+        point_values = []
         quant_quantiles, quant_values = [], []
         for _, _, _, quantile, value in quantile_val_grouper:
-            if is_point_row and not point_values:
+            if is_point_row:
                 point_values.append(value)  # quantile is NA
-            elif is_point_row:
-                error_messages.append(f"found more than one point value for the same target_name, location. "
-                                      f"target_name={target_name!r}, location={location!r}, "
-                                      f"this point value={value}, previous point_value={point_values[0]}")
             else:
                 quant_quantiles.append(quantile)
                 quant_values.append(value)
 
         # add the actual prediction dicts
-        if point_values:
-            if len(point_values) > 1:
-                error_messages.append(f"len(point_values) > 1: {point_values}")
-
-            point_value = point_values[0]
+        for point_value in point_values:
             prediction_dicts.append({'unit': location,
                                      'target': target_name,
                                      'class': POINT_PREDICTION_CLASS,  # PointPrediction
@@ -227,11 +216,27 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
                                          'quantile': quant_quantiles,
                                          'value': quant_values}})
 
-    # validate prediction_dicts (validation step 2/2)
+    # step 2/3: validate individual prediction_dicts. along the way fill loc_targ_to_pred_classes, which helps to do
+    # "prediction"-level validations at the end of this function. it maps 2-tuples to a list of prediction classes
+    # (strs):
+    loc_targ_to_pred_classes = defaultdict(list)  # (unit_name, target_name) -> [prediction_class1, ...]
     for prediction_dict in prediction_dicts:
+        unit_name = prediction_dict['unit']
+        target_name = prediction_dict['target']
+        prediction_class = prediction_dict['class']
+        loc_targ_to_pred_classes[(unit_name, target_name)].append(prediction_class)
         if prediction_dict['class'] == QUANTILE_PREDICTION_CLASS:
-            pred_dict_error_messages = _validate_quantile_predictions(prediction_dict)  # raises o/w
+            pred_dict_error_messages = _validate_quantile_prediction_dict(prediction_dict)  # raises o/w
             error_messages.extend(pred_dict_error_messages)
+
+    # step 3/3: do "prediction"-level validations
+    # validate: "Within a Prediction, there cannot be more than 1 Prediction Element of the same type".
+    duplicate_unit_target_tuples = [(unit, target, pred_classes) for (unit, target), pred_classes
+                                    in loc_targ_to_pred_classes.items()
+                                    if len(pred_classes) != len(set(pred_classes))]
+    if duplicate_unit_target_tuples:
+        error_messages.append(f"Within a Prediction, there cannot be more than 1 Prediction Element of the same class. "
+                              f"Found these duplicate unit/target tuples: {duplicate_unit_target_tuples}")
 
     # done
     return {'meta': {}, 'predictions': prediction_dicts}, error_messages
@@ -311,11 +316,11 @@ def _validate_header(header, addl_req_cols):
     return {column: header.index(column) for column in header}
 
 
-def _validate_quantile_predictions(prediction_dict):
+def _validate_quantile_prediction_dict(prediction_dict):
     """
     `json_io_dict_from_quantile_csv_file()` helper function. Implements the quantile checks at
     https://docs.zoltardata.com/validation/#quantile-prediction-elements . NB: this function is a copy/paste (with
-    simplifications) of Zoltar's `utils.forecast._validate_quantile_predictions()`
+    simplifications) of Zoltar's `utils.forecast._validate_quantile_prediction_dict()`
 
     :param prediction_dict: as documented at https://docs.zoltardata.com/
     :return list of strings, one per error. [] if prediction_dict is valid
