@@ -2,7 +2,7 @@ import datetime
 import json
 from unittest import TestCase
 
-from zoltpy.cdc import json_io_dict_from_cdc_csv_file, _monday_date_from_ew_and_season_start_year
+from zoltpy.cdc_io import json_io_dict_from_cdc_csv_file, _monday_date_from_ew_and_season_start_year
 from zoltpy.csv_io import csv_rows_from_json_io_dict
 
 

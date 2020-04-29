@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from zoltpy.cdc import json_io_dict_from_cdc_csv_file
+from zoltpy.cdc_io import json_io_dict_from_cdc_csv_file
 from zoltpy.connection import ZoltarConnection, Project
 from zoltpy.csv_io import csv_rows_from_json_io_dict
 

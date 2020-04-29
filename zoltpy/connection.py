@@ -7,7 +7,7 @@ from abc import ABC
 
 import requests
 
-from zoltpy.cdc import YYYY_MM_DD_DATE_FORMAT, _parse_value
+from zoltpy.cdc_io import YYYY_MM_DD_DATE_FORMAT, _parse_value
 
 
 logger = logging.getLogger(__name__)

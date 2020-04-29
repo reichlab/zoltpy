@@ -3,7 +3,7 @@ from pathlib import Path
 
 import click
 
-from zoltpy.quantile import json_io_dict_from_quantile_csv_file
+from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file
 
 
 #
@@ -56,7 +56,7 @@ def covid19_row_validator(column_index_dict, row):
     - expects these `valid_target_names` passed to `json_io_dict_from_quantile_csv_file()`: COVID19_TARGET_NAMES
     - expects these `addl_req_cols` passed to `json_io_dict_from_quantile_csv_file()`: ['forecast_date', 'target_end_date']
     """
-    from zoltpy.cdc import _parse_date  # avoid circular imports
+    from zoltpy.cdc_io import _parse_date  # avoid circular imports
 
 
     error_messages = []  # returned value. filled next

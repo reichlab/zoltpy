@@ -132,7 +132,7 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
 
     :return: 2-tuple: (validated_rows, error_messages)
     """
-    from zoltpy.cdc import CDC_POINT_ROW_TYPE, _parse_value  # avoid circular imports
+    from zoltpy.cdc_io import CDC_POINT_ROW_TYPE, _parse_value  # avoid circular imports
 
 
     error_messages = []  # list of strings. return value. set below if any issues
@@ -282,8 +282,7 @@ QUANTILE_CSV_HEADER = ['location', 'target', 'type', 'value', 'cat', 'prob', 'sa
 def quantile_csv_rows_from_json_io_dict(json_io_dict):
     """
     The same as `csv_rows_from_json_io_dict()`, but only returns data in REQUIRED_COLUMNS ('location', 'target', 'type',
-    'quantile', 'value'). However, this function does not cast cells to their appropriate type based on target types b/c
-    we do not have target information here.
+    'quantile', 'value').
 
     :param json_io_dict: a "JSON IO dict" to load from. see docs for details. the "meta" section is ignored
     :return: a list of CSV rows including header - see CSV_HEADER

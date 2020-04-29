@@ -1,9 +1,9 @@
 import json
 import os
 
-from zoltpy.cdc import json_io_dict_from_cdc_csv_file
+from zoltpy.cdc_io import json_io_dict_from_cdc_csv_file
 from zoltpy.connection import ZoltarConnection
-from zoltpy.quantile import json_io_dict_from_quantile_csv_file
+from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file
 from zoltpy.util import busy_poll_upload_file_job, create_project, dataframe_from_json_io_dict, dataframe_from_rows
 
 

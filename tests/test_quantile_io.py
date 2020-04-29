@@ -3,7 +3,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from zoltpy.covid19 import COVID19_TARGET_NAMES, covid19_row_validator
-from zoltpy.quantile import json_io_dict_from_quantile_csv_file, _validate_header, REQUIRED_COLUMNS, \
+from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, _validate_header, REQUIRED_COLUMNS, \
     quantile_csv_rows_from_json_io_dict
 from zoltpy.util import dataframe_from_json_io_dict
 
@@ -35,7 +35,7 @@ class QuantileIOTestCase(TestCase):
 
     def test_json_io_dict_from_quantile_csv_file_calls_validate_header(self):
         column_index_dict = {'target': 0, 'location': 1, 'location_name': 2, 'type': 3, 'quantile': 4, 'value': 5}
-        with patch('zoltpy.quantile._validate_header', return_value=column_index_dict) as mock:
+        with patch('zoltpy.quantile_io._validate_header', return_value=column_index_dict) as mock:
             with open('tests/quantile-predictions.csv') as quantile_fp:
                 json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead cum death'])
                 self.assertEqual(1, mock.call_count)
