@@ -52,7 +52,7 @@ class CdcIOTestCase(TestCase):
         # blue sky. note that we hard-code the rows here instead of loading from an expected csv file b/c the latter
         # reads all values as strings, which means we'd have to cast types based on target. it became too painful :-)
         exp_rows = [
-            ['location', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'quantile', 'family', 'param1', 'param2',
+            ['unit', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'quantile', 'family', 'param1', 'param2',
              'param3'],
             ['location1', 'pct next week', 'point', 2.1, '', '', '', '', '', '', '', ''],
             ['location1', 'pct next week', 'named', '', '', '', '', '', 'norm', 1.1, 2.2, ''],
