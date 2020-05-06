@@ -2,7 +2,7 @@ import json
 from unittest import TestCase
 from unittest.mock import patch
 
-from zoltpy.covid19 import COVID19_TARGET_NAMES, covid19_row_validator
+from zoltpy.covid19 import VALID_TARGET_NAMES, covid19_row_validator
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, _validate_header, REQUIRED_COLUMNS, \
     quantile_csv_rows_from_json_io_dict
 from zoltpy.util import dataframe_from_json_io_dict
@@ -43,7 +43,7 @@ class QuantileIOTestCase(TestCase):
 
     def test_json_io_dict_from_quantile_csv_file_small_tolerance(self):
         with open('tests/covid19-data-processed-examples/2020-04-20-YYG-ParamSearch-small.csv') as quantile_fp:
-            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID19_TARGET_NAMES)
+            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES)
             self.assertEqual(0, len(error_messages))
 
 
@@ -93,7 +93,7 @@ class QuantileIOTestCase(TestCase):
 
     def test_other_ok_quantile_files(self):
         with open('tests/quantiles-CU-60contact.csv') as quantile_fp:
-            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID19_TARGET_NAMES)
+            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES)
             self.assertEqual(0, len(error_messages))
 
 
@@ -107,7 +107,7 @@ class QuantileIOTestCase(TestCase):
             '2020-04-13-MOBS_NEU-GLEAM_COVID.csv']
         for quantile_file in ok_quantile_files:
             with open('tests/covid19-data-processed-examples/' + quantile_file) as quantile_fp:
-                _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID19_TARGET_NAMES)
+                _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES)
                 self.assertEqual(0, len(error_messages))
 
 
@@ -118,7 +118,7 @@ class QuantileIOTestCase(TestCase):
             ('2020-04-15-Geneva-DeterministicGrowth.csv', 1, "invalid target name(s)")]
         for quantile_file, exp_num_errors, exp_message in csv_file_exp_error_count_message:
             with open('tests/covid19-data-processed-examples/' + quantile_file) as quantile_fp:
-                _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID19_TARGET_NAMES)
+                _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES)
                 self.assertEqual(exp_num_errors, len(act_error_messages))
                 self.assertIn(exp_message, act_error_messages[0])  # arbitrarily pick first message. all are similar
 
@@ -126,7 +126,7 @@ class QuantileIOTestCase(TestCase):
     def test_json_io_dict_from_quantile_csv_file_bad_row_count(self):
         with open('tests/quantiles-bad-row-count.csv') as quantile_fp:
             _, act_error_messages = \
-                json_io_dict_from_quantile_csv_file(quantile_fp, COVID19_TARGET_NAMES, covid19_row_validator)
+                json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES, covid19_row_validator)
             exp_errors = ["invalid number of items in row. len(header)=6 but len(row)=5. "
                           "row=['1 wk ahead cum death', 'Alaska', 'point', 'NA', '7.74526423651839']"]
             self.assertEqual(exp_errors, act_error_messages)
@@ -144,10 +144,8 @@ class QuantileIOTestCase(TestCase):
     def test_covid_validation_date_alignment(self):
         # test [add additional validations #56] - https://github.com/reichlab/covid19-forecast-hub/issues/56
         # (ensure that people are aligning forecast_date and target_end_date correctly)
-
-        # 2020-04-13-MOBS_NEU-GLEAM_COVID.csv:
         column_index_dict = {'forecast_date': 0, 'target': 1, 'target_end_date': 2, 'location': 3, 'location_name': 4,
-                             'type': 5, 'quantile': 6, 'value': 7}
+                             'type': 5, 'quantile': 6, 'value': 7}  # 2020-04-13-MOBS_NEU-GLEAM_COVID.csv
 
         # 1/4) for x day ahead targets the target_end_date should be forecast_date + x
         row = ["2020-04-13", "1 day ahead cum death", "2020-04-14", "01", "Alabama", "point", "NA",
@@ -243,23 +241,40 @@ class QuantileIOTestCase(TestCase):
         with open(test_dir + '2020-04-15-Geneva-DeterministicGrowth.csv') as quantile_fp:
             try:
                 _, act_error_messages = \
-                    json_io_dict_from_quantile_csv_file(quantile_fp, COVID19_TARGET_NAMES, covid19_row_validator)
+                    json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES, covid19_row_validator)
             except Exception as ex:
                 self.fail(f"unexpected exception: {ex}")
 
         # bad date: '2020-04-15-Geneva-DeterministicGrowth_bad_forecast_date.csv'
         with open(test_dir + '2020-04-15-Geneva-DeterministicGrowth_bad_forecast_date.csv') as quantile_fp:
             _, act_error_messages = \
-                json_io_dict_from_quantile_csv_file(quantile_fp, COVID19_TARGET_NAMES, covid19_row_validator)
+                json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES, covid19_row_validator)
             self.assertEqual(1, len(act_error_messages))
             self.assertIn("invalid forecast_date or target_end_date format", act_error_messages[0])
 
         # bad date: '2020-04-15-Geneva-DeterministicGrowth_bad_target_end_date.csv'
         with open(test_dir + '2020-04-15-Geneva-DeterministicGrowth_bad_target_end_date.csv') as quantile_fp:
             _, act_error_messages = \
-                json_io_dict_from_quantile_csv_file(quantile_fp, COVID19_TARGET_NAMES, covid19_row_validator)
+                json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES, covid19_row_validator)
             self.assertEqual(1, len(act_error_messages))
             self.assertIn("invalid forecast_date or target_end_date format", act_error_messages[0])
+
+
+    def test_covid_validation_quantiles(self):
+        # tests a quantile not in VALID_QUANTILES
+        column_index_dict = {'forecast_date': 0, 'target': 1, 'target_end_date': 2, 'location': 3, 'location_name': 4,
+                             'type': 5, 'quantile': 6, 'value': 7}  # 2020-04-13-MOBS_NEU-GLEAM_COVID.csv
+
+        row = ["2020-04-13", "1 day ahead cum death", "2020-04-14", "01", "Alabama", "quantile", "0.1",
+               "18.045499696631747"]  # 0.1 is OK (matches 0.100)
+        act_error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(0, len(act_error_messages))
+
+        row = ["2020-04-13", "1 day ahead cum death", "2020-04-14", "01", "Alabama", "quantile", "0.11",
+               "18.045499696631747"]  # 0.11 bad
+        act_error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(1, len(act_error_messages))
+        self.assertIn("invalid quantile: '0.11'", act_error_messages[0])
 
 
     def test_json_io_dict_from_quantile_csv_file_bad_covid_fips_code(self):
@@ -267,7 +282,7 @@ class QuantileIOTestCase(TestCase):
                          'quantiles-bad-row-fip-bad-two-digits.csv']:
             with open('tests/' + csv_file) as quantile_fp:
                 _, error_messages = \
-                    json_io_dict_from_quantile_csv_file(quantile_fp, COVID19_TARGET_NAMES, covid19_row_validator,
+                    json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES, covid19_row_validator,
                                                         ['forecast_date', 'target_end_date'])
             self.assertEqual(1, len(error_messages))
             self.assertIn("invalid FIPS location", error_messages[0])

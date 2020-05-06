@@ -259,9 +259,11 @@ def _validate_quantile_prediction_dict(prediction_dict):
         return True if math.isclose(a, b, rel_tol=1e-05) else a <= b  # default: rel_tol=1e-09
 
 
-    if not all([le_with_tolerance(a, b) for a, b in zip(pred_data_values, pred_data_values[1:])]):
+    is_le_values = [le_with_tolerance(a, b) for a, b in zip(pred_data_values, pred_data_values[1:])]
+    if not all(is_le_values):
         error_messages.append(f"Entries in `value` must be non-decreasing as quantiles increase. "
-                              f"value column={pred_data_values}, prediction_dict={prediction_dict}")
+                              f"value column={pred_data_values}, is_le_values={is_le_values}, "
+                              f"prediction_dict={prediction_dict}")
 
     # validate: "Entries in `value` must obey existing ranges for targets." recall: "The range is assumed to be
     # inclusive on the lower bound and open on the upper bound, # e.g. [a, b)."

@@ -10,19 +10,22 @@ from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file
 # functions specific to the COVID19 project
 #
 
-# b/c there are so many possible targets, we generate using a range
-COVID19_TARGET_NAMES = [f"{_} day ahead inc death" for _ in range(1, 131)] + \
-                       [f"{_} day ahead cum death" for _ in range(1, 131)] + \
-                       [f"{_} wk ahead inc death" for _ in range(21)] + \
-                       [f"{_} wk ahead cum death" for _ in range(21)] + \
-                       [f"{_} day ahead inc hosp" for _ in range(131)]
-
 # from https://github.com/reichlab/covid19-forecast-hub/blob/master/template/state_fips_codes.csv
 # (probably via https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code ):
-VALID_FIPS_STATE_CODES = ['01', '02', '04', '05', '06', '08', '09', '10', '11', '12', '13', '15', '16', '17', '18',
-                          '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33',
-                          '34', '35', '36', '37', '38', '39', '40', '41', '42', '44', '45', '46', '47', '48', '49',
-                          '50', '51', '53', '54', '55', '56', '60', '66', '69', '72', '74', '78', 'US']  # 'US' is extra
+FIPS_STATE_CODES = ['01', '02', '04', '05', '06', '08', '09', '10', '11', '12', '13', '15', '16', '17', '18',
+                    '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31', '32', '33',
+                    '34', '35', '36', '37', '38', '39', '40', '41', '42', '44', '45', '46', '47', '48', '49',
+                    '50', '51', '53', '54', '55', '56', '60', '66', '69', '72', '74', '78', 'US']  # 'US' is extra
+
+# b/c there are so many possible targets, we generate using a range
+VALID_TARGET_NAMES = [f"{_} day ahead inc death" for _ in range(131)] + \
+                     [f"{_} day ahead cum death" for _ in range(131)] + \
+                     [f"{_} wk ahead inc death" for _ in range(1, 21)] + \
+                     [f"{_} wk ahead cum death" for _ in range(1, 21)] + \
+                     [f"{_} day ahead inc hosp" for _ in range(131)]
+
+VALID_QUANTILES = [0.010, 0.025, 0.050, 0.100, 0.150, 0.200, 0.250, 0.300, 0.350, 0.400, 0.450, 0.500, 0.550, 0.600,
+                   0.650, 0.700, 0.750, 0.800, 0.850, 0.900, 0.950, 0.975, 0.990]  # incoming must be a subset of these
 
 
 #
@@ -41,7 +44,7 @@ def validate_quantile_csv_file(csv_fp):
     click.echo(f"* validating quantile_csv_file '{quantile_csv_file}'...")
     with open(quantile_csv_file) as cdc_csv_fp:
         # toss json_io_dict:
-        _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp, COVID19_TARGET_NAMES, covid19_row_validator,
+        _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp, VALID_TARGET_NAMES, covid19_row_validator,
                                                                 ['forecast_date', 'target_end_date'])
         if error_messages:
             return error_messages
@@ -49,11 +52,15 @@ def validate_quantile_csv_file(csv_fp):
             return "no errors"
 
 
+#
+# `json_io_dict_from_quantile_csv_file()` row validator
+#
+
 def covid19_row_validator(column_index_dict, row):
     """
     Does COVID19-specific row validation. Notes:
 
-    - expects these `valid_target_names` passed to `json_io_dict_from_quantile_csv_file()`: COVID19_TARGET_NAMES
+    - expects these `valid_target_names` passed to `json_io_dict_from_quantile_csv_file()`: VALID_TARGET_NAMES
     - expects these `addl_req_cols` passed to `json_io_dict_from_quantile_csv_file()`: ['forecast_date', 'target_end_date']
     """
     from zoltpy.cdc_io import _parse_date  # avoid circular imports
@@ -63,8 +70,17 @@ def covid19_row_validator(column_index_dict, row):
 
     # validate location (FIPS code)
     location = row[column_index_dict['location']]
-    if location not in VALID_FIPS_STATE_CODES:
+    if location not in FIPS_STATE_CODES:
         error_messages.append(f"invalid FIPS location: {location!r}. row={row}")
+
+    # validate quantiles. recall at this point all row values are strings, but VALID_QUANTILES is numbers
+    quantile = row[column_index_dict['quantile']]
+    if row[column_index_dict['type']] == 'quantile':
+        try:
+            if float(quantile) not in VALID_QUANTILES:
+                error_messages.append(f"invalid quantile: {quantile!r}. row={row}")
+        except ValueError:
+            pass  # ignore here - it will be caught by `json_io_dict_from_quantile_csv_file()`
 
     # validate forecast_date and target_end_date date formats
     forecast_date = row[column_index_dict['forecast_date']]
