@@ -251,14 +251,32 @@ class Project(ZoltarResource):
 
     def truth_data(self):
         """
-        :return: the Project's truth data as CSV rows with these columns: `timezero`, `unit`, `target`, `value`. the
-            header row is included
+        :return: the Project's truth data downloaded as CSV rows with these columns: `timezero`, `unit`, `target`,
+            `value`. the header row is included
         """
         truth_data_url = self.zoltar_connection.json_for_uri(self.uri + 'truth/')['truth_data']
         truth_data_response = self.zoltar_connection.json_for_uri(truth_data_url, False, 'text/csv')
         decoded_content = truth_data_response.content.decode('utf-8')
         csv_reader = csv.reader(decoded_content.splitlines(), delimiter=',')
         return list(csv_reader)
+
+
+    def upload_truth_data(self, truth_csv_fp):
+        """
+        Uploads truth data to this project, deleting existing truth if any.
+
+        :param truth_csv_fp: an open truth csv file-like object. the truth CSV file format is documented at
+            https://docs.zoltardata.com/
+        """
+        response = requests.post(self.uri + 'truth/',
+                                 headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
+                                 files={'data_file': truth_csv_fp})
+        if response.status_code != 200:  # HTTP_200_OK
+            raise RuntimeError(f"upload_truth_data(): status code was not 200. status_code={response.status_code}. "
+                               f"text={response.text}")
+
+        upload_file_job_json = response.json()
+        return UploadFileJob(self.zoltar_connection, upload_file_job_json['url'])
 
 
     def score_data(self):

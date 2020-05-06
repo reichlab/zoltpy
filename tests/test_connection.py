@@ -1,9 +1,10 @@
+import json
 import unittest
 from unittest import mock
 from unittest.mock import patch, MagicMock
 
 from zoltpy.connection import ZoltarConnection, ZoltarSession, ZoltarResource, Project, Model, Unit, Target, TimeZero, \
-    Forecast
+    Forecast, UploadFileJob
 
 
 # MOCK_TOKEN is an expired token as returned by zoltar. decoded contents:
@@ -140,6 +141,26 @@ class ConnectionTestCase(unittest.TestCase):
         self.assertEqual("docs-predictions.json", forecast_0.source)
 
 
+    @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
+    def test_upload_truth(self, json_for_uri_mock):
+        conn = mock_authenticate(ZoltarConnection('http://example.com'))
+        project = Project(conn, 'http://example.com/api/project/3/')
+
+        # test valid POST args
+        with open('tests/upload-file-job-2.json') as ufj_fp, \
+                open('tests/docs-ground-truth.csv') as csv_fp, \
+                patch('requests.post') as post_mock:
+            upload_file_job_json = json.load(ufj_fp)
+            post_mock.return_value.status_code = 200
+            post_return_value = upload_file_job_json
+            post_mock.return_value.json = MagicMock(return_value=post_return_value)
+            act_upload_file_job = project.upload_truth_data(csv_fp)
+            self.assertEqual(1, post_mock.call_count)
+            self.assertEqual('http://example.com/api/project/3/truth/', post_mock.call_args[0][0])
+            self.assertIsInstance(act_upload_file_job, UploadFileJob)
+            self.assertEqual(upload_file_job_json['url'], act_upload_file_job.uri)
+
+
     def test_create_timezero(self):
         conn = mock_authenticate(ZoltarConnection('http://example.com'))
         with patch('zoltpy.connection.ZoltarConnection.json_for_uri', return_value=PROJECTS_LIST_DICTS):
@@ -160,7 +181,7 @@ class ConnectionTestCase(unittest.TestCase):
                 except Exception as ex:
                     self.fail(f"unexpected exception: {ex}")
 
-        # test valid POST arg
+        # test valid POST args
         with patch('requests.post') as post_mock:
             post_mock.return_value.status_code = 200
             post_return_value = {"id": 705,
@@ -169,7 +190,7 @@ class ConnectionTestCase(unittest.TestCase):
                                  "data_version_date": "2011-10-03",
                                  "is_season_start": True,
                                  "season_name": "2011-2012"}
-            post_mock.return_value.json = MagicMock(return_value=post_return_value, )
+            post_mock.return_value.json = MagicMock(return_value=post_return_value)
             try:
                 project.create_timezero("2011-10-02", "2011-10-03", True, "2011-2012")
                 post_mock.assert_called_once()

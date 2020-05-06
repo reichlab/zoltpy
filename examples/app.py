@@ -105,6 +105,13 @@ def zoltar_connection_app():
     project = create_project(conn, "examples/docs-project.json")  # "name": "My project"
     print(f"- created project: {project}")
 
+    # upload truth
+    print(f"\n* uploading truth")
+    with open('tests/docs-ground-truth.csv') as csv_fp:
+        upload_file_job = project.upload_truth_data(csv_fp)
+    busy_poll_upload_file_job(upload_file_job)
+    print(f"- upload truth done")
+
     # create a model and then upload a forecast
     print(f"\n* creating model")
     with open("examples/example-model-config.json") as fp:
