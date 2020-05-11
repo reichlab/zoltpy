@@ -418,7 +418,7 @@ class Forecast(ZoltarResource):
 
     @property
     def timezero(self):
-        return TimeZero(self.zoltar_connection, self.json['time_zero'])
+        return TimeZero(self.zoltar_connection, self.uri, self.json['time_zero'])
 
 
     @property
