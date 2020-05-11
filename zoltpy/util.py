@@ -67,7 +67,7 @@ def delete_forecast(conn, project_name, model_name, timezero_date):
     conn.re_authenticate_if_necessary()
     project = [project for project in conn.projects if project.name == project_name][0]
     model = [model for model in project.models if model.name == model_name][0]
-    forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
+    forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero.timezero_date == timezero_date]
     if forecast_for_tz_date:
         existing_forecast = forecast_for_tz_date[0]
         logger.info(
