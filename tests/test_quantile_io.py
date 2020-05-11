@@ -136,9 +136,20 @@ class QuantileIOTestCase(TestCase):
         with open('tests/quantiles-duplicate-points.csv') as quantile_fp:
             _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, ['1 day ahead cum death'])
             exp_error_messages = ["Within a Prediction, there cannot be more than 1 Prediction Element of the same "
-                                  "class. Found these duplicate unit/target tuples: "
-                                  "[('04', '1 day ahead cum death', ['point', 'point'])]"]
+                                  "class. Found these duplicate unit/target/classes tuples: [('04', '1 day ahead "
+                                  "cum death', ['point', 'point'])]",
+                                  "There must be exactly one point prediction for each location/target pair. Found "
+                                  "these unit, target, point counts tuples did not have exactly one point: [('04', "
+                                  "'1 day ahead cum death', 2)]"]
             self.assertEqual(exp_error_messages, act_error_messages)
+
+
+    def test_json_io_dict_from_quantile_csv_file_no_points(self):
+        with open('tests/quantile-predictions-no-point.csv') as quantile_fp:
+            _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, ['1 day ahead cum death', '1 wk ahead cum death'])
+            self.assertEqual(1, len(act_error_messages))
+            self.assertIn("There must be exactly one point prediction for each location/target pair",
+                          act_error_messages[0])
 
 
     def test_covid_validation_date_alignment(self):

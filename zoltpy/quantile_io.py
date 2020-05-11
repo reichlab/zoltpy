@@ -120,7 +120,16 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
                                     if len(pred_classes) != len(set(pred_classes))]
     if duplicate_unit_target_tuples:
         error_messages.append(f"Within a Prediction, there cannot be more than 1 Prediction Element of the same class. "
-                              f"Found these duplicate unit/target tuples: {duplicate_unit_target_tuples}")
+                              f"Found these duplicate unit/target/classes tuples: {duplicate_unit_target_tuples}")
+
+    # validate: "There must be exactly one point prediction for each location/target pair"
+    unit_target_point_count = [(unit, target, pred_classes.count('point')) for (unit, target), pred_classes
+                               in loc_targ_to_pred_classes.items()
+                               if pred_classes.count('point') != 1]
+    if unit_target_point_count:
+        error_messages.append(f"There must be exactly one point prediction for each location/target pair. Found these "
+                              f"unit, target, point counts tuples did not have exactly one point: "
+                              f"{unit_target_point_count}")
 
     # done
     return {'meta': {}, 'predictions': prediction_dicts}, error_messages
