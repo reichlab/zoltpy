@@ -111,7 +111,7 @@ class ZoltarSession:  # internal use
         :return: True if my token is expired, and False o/w
         """
         # see zoltr: is_token_expired(), token_expiration_date()
-        return True  # todo xx fix!
+        return True  # todo fix!
 
 
 class ZoltarResource(ABC):
@@ -153,7 +153,7 @@ class ZoltarResource(ABC):
 
 
     @property
-    def id(self):  # todo xx rename to not conflict with `id` builtin
+    def id(self):  # todo rename to not conflict with `id` builtin
         return ZoltarResource.id_for_uri(self.uri)
 
 
@@ -418,7 +418,7 @@ class Forecast(ZoltarResource):
 
     @property
     def timezero(self):
-        return TimeZero(self.zoltar_connection, self.json['time_zero'])
+        return TimeZero(self.zoltar_connection, self.json['time_zero']['url'], self.json['time_zero'])
 
 
     @property
