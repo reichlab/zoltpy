@@ -112,7 +112,7 @@ def zoltar_connection_app():
     busy_poll_upload_file_job(upload_file_job)
     print(f"- upload truth done")
 
-    # create a model and then upload a forecast
+    # create a model, upload a forecast, then delete it
     print(f"\n* creating model")
     with open("examples/example-model-config.json") as fp:
         model = project.create_model(json.load(fp))
@@ -123,10 +123,14 @@ def zoltar_connection_app():
         json_io_dict = json.load(fp)
         upload_file_job = model.upload_forecast(json_io_dict, "docs-predictions.json", "2011-10-02", "some predictions")
     busy_poll_upload_file_job(upload_file_job)
-    print(f"- uploaded forecast: {upload_file_job.created_forecast()}")
+    new_forecast = upload_file_job.created_forecast()
+    print(f"- uploaded forecast: {new_forecast}")
 
     model.refresh()
     print(f'\n* post-upload forecasts: {model.forecasts}')
+
+    print(f"\n* deleting forecast: {new_forecast}")
+    print(f"- deleting forecast: done")
 
     # clean up by deleting the sandbox project. NB: This will delete all of the data associated with the project without
     # warning, including models and forecasts

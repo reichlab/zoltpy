@@ -182,7 +182,7 @@ class ZoltarResource(ABC):
     def delete(self):
         response = requests.delete(self.uri, headers={'Accept': 'application/json; indent=4',
                                                       'Authorization': f'JWT {self.zoltar_connection.session.token}'})
-        if response.status_code != 204:  # HTTP_204_NO_CONTENT
+        if (response.status_code != 202) and (response.status_code != 204):  # HTTP_204_NO_CONTENT, HTTP_204_NO_CONTENT
             raise RuntimeError(f'delete_resource(): status code was not 204: {response.status_code}. {response.text}')
 
 
