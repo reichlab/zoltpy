@@ -182,8 +182,10 @@ class ZoltarResource(ABC):
     def delete(self):
         response = requests.delete(self.uri, headers={'Accept': 'application/json; indent=4',
                                                       'Authorization': f'JWT {self.zoltar_connection.session.token}'})
-        if (response.status_code != 202) and (response.status_code != 204):  # HTTP_204_NO_CONTENT, HTTP_204_NO_CONTENT
+        if (response.status_code != 200) and (response.status_code != 204):  # HTTP_200_OK, HTTP_204_NO_CONTENT
             raise RuntimeError(f'delete_resource(): status code was not 204: {response.status_code}. {response.text}')
+
+        return response
 
 
 class Project(ZoltarResource):
@@ -417,6 +419,15 @@ class Forecast(ZoltarResource):
         super().__init__(zoltar_connection, uri, initial_json)
 
 
+    def delete(self):
+        """
+        Does the usual delete, but returns a Job for it. (Deleting a forecasts is an enqueued operation.)
+        """
+        response = super().delete()
+        job_json = response.json()
+        return Job(self.zoltar_connection, job_json['url'], job_json)
+
+
     @property
     def timezero(self):
         return TimeZero(self.zoltar_connection, self.json['time_zero']['url'], self.json['time_zero'])
@@ -537,8 +548,8 @@ class Job(ZoltarResource):
     }
 
 
-    def __init__(self, zoltar_connection, uri):
-        super().__init__(zoltar_connection, uri)
+    def __init__(self, zoltar_connection, uri, initial_json=None):
+        super().__init__(zoltar_connection, uri, initial_json)
 
 
     def __repr__(self):

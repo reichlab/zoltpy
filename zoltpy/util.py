@@ -11,7 +11,7 @@ import pandas as pd
 import requests
 
 from zoltpy.cdc_io import json_io_dict_from_cdc_csv_file
-from zoltpy.connection import ZoltarConnection, Project
+from zoltpy.connection import ZoltarConnection, Project, Job
 from zoltpy.csv_io import csv_rows_from_json_io_dict
 
 
@@ -64,6 +64,7 @@ def delete_forecast(conn, project_name, model_name, timezero_date):
     :param project_name: name of the Project that contains model_name
     :param model_name: name of the Model that contains a Forecast for timezero_date
     :param timezero_date: YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
+    :return: a Job to use to track the deletion, or None if the forecast was not found
     """
     conn.re_authenticate_if_necessary()
     project = [project for project in conn.projects if project.name == project_name][0]
@@ -75,10 +76,12 @@ def delete_forecast(conn, project_name, model_name, timezero_date):
         logger.info(
             f"delete_forecast(): deleting existing forecast. model={model.id}, timezero_date={timezero_date}, "
             f"existing_forecast={existing_forecast.id}")
-        existing_forecast.delete()
+        job = existing_forecast.delete()
         logger.info(f"delete_forecast(): delete done")
+        return job
     else:
         logger.info(f"delete_forecast(): no existing forecast. model={model.id}, timezero_date={timezero_date}")
+        return None
 
 
 def delete_model(conn, project_name, model_name):

@@ -2,7 +2,7 @@ import json
 import os
 
 from zoltpy.cdc_io import json_io_dict_from_cdc_csv_file
-from zoltpy.connection import ZoltarConnection
+from zoltpy.connection import ZoltarConnection, Job
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file
 from zoltpy.util import busy_poll_job, create_project, dataframe_from_json_io_dict, dataframe_from_rows
 
@@ -130,6 +130,8 @@ def zoltar_connection_app():
     print(f'\n* post-upload forecasts: {model.forecasts}')
 
     print(f"\n* deleting forecast: {new_forecast}")
+    job = new_forecast.delete()
+    busy_poll_job(job)
     print(f"- deleting forecast: done")
 
     # clean up by deleting the sandbox project. NB: This will delete all of the data associated with the project without
