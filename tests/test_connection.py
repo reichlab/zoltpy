@@ -4,7 +4,7 @@ from unittest import mock
 from unittest.mock import patch, MagicMock
 
 from zoltpy.connection import ZoltarConnection, ZoltarSession, ZoltarResource, Project, Model, Unit, Target, TimeZero, \
-    Forecast, UploadFileJob
+    Forecast, Job
 
 
 # MOCK_TOKEN is an expired token as returned by zoltar. decoded contents:
@@ -147,18 +147,18 @@ class ConnectionTestCase(unittest.TestCase):
         project = Project(conn, 'http://example.com/api/project/3/')
 
         # test valid POST args
-        with open('tests/upload-file-job-2.json') as ufj_fp, \
+        with open('tests/job-2.json') as ufj_fp, \
                 open('tests/docs-ground-truth.csv') as csv_fp, \
                 patch('requests.post') as post_mock:
-            upload_file_job_json = json.load(ufj_fp)
+            job_json = json.load(ufj_fp)
             post_mock.return_value.status_code = 200
-            post_return_value = upload_file_job_json
+            post_return_value = job_json
             post_mock.return_value.json = MagicMock(return_value=post_return_value)
-            act_upload_file_job = project.upload_truth_data(csv_fp)
+            act_job_json = project.upload_truth_data(csv_fp)
             self.assertEqual(1, post_mock.call_count)
             self.assertEqual('http://example.com/api/project/3/truth/', post_mock.call_args[0][0])
-            self.assertIsInstance(act_upload_file_job, UploadFileJob)
-            self.assertEqual(upload_file_job_json['url'], act_upload_file_job.uri)
+            self.assertIsInstance(act_job_json, Job)
+            self.assertEqual(job_json['url'], act_job_json.uri)
 
 
     def test_create_timezero(self):

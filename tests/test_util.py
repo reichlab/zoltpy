@@ -24,7 +24,7 @@ class UtilTestCase(TestCase):
       - no existing project
       - no existing model
       - calls model.upload_forecast()
-      - calls busy_poll_upload_file_job()
+      - calls busy_poll_job()
     - ! upload_forecast_batch():
       - no existing project
       - no existing model
@@ -32,7 +32,7 @@ class UtilTestCase(TestCase):
       - 'no forecasts to upload'
       - can take filename string or json_io_dict
       - calls model.upload_forecast() on each
-      - returns the last upload_file_job
+      - returns the last job
     - download_forecast():
       - no existing project
       - no existing model

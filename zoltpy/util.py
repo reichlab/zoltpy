@@ -117,8 +117,8 @@ def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_n
     :param timezero_date: YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
     :param notes: optional user notes for the new forecast
     :param overwrite: True if you would like to overwrite the existing forecast for that timezero_date. Default is False
-    :return: an UploadFileJob. it can be polled for status via busy_poll_upload_file_job(), and then the new forecast
-        can be obtained via upload_file_job.output_json['forecast_pk']
+    :return: a Job. it can be polled for status via busy_poll_job(), and then the new forecast
+        can be obtained via job.output_json['forecast_pk']
     """
     conn.re_authenticate_if_necessary()
 
@@ -145,8 +145,8 @@ def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_n
             predx_json, forecast_filename = util.convert_cdc_csv_to_json_io_dict(forecast_file_path)""")
             sys.exit(1)
 
-    upload_file_job = model.upload_forecast(json_io_dict, forecast_filename, timezero_date, notes)
-    return busy_poll_upload_file_job(upload_file_job)
+    job = model.upload_forecast(json_io_dict, forecast_filename, timezero_date, notes)
+    return busy_poll_job(job)
 
 
 def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, project_name, model_name,
@@ -162,8 +162,8 @@ def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, pro
     :param model_name: name of the Model that contains a Forecast for timezero_date
     :param timezero_date_batch: an list of YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03', , paired with json_io_dict_batch
     :param overwrite: True if you would like to overwrite the existing forecast for that timezero_date. Default is False
-    :return: the last UploadFileJob. it can be polled for status via busy_poll_upload_file_job(), and then the new
-        forecast can be obtained via upload_file_job.output_json['forecast_pk']. returns None if no uploads were done
+    :return: the last Job. it can be polled for status via busy_poll_job(), and then the new
+        forecast can be obtained via job.output_json['forecast_pk']. returns None if no uploads were done
     """
     if not (len(json_io_dict_batch) == len(forecast_filename_batch) == len(timezero_date_batch)):
         raise RuntimeError(f"batch args had different lengths: json_io_dict_batch, forecast_filename_batch, "
@@ -178,16 +178,16 @@ def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, pro
     model = [model for model in models if model.name == model_name][0]
 
     print(f"uploading {len(json_io_dict_batch)} forecasts...")
-    upload_file_jobs = []
+    jobs = []
     for json_io_dict, forecast_filename, timezero_date in \
             zip(json_io_dict_batch, forecast_filename_batch, timezero_date_batch):
         print(f"uploading {project_name!r} project, {model_name!r} model, {timezero_date !r} timezero...")
         if overwrite:
             delete_forecast(conn, project_name, model_name, timezero_date)
-        upload_file_job = model.upload_forecast(json_io_dict, forecast_filename, timezero_date)
-        upload_file_jobs.append(upload_file_job)
+        job = model.upload_forecast(json_io_dict, forecast_filename, timezero_date)
+        jobs.append(job)
         print("upload complete")
-    return upload_file_jobs[-1] if upload_file_jobs else None
+    return jobs[-1] if jobs else None
 
 
 def download_forecast(conn, project_name, model_name, timezero_date):
@@ -236,13 +236,14 @@ def dataframe_from_json_io_dict(json_io_dict):
     return dataframe_from_rows(csv_rows_from_json_io_dict(json_io_dict))
 
 
-def busy_poll_upload_file_job(upload_file_job):
-    """A simple utility that polls upload_file_job's status every second until
-    either success or failure."""
-    print(f"\n* polling for status change. upload_file_job: {upload_file_job}")
+def busy_poll_job(job):
+    """
+    A simple utility that polls job's status every second until either success or failure.
+    """
+    print(f"\n* polling for status change. job: {job}")
     while True:
-        status = upload_file_job.status_as_str
-        failure_message = upload_file_job.json["failure_message"]
+        status = job.status_as_str
+        failure_message = job.json["failure_message"]
         print(f"- {status}")
         if status == "FAILED":
             print("x FAILED")
@@ -251,7 +252,7 @@ def busy_poll_upload_file_job(upload_file_job):
         if status == "SUCCESS":
             break
         time.sleep(1)
-        upload_file_job.refresh()
+        job.refresh()
 
 
 def authenticate(env_user="Z_USERNAME", env_pass="Z_PASSWORD"):

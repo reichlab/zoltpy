@@ -1,6 +1,6 @@
 {
   "id": 2,
-  "url": "http://example.com/api/uploadfilejob/2/",
+  "url": "http://example.com/api/job/2/",
   "status": 4,
   "user": "http://example.com/api/user/3/",
   "created_at": "2019-03-26T14:55:31.028436-04:00",

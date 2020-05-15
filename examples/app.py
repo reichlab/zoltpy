@@ -4,7 +4,7 @@ import os
 from zoltpy.cdc_io import json_io_dict_from_cdc_csv_file
 from zoltpy.connection import ZoltarConnection
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file
-from zoltpy.util import busy_poll_upload_file_job, create_project, dataframe_from_json_io_dict, dataframe_from_rows
+from zoltpy.util import busy_poll_job, create_project, dataframe_from_json_io_dict, dataframe_from_rows
 
 
 def zoltar_connection_app():
@@ -108,8 +108,8 @@ def zoltar_connection_app():
     # upload truth
     print(f"\n* uploading truth")
     with open('tests/docs-ground-truth.csv') as csv_fp:
-        upload_file_job = project.upload_truth_data(csv_fp)
-    busy_poll_upload_file_job(upload_file_job)
+        job = project.upload_truth_data(csv_fp)
+    busy_poll_job(job)
     print(f"- upload truth done")
 
     # create a model, upload a forecast, then delete it
@@ -121,9 +121,9 @@ def zoltar_connection_app():
     print(f"\n* uploading forecast. pre-upload forecasts: {model.forecasts}")
     with open("examples/docs-predictions.json") as fp:
         json_io_dict = json.load(fp)
-        upload_file_job = model.upload_forecast(json_io_dict, "docs-predictions.json", "2011-10-02", "some predictions")
-    busy_poll_upload_file_job(upload_file_job)
-    new_forecast = upload_file_job.created_forecast()
+        job = model.upload_forecast(json_io_dict, "docs-predictions.json", "2011-10-02", "some predictions")
+    busy_poll_job(job)
+    new_forecast = job.created_forecast()
     print(f"- uploaded forecast: {new_forecast}")
 
     model.refresh()

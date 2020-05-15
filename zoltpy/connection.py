@@ -267,6 +267,7 @@ class Project(ZoltarResource):
 
         :param truth_csv_fp: an open truth csv file-like object. the truth CSV file format is documented at
             https://docs.zoltardata.com/
+        :return: a Job to use to track the upload
         """
         response = requests.post(self.uri + 'truth/',
                                  headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
@@ -275,8 +276,8 @@ class Project(ZoltarResource):
             raise RuntimeError(f"upload_truth_data(): status code was not 200. status_code={response.status_code}. "
                                f"text={response.text}")
 
-        upload_file_job_json = response.json()
-        return UploadFileJob(self.zoltar_connection, upload_file_job_json['url'])
+        job_json = response.json()
+        return Job(self.zoltar_connection, job_json['url'])
 
 
     def score_data(self):
@@ -390,7 +391,7 @@ class Model(ZoltarResource):
         :param timezero_date: timezero to upload to YYYY-MM-DD DATE FORMAT
         :param source: source to associate with the uploaded data
         :param notes: optional user notes for the new forecast
-        :return: an UploadFileJob
+        :return: a Job to use to track the upload
         """
         self.zoltar_connection.re_authenticate_if_necessary()
         with tempfile.TemporaryFile("r+") as forecast_json_fp:
@@ -404,8 +405,8 @@ class Model(ZoltarResource):
                 raise RuntimeError(f"upload_forecast(): status code was not 200. status_code={response.status_code}. "
                                    f"text={response.text}")
 
-            upload_file_job_json = response.json()
-            return UploadFileJob(self.zoltar_connection, upload_file_job_json['url'])
+            job_json = response.json()
+            return Job(self.zoltar_connection, job_json['url'])
 
 
 class Forecast(ZoltarResource):
@@ -525,7 +526,7 @@ class TimeZero(ZoltarResource):
         return self.json['season_name']
 
 
-class UploadFileJob(ZoltarResource):
+class Job(ZoltarResource):
     STATUS_ID_TO_STR = {
         0: 'PENDING',
         1: 'CLOUD_FILE_UPLOADED',
@@ -558,14 +559,14 @@ class UploadFileJob(ZoltarResource):
     @property
     def status_as_str(self):
         status_int = self.json['status']
-        return UploadFileJob.STATUS_ID_TO_STR[status_int]
+        return Job.STATUS_ID_TO_STR[status_int]
 
 
     def created_forecast(self):
         """
         A helper function that returns the newly-uploaded Forecast.
 
-        :return: the new Forecast that this uploaded created, or None if the UploadFileJob was for a non-forecast
+        :return: the new Forecast that this uploaded created, or None if the Job was for a non-forecast
             upload.
         """
         if 'forecast_pk' not in self.output_json:
