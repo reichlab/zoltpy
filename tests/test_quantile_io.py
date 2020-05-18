@@ -146,10 +146,25 @@ class QuantileIOTestCase(TestCase):
 
     def test_json_io_dict_from_quantile_csv_file_no_points(self):
         with open('tests/quantile-predictions-no-point.csv') as quantile_fp:
-            _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, ['1 day ahead cum death', '1 wk ahead cum death'])
+            _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, ['1 day ahead cum death',
+                                                                                      '1 wk ahead cum death'])
             self.assertEqual(1, len(act_error_messages))
             self.assertIn("There must be exactly one point prediction for each location/target pair",
                           act_error_messages[0])
+
+
+    def test_json_io_dict_from_quantile_csv_file_nan(self):
+        with open('tests/quantile-predictions-nan-point.csv') as quantile_fp:
+            _, error_messages = \
+                json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead cum death'])
+            self.assertEqual(1, len(error_messages))
+            self.assertIn('entries in the `value` column must be an int or float', error_messages[0])
+
+        with open('tests/quantile-predictions-nan-quantile.csv') as quantile_fp:
+            _, error_messages = \
+                json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead cum death'])
+            self.assertEqual(1, len(error_messages))
+            self.assertIn('entries in the `quantile` column must be an int or float in [0, 1]', error_messages[0])
 
 
     def test_covid_validation_date_alignment(self):
