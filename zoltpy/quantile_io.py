@@ -1,6 +1,7 @@
 import csv
 import math
 from collections import defaultdict
+import datetime
 from itertools import groupby
 
 
@@ -173,10 +174,21 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
         if target_name not in valid_target_names:
             error_targets.add(target_name)
 
+        # validate quantile and value
         row_type = row_type.lower()
         is_point_row = (row_type == CDC_POINT_ROW_TYPE.lower())
-        quantile = _parse_value(quantile)  # None if 'NA'
-        value = _parse_value(value)
+        quantile = _parse_value(quantile)  # None if not an int, float, or Date. float might be inf or nan
+        value = _parse_value(value)  # ""
+        if (not is_point_row) and ((quantile is None) or
+                                   (isinstance(quantile, datetime.date)) or
+                                   (not math.isfinite(quantile)) or  # inf, nan
+                                   not (0 <= quantile <= 1)):
+            error_messages.append(f"entries in the `quantile` column must be an int or float in [0, 1]: "
+                                  f"{quantile}. row={row}")
+        elif is_point_row and ((value is None) or
+                               (isinstance(value, datetime.date)) or
+                               (not math.isfinite(value))):  # inf, nan
+            error_messages.append(f"entries in the `value` column must be an int or float: {value}. row={row}")
 
         # convert parsed date back into string suitable for JSON.
         # NB: recall all targets are "type": "discrete", so we only accept ints and floats
@@ -232,29 +244,10 @@ def _validate_quantile_prediction_dict(prediction_dict):
                               f"prediction_dict={prediction_dict}")
         return error_messages  # terminate processing
 
-    # validate: "Entries in the database rows in the `quantile` column must be numbers in [0, 1].
-    quantile_types_set = set(map(type, pred_data_quantiles))
-    if not (quantile_types_set <= {int, float}):
-        error_messages.append(f"wrong data type in `quantile` column, which should only contain ints or floats. "
-                              f"quantile column={pred_data_quantiles}, quantile_types_set={quantile_types_set}, "
-                              f"prediction_dict={prediction_dict}")
-    elif (min(pred_data_quantiles) < 0.0) or (max(pred_data_quantiles) > 1.0):
-        error_messages.append(f"Entries in the database rows in the `quantile` column must be numbers in [0, 1]. "
-                              f"quantile column={pred_data_quantiles}, prediction_dict={prediction_dict}")
-
     # validate: `quantile`s must be unique."
     if len(set(pred_data_quantiles)) != len(pred_data_quantiles):
         error_messages.append(f"`quantile`s must be unique. quantile column={pred_data_quantiles}, "
                               f"prediction_dict={prediction_dict}")
-
-    # validate: "The data format of `value` should correspond or be translatable to the `type` as in the target
-    # definition."
-    # NB: recall all targets are "type": "discrete", so we only accept ints and floats
-    pred_data_values_types = set(map(type, pred_data_values))
-    if not (pred_data_values_types <= {int, float}):
-        error_messages.append(f"The data format of `value` should correspond or be translatable to the `type` as "
-                              f"in the target definition, but one of the value values was not. "
-                              f"values={pred_data_values}, prediction_dict={prediction_dict}")
 
     # validate: "Entries in `value` must be non-decreasing as quantiles increase." (i.e., are monotonic).
     # note: there are no date targets, so we format as strings for the comparison (incoming are strings).
