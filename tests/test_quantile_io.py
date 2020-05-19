@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from zoltpy.covid19 import VALID_TARGET_NAMES, covid19_row_validator
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, _validate_header, REQUIRED_COLUMNS, \
-    quantile_csv_rows_from_json_io_dict
+    quantile_csv_rows_from_json_io_dict, summarized_error_messages
 from zoltpy.util import dataframe_from_json_io_dict
 
 
@@ -112,7 +112,6 @@ class QuantileIOTestCase(TestCase):
 
 
     def test_error_messages_actual_file_with_errors(self):
-        # test, and try printing a min-report:
         csv_file_exp_error_count_message = [
             ('2020-04-12-IHME-CurveFit.csv', 10, "Entries in `value` must be non-decreasing as quantiles increase"),
             ('2020-04-15-Geneva-DeterministicGrowth.csv', 1, "invalid target name(s)")]
@@ -123,8 +122,22 @@ class QuantileIOTestCase(TestCase):
                 self.assertIn(exp_message, act_error_messages[0])  # arbitrarily pick first message. all are similar
 
 
+    def test_summarize_error_messages(self):
+        input_error_messages = ["The number of elements in the `quantile` and `value` vectors should be identical",
+                                "Entries in `value` must be non-decreasing as quantiles increase"] * 3
+        max_num_dups = 2
+        act_error_messages = summarized_error_messages(input_error_messages, max_num_dups=max_num_dups)
+        exp_error_messages = ['The number of elements in the `quantile` and `value` vectors should be identical',
+                              'The number of elements in the `quantile` and `value` vectors should be identical',
+                              'The number of elemen...',
+                              'Entries in `value` must be non-decreasing as quantiles increase',
+                              'Entries in `value` must be non-decreasing as quantiles increase',
+                              'Entries in `value` m...']
+        self.assertEqual(sorted(exp_error_messages), sorted(act_error_messages))
+
+
     def test_json_io_dict_from_quantile_csv_file_bad_row_count(self):
-        with open('tests/quantiles-bad-row-count.csv') as quantile_fp:
+        with open('tests/quantiles-bad-row-count.csv') as quantile_fp:  # header: 6, row: 5
             _, act_error_messages = \
                 json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES, covid19_row_validator)
             exp_errors = ["invalid number of items in row. len(header)=6 but len(row)=5. "
