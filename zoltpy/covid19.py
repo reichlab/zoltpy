@@ -3,7 +3,7 @@ from pathlib import Path
 
 import click
 
-from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file
+from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, summarized_error_messages
 
 
 #
@@ -47,7 +47,7 @@ def validate_quantile_csv_file(csv_fp):
         _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp, VALID_TARGET_NAMES, covid19_row_validator,
                                                                 ['forecast_date', 'target_end_date'])
         if error_messages:
-            return error_messages
+            return summarized_error_messages(error_messages)
         else:
             return "no errors"
 
