@@ -114,10 +114,13 @@ class QuantileIOTestCase(TestCase):
     def test_error_messages_actual_file_with_errors(self):
         csv_file_exp_error_count_message = [
             ('2020-04-12-IHME-CurveFit.csv', 10, "Entries in `value` must be non-decreasing as quantiles increase"),
-            ('2020-04-15-Geneva-DeterministicGrowth.csv', 1, "invalid target name(s)")]
+            ('2020-04-15-Geneva-DeterministicGrowth.csv', 1, "invalid target name(s)"),
+            ('2020-05-17-CovidActNow-SEIR_CAN.csv', 10, "invalid quantile value: was not >= 0"),
+        ]
         for quantile_file, exp_num_errors, exp_message in csv_file_exp_error_count_message:
             with open('tests/covid19-data-processed-examples/' + quantile_file) as quantile_fp:
-                _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES)
+                _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES,
+                                                                            covid19_row_validator)
                 self.assertEqual(exp_num_errors, len(act_error_messages))
                 self.assertIn(exp_message, act_error_messages[0])  # arbitrarily pick first message. all are similar
 
@@ -314,6 +317,15 @@ class QuantileIOTestCase(TestCase):
         act_error_messages = covid19_row_validator(column_index_dict, row)
         self.assertEqual(1, len(act_error_messages))
         self.assertIn("invalid quantile: '0.11'", act_error_messages[0])
+
+        # from 2020-05-17-CovidActNow-SEIR_CAN.csv
+        column_index_dict = {'forecast_date': 0, 'location': 1, 'location_name': 2, 'target': 3, 'type': 4,
+                             'target_end_date': 5, 'quantile': 6, 'value': 7}
+        row = ['2020-05-17', '01', 'Alabama', '1 day ahead inc death', 'quantile', '2020-05-18', '0.010',
+               '-29.859790255308283']  # quantile not >= 0
+        act_error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(1, len(act_error_messages))
+        self.assertIn("invalid quantile value: was not >= 0", act_error_messages[0])
 
 
     def test_json_io_dict_from_quantile_csv_file_bad_covid_fips_code(self):

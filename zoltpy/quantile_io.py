@@ -163,12 +163,8 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
                                   f"row={row}")
             return [], error_messages  # terminate processing b/c column_index_dict requires correct number of rows
 
-        # do optional application-specific row validation. NB: error_messages is modified in-place as a side-effect
         location, target_name, row_type, quantile, value = [row[column_index_dict[column]] for column in
                                                             REQUIRED_COLUMNS]
-        if row_validator:
-            error_messages.extend(row_validator(column_index_dict, row))
-
         # validate target_name
         if target_name not in valid_target_names:
             error_targets.add(target_name)
@@ -188,6 +184,10 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
                                (isinstance(value, datetime.date)) or
                                (not math.isfinite(value))):  # inf, nan
             error_messages.append(f"entries in the `value` column must be an int or float: {value}. row={row}")
+
+        # do optional application-specific row validation. NB: error_messages is modified in-place as a side-effect
+        if row_validator:
+            error_messages.extend(row_validator(column_index_dict, row))
 
         # convert parsed date back into string suitable for JSON.
         # NB: recall all targets are "type": "discrete", so we only accept ints and floats
@@ -328,5 +328,5 @@ def summarized_error_messages(error_messages, max_num_dups=10):
         error_messages.extend(max_messages)
         # note that this adds '...' in the case of exactly max_num_dups, which may be misleading:
         if len(max_messages) == max_num_dups:
-            error_messages.append(error_key + '...')
+            error_messages.append(f"{error_key}...")
     return error_messages

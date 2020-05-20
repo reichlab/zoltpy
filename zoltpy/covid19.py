@@ -75,10 +75,16 @@ def covid19_row_validator(column_index_dict, row):
 
     # validate quantiles. recall at this point all row values are strings, but VALID_QUANTILES is numbers
     quantile = row[column_index_dict['quantile']]
+    value = row[column_index_dict['value']]
     if row[column_index_dict['type']] == 'quantile':
         try:
             if float(quantile) not in VALID_QUANTILES:
                 error_messages.append(f"invalid quantile: {quantile!r}. row={row}")
+        except ValueError:
+            pass  # ignore here - it will be caught by `json_io_dict_from_quantile_csv_file()`
+        try:
+            if float(value) < 0:
+                error_messages.append(f"invalid quantile value: was not >= 0. value='{value}'. row={row}")
         except ValueError:
             pass  # ignore here - it will be caught by `json_io_dict_from_quantile_csv_file()`
 
@@ -94,11 +100,17 @@ def covid19_row_validator(column_index_dict, row):
 
     # formats are valid. next: validate "__ day ahead" or "__ week ahead" increment - must be an int
     target = row[column_index_dict['target']]
+    target_day_ahead_split = target.split('day ahead')
+    target_week_ahead_split = target.split('wk ahead')
+    is_day_or_week_ahead_target = (len(target_day_ahead_split) == 2) or (len(target_week_ahead_split) == 2)
     try:
-        step_ahead_increment = int(target.split('day ahead')[0].strip()) if 'day ahead' in target \
-            else int(target.split('wk ahead')[0].strip())
+        if is_day_or_week_ahead_target:  # valid day or week ahead target
+            step_ahead_increment = int(target_day_ahead_split[0].strip()) if len(target_day_ahead_split) == 2 \
+                else int(target_week_ahead_split[0].strip())
+        else:  # invalid target. don't add error message b/c caught by caller `_validated_rows_for_quantile_csv()`
+            return error_messages  # terminate - remaining validation depends on valid step_ahead_increment
     except ValueError:
-        error_messages.append(f"non-integer number of weeks ahead in 'wk ahead' target: {target!r}. row={row}")
+        error_messages.append(f"non-integer 'ahead' number in target: {target!r}. row={row}")
         return error_messages  # terminate - remaining validation depends on valid step_ahead_increment
 
     # validate date alignment
