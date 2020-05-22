@@ -358,6 +358,24 @@ class Project(ZoltarResource):
         return TimeZero(self.zoltar_connection, new_timezero_json['url'], new_timezero_json)
 
 
+    def submit_query(self, query):
+        """
+        Submits a request for the execution of a query of forecasts in this Project.
+
+        :param query: a dict as documented at https://docs.zoltardata.com/ . NB: this is a "raw" query in that it
+            contains IDs and not strings for objects. use utility methods to convert from strings to IDs
+        :return: a Job for the query
+        """
+        response = requests.post(self.uri + 'forecast_queries/',
+                                 headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
+                                 json={'query': query})
+        job_json = response.json()
+        if response.status_code != 200:
+            raise RuntimeError(f"error submitting query: {job_json['error']}")
+
+        return Job(self.zoltar_connection, job_json['url'])
+
+
 class Model(ZoltarResource):
     """
     Represents a Zoltar forecast model, and is the entry point for getting its Forecasts as well as uploading them.
@@ -575,7 +593,8 @@ class Job(ZoltarResource):
 
     def created_forecast(self):
         """
-        A helper function that returns the newly-uploaded Forecast.
+        A helper function that returns the newly-uploaded Forecast. Should only be called on Jobs that are the results
+        of an uploaded forecast via `Model.upload_forecast()`.
 
         :return: the new Forecast that this uploaded created, or None if the Job was for a non-forecast
             upload.
@@ -586,3 +605,16 @@ class Job(ZoltarResource):
         forecast_pk = self.output_json['forecast_pk']
         forecast_uri = self.zoltar_connection.host + f'/api/forecast/{forecast_pk}/'
         return Forecast(self.zoltar_connection, forecast_uri)
+
+
+    def download_data(self):
+        """
+        :return: the Job's data as CSV rows with columns matching that of `csv_rows_from_json_io_dict()`. Should only be
+            called on Jobs that are the results of a project forecast query via `Project.submit_query()`.
+            See docs at https://docs.zoltardata.com/ .
+        """
+        job_data_url = f"{self.uri}data/"
+        score_data_response = self.zoltar_connection.json_for_uri(job_data_url, False, 'text/csv')
+        decoded_content = score_data_response.content.decode('utf-8')
+        csv_reader = csv.reader(decoded_content.splitlines(), delimiter=',')
+        return list(csv_reader)
