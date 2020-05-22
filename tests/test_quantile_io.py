@@ -3,6 +3,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from zoltpy.covid19 import VALID_TARGET_NAMES, covid19_row_validator
+from zoltpy.csv_io import CSV_HEADER
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, _validate_header, REQUIRED_COLUMNS, \
     quantile_csv_rows_from_json_io_dict, summarized_error_messages
 from zoltpy.util import dataframe_from_json_io_dict
@@ -369,6 +370,19 @@ class QuantileIOTestCase(TestCase):
                     ['location3', 'Season peak week', 'point', '', '2019-12-29']]
         act_rows = quantile_csv_rows_from_json_io_dict(json_io_dict)
         self.assertEqual(exp_rows, act_rows)
+
+        # expose a bug where the last row from `csv_rows_from_json_io_dict()` was lost due to pop()
+        with patch('zoltpy.csv_io.csv_rows_from_json_io_dict') as mock:
+            mock.return_value = [CSV_HEADER,
+                                 ['location1', 'pct next week', 'point', 2.1, '', '', '', '', '', '', '', ''],
+                                 ['location2', 'pct next week', 'quantile', 1.0, '', '', '', 0.025, '', '', '', '']]
+            act_rows = quantile_csv_rows_from_json_io_dict(json_io_dict)
+            mock.assert_called_once()
+
+            exp_rows = [['location', 'target', 'type', 'quantile', 'value'],
+                        ['location1', 'pct next week', 'point', '', 2.1],
+                        ['location2', 'pct next week', 'quantile', 0.025, 1.0]]
+            self.assertEqual(exp_rows, act_rows)
 
 
     # todo move to test_util.py
