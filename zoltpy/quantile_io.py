@@ -163,12 +163,8 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
                                   f"row={row}")
             return [], error_messages  # terminate processing b/c column_index_dict requires correct number of rows
 
-        # do optional application-specific row validation. NB: error_messages is modified in-place as a side-effect
         location, target_name, row_type, quantile, value = [row[column_index_dict[column]] for column in
                                                             REQUIRED_COLUMNS]
-        if row_validator:
-            error_messages.extend(row_validator(column_index_dict, row))
-
         # validate target_name
         if target_name not in valid_target_names:
             error_targets.add(target_name)
@@ -188,6 +184,10 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
                                (isinstance(value, datetime.date)) or
                                (not math.isfinite(value))):  # inf, nan
             error_messages.append(f"entries in the `value` column must be an int or float: {value}. row={row}")
+
+        # do optional application-specific row validation. NB: error_messages is modified in-place as a side-effect
+        if row_validator:
+            error_messages.extend(row_validator(column_index_dict, row))
 
         # convert parsed date back into string suitable for JSON.
         # NB: recall all targets are "type": "discrete", so we only accept ints and floats
@@ -285,12 +285,11 @@ def quantile_csv_rows_from_json_io_dict(json_io_dict):
     :param json_io_dict: a "JSON IO dict" to load from. see docs for details. the "meta" section is ignored
     :return: a list of CSV rows including header - see CSV_HEADER
     """
-    from zoltpy.util import csv_rows_from_json_io_dict  # avoid circular imports
-
+    from zoltpy.csv_io import csv_rows_from_json_io_dict  # avoid circular imports
 
     # since we've already implemented `csv_rows_from_json_io_dict()`, our approach is to use it, transforming as needed
     csv_rows = csv_rows_from_json_io_dict(json_io_dict)
-    csv_rows.pop()  # skip header
+    csv_rows.pop(0)  # skip header
     rows = [list(REQUIRED_COLUMNS)]  # add header. rename the 'class' column to 'type'
     for location, target, pred_class, value, cat, prob, sample, quantile, family, param1, param2, param3 in csv_rows:
         if pred_class not in ['point', 'quantile']:  # keep only rows whose 'type' is 'point' or 'quantile'

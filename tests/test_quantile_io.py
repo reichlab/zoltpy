@@ -3,6 +3,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from zoltpy.covid19 import VALID_TARGET_NAMES, covid19_row_validator
+from zoltpy.csv_io import CSV_HEADER
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, _validate_header, REQUIRED_COLUMNS, \
     quantile_csv_rows_from_json_io_dict, summarized_error_messages
 from zoltpy.util import dataframe_from_json_io_dict
@@ -114,10 +115,13 @@ class QuantileIOTestCase(TestCase):
     def test_error_messages_actual_file_with_errors(self):
         csv_file_exp_error_count_message = [
             ('2020-04-12-IHME-CurveFit.csv', 10, "Entries in `value` must be non-decreasing as quantiles increase"),
-            ('2020-04-15-Geneva-DeterministicGrowth.csv', 1, "invalid target name(s)")]
+            ('2020-04-15-Geneva-DeterministicGrowth.csv', 1, "invalid target name(s)"),
+            ('2020-05-17-CovidActNow-SEIR_CAN.csv', 10, "invalid quantile value: was not >= 0"),
+        ]
         for quantile_file, exp_num_errors, exp_message in csv_file_exp_error_count_message:
             with open('tests/covid19-data-processed-examples/' + quantile_file) as quantile_fp:
-                _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES)
+                _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, VALID_TARGET_NAMES,
+                                                                            covid19_row_validator)
                 self.assertEqual(exp_num_errors, len(act_error_messages))
                 self.assertIn(exp_message, act_error_messages[0])  # arbitrarily pick first message. all are similar
 
@@ -315,6 +319,15 @@ class QuantileIOTestCase(TestCase):
         self.assertEqual(1, len(act_error_messages))
         self.assertIn("invalid quantile: '0.11'", act_error_messages[0])
 
+        # from 2020-05-17-CovidActNow-SEIR_CAN.csv
+        column_index_dict = {'forecast_date': 0, 'location': 1, 'location_name': 2, 'target': 3, 'type': 4,
+                             'target_end_date': 5, 'quantile': 6, 'value': 7}
+        row = ['2020-05-17', '01', 'Alabama', '1 day ahead inc death', 'quantile', '2020-05-18', '0.010',
+               '-29.859790255308283']  # quantile not >= 0
+        act_error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(1, len(act_error_messages))
+        self.assertIn("invalid quantile value: was not >= 0", act_error_messages[0])
+
 
     def test_json_io_dict_from_quantile_csv_file_bad_covid_fips_code(self):
         for csv_file in ['quantiles-bad-row-fip-one-digit.csv', 'quantiles-bad-row-fip-three-digits.csv',
@@ -357,6 +370,19 @@ class QuantileIOTestCase(TestCase):
                     ['location3', 'Season peak week', 'point', '', '2019-12-29']]
         act_rows = quantile_csv_rows_from_json_io_dict(json_io_dict)
         self.assertEqual(exp_rows, act_rows)
+
+        # expose a bug where the last row from `csv_rows_from_json_io_dict()` was lost due to pop()
+        with patch('zoltpy.csv_io.csv_rows_from_json_io_dict') as mock:
+            mock.return_value = [CSV_HEADER,
+                                 ['location1', 'pct next week', 'point', 2.1, '', '', '', '', '', '', '', ''],
+                                 ['location2', 'pct next week', 'quantile', 1.0, '', '', '', 0.025, '', '', '', '']]
+            act_rows = quantile_csv_rows_from_json_io_dict(json_io_dict)
+            mock.assert_called_once()
+
+            exp_rows = [['location', 'target', 'type', 'quantile', 'value'],
+                        ['location1', 'pct next week', 'point', '', 2.1],
+                        ['location2', 'pct next week', 'quantile', 0.025, 1.0]]
+            self.assertEqual(exp_rows, act_rows)
 
 
     # todo move to test_util.py
