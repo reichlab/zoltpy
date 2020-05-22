@@ -2,7 +2,7 @@ import json
 import os
 
 from zoltpy.cdc_io import json_io_dict_from_cdc_csv_file
-from zoltpy.connection import ZoltarConnection, Job
+from zoltpy.connection import ZoltarConnection
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file
 from zoltpy.util import busy_poll_job, create_project, dataframe_from_json_io_dict, dataframe_from_rows
 
@@ -112,7 +112,7 @@ def zoltar_connection_app():
     busy_poll_job(job)
     print(f"- upload truth done")
 
-    # create a model, upload a forecast, then delete it
+    # create a model, upload a forecast, query the project, then delete it
     print(f"\n* creating model")
     with open("examples/example-model-config.json") as fp:
         model = project.create_model(json.load(fp))
@@ -128,6 +128,13 @@ def zoltar_connection_app():
 
     model.refresh()
     print(f'\n* post-upload forecasts: {model.forecasts}')
+
+    print(f"\n* querying data")
+    job = project.submit_query({})  # {} -> all project data!
+    busy_poll_job(job)  # does refresh()
+    forecast_rows = job.download_data()
+    print(f"- got {len(forecast_rows)} rows. as a dataframe:")
+    print(dataframe_from_rows(forecast_rows))
 
     print(f"\n* deleting forecast: {new_forecast}")
     job = new_forecast.delete()
