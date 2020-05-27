@@ -46,25 +46,23 @@ class UtilTestCase(TestCase):
 
     def test_delete_forecast(self):
         def json_for_uri_mock_side_effect(*args, **kwargs):  # returns a sequence of return args
-            return json_for_uri_mock_return_args.pop(0)
+            return {'http://example.com/api/projects/': PROJECTS_LIST_DICTS,
+                    'http://example.com/api/project/3/models/': [MODEL_DICT],
+                    'https://example.com/api/model/150/forecasts/': [FORECAST_DICT]}[args[0]]
 
 
-        conn = ZoltarConnection('https://example.com')
-        mock_authenticate(conn, '', '')
-
+        conn = mock_authenticate(ZoltarConnection('http://example.com'))
         with patch('zoltpy.connection.ZoltarConnection.json_for_uri') as json_for_uri_mock, \
                 patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary'), \
                 patch('zoltpy.connection.Forecast.delete') as delete_forecast_mock:
             json_for_uri_mock.side_effect = json_for_uri_mock_side_effect
 
             # case: finds existing_forecast
-            json_for_uri_mock_return_args = [PROJECTS_LIST_DICTS, [MODEL_DICT], [FORECAST_DICT]]
             delete_forecast(conn, PROJECTS_LIST_DICTS[0]['name'], MODEL_DICT['name'], '2020-04-12')
             self.assertEqual(1, delete_forecast_mock.call_count)
 
             # case: does not find existing_forecast
             delete_forecast_mock.reset_mock()
-            json_for_uri_mock_return_args = [PROJECTS_LIST_DICTS, [MODEL_DICT], [FORECAST_DICT]]
             delete_forecast(conn, PROJECTS_LIST_DICTS[0]['name'], MODEL_DICT['name'], '2020-04-22')
             self.assertEqual(0, delete_forecast_mock.call_count)
 

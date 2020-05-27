@@ -244,6 +244,47 @@ class ConnectionTestCase(unittest.TestCase):
             self.assertEqual(exp_rows, rows)
 
 
+    @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
+    def test_query_with_ids(self, json_for_uri_mock):
+        def json_for_uri_mock_side_effect(*args, **kwargs):
+            return {'http://example.com/api/projects/': PROJECTS_LIST_DICTS,
+                    'http://example.com/api/project/3/models/': MODELS_LIST_DICTS,
+                    'http://example.com/api/project/3/units/': UNITS_LIST_DICTS,
+                    'http://example.com/api/project/3/targets/': TARGETS_LIST_DICTS,
+                    'http://example.com/api/project/3/timezeros/': TIMEZEROS_LIST_DICTS}[args[0]]
+
+
+        json_for_uri_mock.side_effect = json_for_uri_mock_side_effect
+        conn = mock_authenticate(ZoltarConnection('http://example.com'))
+
+        project = conn.projects[0]
+        input_exp_output_queries = [
+            ({}, {}),
+            ({"models": ["docs forecast model"],
+              "units": ["location1", "location2"],
+              "targets": ["pct next week", "cases next week"],
+              "timezeros": ["2011-10-02", "2011-10-16"],
+              "types": ["point", "quantile"]},
+             {"models": [5],
+              "units": [23, 24],
+              "targets": [15, 16],
+              "timezeros": [5, 7],
+              "types": ["point", "quantile"]})
+        ]
+        for input_query, exp_output_query in input_exp_output_queries:
+            act_output_query = project.query_with_ids(input_query)
+            self.assertEqual(exp_output_query, act_output_query)
+
+        # case: name not found
+        for query in [{'models': ['bad model name']},
+                      {'units': ['bad unit name']},
+                      {'targets': ['bad target name']},
+                      {'timezeros': ['bad timezero name']}]:
+            with self.assertRaises(RuntimeError) as context:
+                project.query_with_ids(query)
+            self.assertIn('one or more', str(context.exception))
+
+
 PROJECTS_LIST_DICTS = [
     {
         "id": 3,

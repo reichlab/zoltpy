@@ -376,6 +376,98 @@ class Project(ZoltarResource):
         return Job(self.zoltar_connection, job_json['url'])
 
 
+    # query_with_ids <- function(zoltar_connection, project_url, query) {
+    #   new_query <- list()  # return value. set next
+    #   if (!is.null(query$models)) {
+    #     the_models <- models(zoltar_connection, project_url)
+    #     model_ids <- the_models[the_models$name %in% query$models, "id"]
+    #     new_query$models <- model_ids
+    #   }
+    #   if (!is.null(query$units)) {
+    #     the_units <- zoltar_units(zoltar_connection, project_url)
+    #     unit_ids <- the_units[the_units$name %in% query$units, "id"]
+    #     new_query$units <- unit_ids
+    #   }
+    #   if (!is.null(query$targets)) {
+    #     the_targets <- targets(zoltar_connection, project_url)
+    #     target_ids <- the_targets[the_targets$name %in% query$targets, "id"]
+    #     new_query$targets <- target_ids
+    #   }
+    #   if (!is.null(query$timezeros)) {
+    #     the_timezeros <- timezeros(zoltar_connection, project_url)
+    #     #timezero_ids <- the_timezeros[as.Date(the_timezeros$timezero_date, YYYY_MM_DD_DATE_FORMAT) %in% query$timezeros, "id"]
+    #     timezero_ids <- the_timezeros[format(the_timezeros$timezero_date, YYYY_MM_DD_DATE_FORMAT) %in% query$timezeros, "id"]
+    #
+    #     new_query$timezeros <- timezero_ids
+    #   }
+    #   if (!is.null(query$types)) {
+    #     new_query$types <- query$types
+    #   }
+    #   new_query
+    # }
+
+
+    def query_with_ids(self, query):
+        """
+        A convenience function that prepares a query for `submit_query()` in this project by replacing strings with
+        database IDs. Replaces these strings:
+
+        - "models": model_name -> ID
+        - "units": unit_name -> ID
+        - "targets": target_name -> ID
+        - "timezeros" timezero_date in YYYY_MM_DD_DATE_FORMAT-> ID
+
+        :param query: as passed to `submit_query()`, but which contains strings and not IDs (ints)
+        :return: a copy of `query` that has IDs substituted for strings
+        :raises RuntimeError: if any names or timezeros could not be found in this project
+        """
+        new_query = {}  # return value. set next
+        if 'models' in query:
+            query_model_names = query['models']
+            models = self.models
+            project_model_names = {model.name for model in models}
+            if not set(query_model_names) <= project_model_names:
+                raise RuntimeError(f"one or more model names were not found in project. "
+                                   f"query_model_names={query_model_names}, project_model_names={project_model_names}")
+
+            model_ids = [model.id for model in models if model.name in query_model_names]
+            new_query['models'] = model_ids
+        if 'units' in query:
+            query_unit_names = query['units']
+            units = self.units
+            project_unit_names = {unit.name for unit in units}
+            if not set(query_unit_names) <= project_unit_names:
+                raise RuntimeError(f"one or more unit names were not found in project. "
+                                   f"query_unit_names={query_unit_names}, project_unit_names={project_unit_names}")
+
+            unit_ids = [unit.id for unit in units if unit.name in query_unit_names]
+            new_query['units'] = unit_ids
+        if 'targets' in query:
+            query_target_names = query['targets']
+            targets = self.targets
+            project_target_names = {target.name for target in targets}
+            if not set(query_target_names) <= project_target_names:
+                raise RuntimeError(f"one or more unit names were not found in project. "
+                                   f"query_target_names={query_target_names}, "
+                                   f"project_target_names={project_target_names}")
+
+            target_ids = [target.id for target in targets if target.name in query_target_names]
+            new_query['targets'] = target_ids
+        if 'timezeros' in query:
+            query_tz_names = query['timezeros']
+            timezeros = self.timezeros
+            project_tz_names = {timezero.timezero_date for timezero in timezeros}
+            if not set(query_tz_names) <= project_tz_names:
+                raise RuntimeError(f"one or more unit names were not found in project. "
+                                   f"query_tz_names={query_tz_names}, project_tz_names={project_tz_names}")
+
+            timezero_ids = [timezero.id for timezero in timezeros if timezero.timezero_date in query_tz_names]
+            new_query['timezeros'] = timezero_ids
+        if 'types' in query:
+            new_query['types'] = query['types']
+        return new_query
+
+
 class Model(ZoltarResource):
     """
     Represents a Zoltar forecast model, and is the entry point for getting its Forecasts as well as uploading them.
