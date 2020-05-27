@@ -251,7 +251,7 @@ def busy_poll_job(job):
         if status == "FAILED":
             print("x FAILED")
             print("\n", failure_message)
-            break
+            raise RuntimeError(f"job failed: job={job}, failure_message={failure_message!r}")
         if status == "SUCCESS":
             break
         time.sleep(1)

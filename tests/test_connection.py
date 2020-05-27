@@ -260,16 +260,16 @@ class ConnectionTestCase(unittest.TestCase):
         project = conn.projects[0]
         input_exp_output_queries = [
             ({}, {}),
-            ({"models": ["docs forecast model"],
-              "units": ["location1", "location2"],
-              "targets": ["pct next week", "cases next week"],
-              "timezeros": ["2011-10-02", "2011-10-16"],
-              "types": ["point", "quantile"]},
-             {"models": [5],
-              "units": [23, 24],
-              "targets": [15, 16],
-              "timezeros": [5, 7],
-              "types": ["point", "quantile"]})
+            ({'models': ['docs forecast model'],
+              'units': ['location1', 'location2'],
+              'targets': ['pct next week', 'cases next week'],
+              'timezeros': ['2011-10-02', '2011-10-16'],
+              'types': ['point', 'quantile']},
+             {'models': [5],
+              'units': [23, 24],
+              'targets': [15, 16],
+              'timezeros': [5, 7],
+              'types': ['point', 'quantile']})
         ]
         for input_query, exp_output_query in input_exp_output_queries:
             act_output_query = project.query_with_ids(input_query)

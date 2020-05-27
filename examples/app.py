@@ -89,6 +89,15 @@ def zoltar_connection_app():
     dataframe = dataframe_from_json_io_dict(forecast_data)
     print(f'- dataframe: {dataframe}')
 
+    print(f"\n* querying data")
+    query = {'targets': ['pct next week', 'cases next week'],
+             'types': ['point']}
+    job = project.submit_query(project.query_with_ids(query))
+    busy_poll_job(job)  # does refresh()
+    forecast_rows = job.download_data()
+    print(f"- got {len(forecast_rows)} rows. as a dataframe:")
+    print(dataframe_from_rows(forecast_rows))
+
     #
     # try out destructive functions
     #
@@ -128,13 +137,6 @@ def zoltar_connection_app():
 
     model.refresh()
     print(f'\n* post-upload forecasts: {model.forecasts}')
-
-    print(f"\n* querying data")
-    job = project.submit_query({})  # {} -> all project data!
-    busy_poll_job(job)  # does refresh()
-    forecast_rows = job.download_data()
-    print(f"- got {len(forecast_rows)} rows. as a dataframe:")
-    print(dataframe_from_rows(forecast_rows))
 
     print(f"\n* deleting forecast: {new_forecast}")
     job = new_forecast.delete()
