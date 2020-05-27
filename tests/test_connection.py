@@ -279,7 +279,7 @@ class ConnectionTestCase(unittest.TestCase):
         for query in [{'models': ['bad model name']},
                       {'units': ['bad unit name']},
                       {'targets': ['bad target name']},
-                      {'timezeros': ['bad timezero name']}]:
+                      {'timezeros': ['1999-10-02']}]:
             with self.assertRaises(RuntimeError) as context:
                 project.query_with_ids(query)
             self.assertIn('one or more', str(context.exception))
