@@ -46,7 +46,7 @@ def zoltar_connection_app():
     truth_data_rows = project.truth_data()
     truth_data_df = dataframe_from_rows(truth_data_rows)
     print(f'\n* truth for {project}')
-    print(f'- truth_csv_filename: {project.truth_csv_filename}')
+    print(f'- truth_csv_filename, truth_updated_at: {project.truth_csv_filename}, {project.truth_updated_at}')
     print(f'- truth data as rows: {len(truth_data_rows)} rows')
     print(f'- truth data as df:\n{truth_data_df.describe()}')
 

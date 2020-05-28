@@ -247,8 +247,19 @@ class Project(ZoltarResource):
         """
         :return: the Project's truth_csv_filename
         """
-        # recall the json contains these keys: 'id', 'url', 'project', 'truth_csv_filename', 'truth_data'
+        # recall the json contains these keys: 'id', 'url', 'project', 'truth_csv_filename', 'truth_updated_at,
+        # 'truth_data'
         return self.zoltar_connection.json_for_uri(self.uri + 'truth/')['truth_csv_filename']
+
+
+    @property
+    def truth_updated_at(self):
+        """
+        :return: the Project's truth_updated_at
+        """
+        # recall the json contains these keys: 'id', 'url', 'project', 'truth_csv_filename', 'truth_updated_at,
+        # 'truth_data'
+        return self.zoltar_connection.json_for_uri(self.uri + 'truth/')['truth_updated_at']
 
 
     def truth_data(self):
