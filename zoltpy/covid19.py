@@ -3,7 +3,8 @@ from pathlib import Path
 
 import click
 
-from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, summarized_error_messages
+from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, summarized_error_messages, MESSAGE_FORECAST_CHECKS, \
+    MESSAGE_DATE_ALIGNMENT
 
 
 #
@@ -47,7 +48,7 @@ def validate_quantile_csv_file(csv_fp):
         _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp, VALID_TARGET_NAMES, covid19_row_validator,
                                                                 ['forecast_date', 'target_end_date'])
         if error_messages:
-            return summarized_error_messages(error_messages)
+            return summarized_error_messages(error_messages)  # summarizes and orders, converting 2-tuples to strings
         else:
             return "no errors"
 
@@ -66,12 +67,12 @@ def covid19_row_validator(column_index_dict, row):
     from zoltpy.cdc_io import _parse_date  # avoid circular imports
 
 
-    error_messages = []  # returned value. filled next
+    error_messages = []  # return value. filled next
 
     # validate location (FIPS code)
     location = row[column_index_dict['location']]
     if location not in FIPS_STATE_CODES:
-        error_messages.append(f"invalid FIPS location: {location!r}. row={row}")
+        error_messages.append((MESSAGE_FORECAST_CHECKS, f"invalid FIPS location: {location!r}. row={row}"))
 
     # validate quantiles. recall at this point all row values are strings, but VALID_QUANTILES is numbers
     quantile = row[column_index_dict['quantile']]
@@ -79,12 +80,13 @@ def covid19_row_validator(column_index_dict, row):
     if row[column_index_dict['type']] == 'quantile':
         try:
             if float(quantile) not in VALID_QUANTILES:
-                error_messages.append(f"invalid quantile: {quantile!r}. row={row}")
+                error_messages.append((MESSAGE_FORECAST_CHECKS, f"invalid quantile: {quantile!r}. row={row}"))
         except ValueError:
             pass  # ignore here - it will be caught by `json_io_dict_from_quantile_csv_file()`
         try:
             if float(value) < 0:
-                error_messages.append(f"invalid quantile value: was not >= 0. value='{value}'. row={row}")
+                error_messages.append((MESSAGE_FORECAST_CHECKS, f"invalid quantile value: was not >= 0. "
+                                                                f"value='{value}'. row={row}"))
         except ValueError:
             pass  # ignore here - it will be caught by `json_io_dict_from_quantile_csv_file()`
 
@@ -94,8 +96,9 @@ def covid19_row_validator(column_index_dict, row):
     forecast_date = _parse_date(forecast_date)  # None if invalid format
     target_end_date = _parse_date(target_end_date)  # ""
     if not forecast_date or not target_end_date:
-        error_messages.append(f"invalid forecast_date or target_end_date format. forecast_date={forecast_date!r}. "
-                              f"target_end_date={target_end_date}. row={row}")
+        error_messages.append((MESSAGE_FORECAST_CHECKS,
+                               f"invalid forecast_date or target_end_date format. forecast_date={forecast_date!r}. "
+                               f"target_end_date={target_end_date}. row={row}"))
         return error_messages  # terminate - remaining validation depends on valid dates
 
     # formats are valid. next: validate "__ day ahead" or "__ week ahead" increment - must be an int
@@ -110,22 +113,24 @@ def covid19_row_validator(column_index_dict, row):
         else:  # invalid target. don't add error message b/c caught by caller `_validated_rows_for_quantile_csv()`
             return error_messages  # terminate - remaining validation depends on valid step_ahead_increment
     except ValueError:
-        error_messages.append(f"non-integer 'ahead' number in target: {target!r}. row={row}")
+        error_messages.append((MESSAGE_FORECAST_CHECKS, f"non-integer 'ahead' number in target: {target!r}. row={row}"))
         return error_messages  # terminate - remaining validation depends on valid step_ahead_increment
 
     # validate date alignment
     # 1/4) for x day ahead targets the target_end_date should be forecast_date + x
     if 'day ahead' in target:
         if (target_end_date - forecast_date).days != step_ahead_increment:
-            error_messages.append(f"invalid target_end_date: was not {step_ahead_increment} day(s) after "
-                                  f"forecast_date. diff={(target_end_date - forecast_date).days}, "
-                                  f"forecast_date={forecast_date}, target_end_date={target_end_date}. row={row}")
+            error_messages.append((MESSAGE_FORECAST_CHECKS,
+                                   f"invalid target_end_date: was not {step_ahead_increment} day(s) after "
+                                   f"forecast_date. diff={(target_end_date - forecast_date).days}, "
+                                   f"forecast_date={forecast_date}, target_end_date={target_end_date}. row={row}"))
     else:  # 'wk ahead' in target
         # NB: we convert `weekdays()` (Monday is 0 and Sunday is 6) to a Sunday-based numbering to get the math to work:
         weekday_to_sun_based = {i: i + 2 if i != 6 else 1 for i in range(7)}  # Sun=1, Mon=2, ..., Sat=7
         # 2/4) for x week ahead targets, weekday(target_end_date) should be a Sat
         if weekday_to_sun_based[target_end_date.weekday()] != 7:  # Sat
-            error_messages.append(f"target_end_date was not a Saturday: {target_end_date}. row={row}")
+            error_messages.append((MESSAGE_DATE_ALIGNMENT, f"target_end_date was not a Saturday: {target_end_date}. "
+                                                           f"row={row}"))
             return error_messages  # terminate - remaining validation depends on valid target_end_date
 
         # set exp_target_end_date and then validate it
@@ -140,9 +145,10 @@ def covid19_row_validator(column_index_dict, row):
             delta_days = weekday_diff + datetime.timedelta(days=(7 * step_ahead_increment))
             exp_target_end_date = forecast_date + delta_days
         if target_end_date != exp_target_end_date:
-            error_messages.append(f"target_end_date was not the expected Saturday. forecast_date={forecast_date}, "
-                                  f"target_end_date={target_end_date}. exp_target_end_date={exp_target_end_date}, "
-                                  f"row={row}")
+            error_messages.append((MESSAGE_DATE_ALIGNMENT,
+                                   f"target_end_date was not the expected Saturday. forecast_date={forecast_date}, "
+                                   f"target_end_date={target_end_date}. exp_target_end_date={exp_target_end_date}, "
+                                   f"row={row}"))
 
     # done!
     return error_messages

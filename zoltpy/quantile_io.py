@@ -20,7 +20,6 @@ QUANTILE_PREDICTION_CLASS = 'quantile'
 
 REQUIRED_COLUMNS = ('location', 'target', 'type', 'quantile', 'value')
 
-
 #
 # Note: The following code is a somewhat temporary solution to validation during COVID-19 crunch time. As such, we
 # hard-code target information: all targets are: "type": "discrete", "is_step_ahead": true. Also, all validation
@@ -32,6 +31,14 @@ REQUIRED_COLUMNS = ('location', 'target', 'type', 'quantile', 'value')
 #
 # json_io_dict_from_quantile_csv_file()
 #
+
+# these vars are used to order error messages according to the list here:
+# https://github.com/reichlab/covid19-forecast-hub/wiki/Validation-Checks#current-validation-checks
+MESSAGE_FORECAST_CHECKS = 0  # 2. forecast checks
+MESSAGE_DATE_ALIGNMENT = 1  # 3. validates date alignment as documented in the issue add additional validations
+MESSAGE_QUANTILES_AND_VALUES = 2  # 4. validates quantiles and values (i.e,. at the prediction level)
+MESSAGE_QUANTILES_AS_A_GROUP = 3  # 5. validates quantiles as a group
+
 
 def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validator=None, addl_req_cols=()):
     """
@@ -60,7 +67,8 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
     :param addl_req_cols: an optional list of strings naming columns in addition to REQUIRED_COLUMNS that are required
     :return 2-tuple: (json_io_dict, error_messages) where the former is a "JSON IO dict" (aka 'json_io_dict' by callers)
         that contains the two types of predictions. see https://docs.zoltardata.com/ for details. json_io_dict is None
-        if there were errors
+        if there were errors. the second arg is a list of 2-tuples: (priority, error_message). priority is an int that's
+        used by callers to sort the messages
     """
     # load and validate the rows (validation step 1/4). error_messages is one of the the return values (filled next)
     rows, error_messages = _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, addl_req_cols)
@@ -117,8 +125,10 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
     if duplicate_unit_target_tuples:
         if len(duplicate_unit_target_tuples) > 10:  # pick first 10 tuples to reduce output
             duplicate_unit_target_tuples = duplicate_unit_target_tuples[:10] + ['...']
-        error_messages.append(f"Within a Prediction, there cannot be more than 1 Prediction Element of the same class. "
-                              f"Found these duplicate unit/target/classes tuples: {duplicate_unit_target_tuples}")
+        error_messages.append((MESSAGE_QUANTILES_AND_VALUES,
+                               f"Within a Prediction, there cannot be more than 1 Prediction Element of the same "
+                               f"class. Found these duplicate unit/target/classes tuples: "
+                               f"{duplicate_unit_target_tuples}"))
 
     # validate: "There must be exactly one point prediction for each location/target pair"
     unit_target_point_count = [(unit, target, pred_classes.count('point')) for (unit, target), pred_classes
@@ -127,9 +137,10 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
     if unit_target_point_count:
         if len(unit_target_point_count) > 10:  # pick first 10 tuples to reduce output
             unit_target_point_count = unit_target_point_count[:10] + ['...']
-        error_messages.append(f"There must be exactly one point prediction for each location/target pair. Found these "
-                              f"unit, target, point counts tuples did not have exactly one point: "
-                              f"{unit_target_point_count}")
+        error_messages.append((MESSAGE_QUANTILES_AS_A_GROUP,
+                               f"There must be exactly one point prediction for each location/target pair. Found these "
+                               f"unit, target, point counts tuples did not have exactly one point: "
+                               f"{unit_target_point_count}"))
 
     # done
     return {'meta': {}, 'predictions': prediction_dicts}, error_messages
@@ -139,19 +150,20 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
     """
     `json_io_dict_from_quantile_csv_file()` helper function.
 
-    :return: 2-tuple: (validated_rows, error_messages)
+    :return: 2-tuple: (validated_rows, error_messages). the latter is the same as
+        `json_io_dict_from_quantile_csv_file()`
     """
     from zoltpy.cdc_io import CDC_POINT_ROW_TYPE, _parse_value  # avoid circular imports
 
 
-    error_messages = []  # list of strings. return value. set below if any issues
+    error_messages = []  # return value. set below if any issues
 
     csv_reader = csv.reader(csv_fp, delimiter=',')
     header = next(csv_reader)
     try:
         column_index_dict = _validate_header(header, addl_req_cols)
     except RuntimeError as re:
-        error_messages.append(re.args[0])
+        error_messages.append((MESSAGE_FORECAST_CHECKS, re.args[0]))
         return [], error_messages  # terminate processing b/c column_index_dict is required to get columns
 
     error_targets = set()  # output set of invalid target names
@@ -159,8 +171,8 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
     rows = []  # list of parsed and validated rows. filled next
     for row in csv_reader:
         if len(row) != len(header):
-            error_messages.append(f"invalid number of items in row. len(header)={len(header)} but len(row)={len(row)}. "
-                                  f"row={row}")
+            error_messages.append((MESSAGE_FORECAST_CHECKS, f"invalid number of items in row. len(header)="
+                                                            f"{len(header)} but len(row)={len(row)}. row={row}"))
             return [], error_messages  # terminate processing b/c column_index_dict requires correct number of rows
 
         location, target_name, row_type, quantile, value = [row[column_index_dict[column]] for column in
@@ -178,12 +190,13 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
                                    (isinstance(quantile, datetime.date)) or
                                    (not math.isfinite(quantile)) or  # inf, nan
                                    not (0 <= quantile <= 1)):
-            error_messages.append(f"entries in the `quantile` column must be an int or float in [0, 1]: "
-                                  f"{quantile}. row={row}")
+            error_messages.append((MESSAGE_FORECAST_CHECKS, f"entries in the `quantile` column must be an int or "
+                                                            f"float in [0, 1]: {quantile}. row={row}"))
         elif is_point_row and ((value is None) or
                                (isinstance(value, datetime.date)) or
                                (not math.isfinite(value))):  # inf, nan
-            error_messages.append(f"entries in the `value` column must be an int or float: {value}. row={row}")
+            error_messages.append((MESSAGE_FORECAST_CHECKS, f"entries in the `value` column must be an int or float: "
+                                                            f"{value}. row={row}"))
 
         # do optional application-specific row validation. NB: error_messages is modified in-place as a side-effect
         if row_validator:
@@ -197,7 +210,7 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
 
     # Add invalid targets to errors
     if len(error_targets) > 0:
-        error_messages.append(f"invalid target name(s): {error_targets!r}")
+        error_messages.append((MESSAGE_FORECAST_CHECKS, f"invalid target name(s): {error_targets!r}"))
 
     return rows, error_messages
 
@@ -238,14 +251,16 @@ def _validate_quantile_prediction_dict(prediction_dict):
     if len(pred_data_quantiles) != len(pred_data_values):
         # note that this error must stop processing b/c subsequent steps rely on their being the same lengths
         # (e.g., `zip()`)
-        error_messages.append(f"The number of elements in the `quantile` and `value` vectors should be identical. "
-                              f"|quantile|={len(pred_data_quantiles)}, |value|={len(pred_data_values)}, "
-                              f"prediction_dict={prediction_dict}")
+        error_messages.append((MESSAGE_QUANTILES_AND_VALUES,
+                               f"The number of elements in the `quantile` and `value` vectors should be identical. "
+                               f"|quantile|={len(pred_data_quantiles)}, |value|={len(pred_data_values)}, "
+                               f"prediction_dict={prediction_dict}"))
 
     # validate: `quantile`s must be unique."
     if len(set(pred_data_quantiles)) != len(pred_data_quantiles):
-        error_messages.append(f"`quantile`s must be unique. quantile column={pred_data_quantiles}, "
-                              f"prediction_dict={prediction_dict}")
+        error_messages.append((MESSAGE_QUANTILES_AND_VALUES,
+                               f"`quantile`s must be unique. quantile column={pred_data_quantiles}, "
+                               f"prediction_dict={prediction_dict}"))
 
     # validate: "Entries in `value` must be non-decreasing as quantiles increase." (i.e., are monotonic).
     # note: there are no date targets, so we format as strings for the comparison (incoming are strings).
@@ -261,9 +276,10 @@ def _validate_quantile_prediction_dict(prediction_dict):
 
     is_le_values = [le_with_tolerance(a, b) for a, b in zip(pred_data_values, pred_data_values[1:])]
     if not all(is_le_values):
-        error_messages.append(f"Entries in `value` must be non-decreasing as quantiles increase. "
-                              f"value column={pred_data_values}, is_le_values={is_le_values}, "
-                              f"prediction_dict={prediction_dict}")
+        error_messages.append((MESSAGE_QUANTILES_AND_VALUES,
+                               f"Entries in `value` must be non-decreasing as quantiles increase. "
+                               f"value column={pred_data_values}, is_le_values={is_le_values}, "
+                               f"prediction_dict={prediction_dict}"))
 
     # validate: "Entries in `value` must obey existing ranges for targets." recall: "The range is assumed to be
     # inclusive on the lower bound and open on the upper bound, # e.g. [a, b)."
@@ -287,6 +303,7 @@ def quantile_csv_rows_from_json_io_dict(json_io_dict):
     """
     from zoltpy.csv_io import csv_rows_from_json_io_dict  # avoid circular imports
 
+
     # since we've already implemented `csv_rows_from_json_io_dict()`, our approach is to use it, transforming as needed
     csv_rows = csv_rows_from_json_io_dict(json_io_dict)
     csv_rows.pop(0)  # skip header
@@ -305,14 +322,15 @@ def quantile_csv_rows_from_json_io_dict(json_io_dict):
 
 def summarized_error_messages(error_messages, max_num_dups=10):
     """
-    Utility function that returns a shortened error_messages list by removing all but a small number of similar
-    messages. "similar" is determined by simply looking at the first 20 characters being equal. adds '...' if any
-    were omitted.
+    Utility function that does two things: 1) shortens error_messages list by removing all but a small number of similar
+    messages. "similar" is determined by simply looking at the first 20 characters being equal. adds '...' if any were
+     omitted, and 2) orders the messages according to the first item in each 2-tuple.
 
-    :param error_messages: list of strings as returned by `json_io_dict_from_quantile_csv_file()`
+    :param error_messages: list of 2-tuples as returned by `json_io_dict_from_quantile_csv_file()`
     :param max_num_dups: integer maximum number of duplicated lines to return
-    :return: modified copy of error_messages
+    :return: shortened and sorted copy of the second tuple item in error_messages
     """
+    error_messages = [_[1] for _ in sorted(error_messages)]
     error_key_to_max_messages = defaultdict(list)  # key: first N chars of any unique message
     for error_message in error_messages:
         error_key = error_message[:20]
@@ -322,10 +340,10 @@ def summarized_error_messages(error_messages, max_num_dups=10):
     # per https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-list-of-lists :
     # return [item for sublist in error_key_to_max_messages.values() for item in sublist]
 
-    error_messages = []  # build returned value
+    error_messages = []  # return value
     for error_key, max_messages in error_key_to_max_messages.items():
         error_messages.extend(max_messages)
-        # note that this adds '...' in the case of exactly max_num_dups, which may be misleading:
+        # note that this adds '...' in the case of exactly max_num_dups, which may be misleading b/c it's max + 1 total
         if len(max_messages) == max_num_dups:
             error_messages.append(error_key + '...')
     return error_messages
