@@ -258,6 +258,8 @@ class ConnectionTestCase(unittest.TestCase):
         conn = mock_authenticate(ZoltarConnection('http://example.com'))
 
         project = conn.projects[0]
+
+        # case: blue sky
         input_exp_output_queries = [
             ({}, {}),
             ({'models': ['docs forecast model'],
@@ -269,7 +271,9 @@ class ConnectionTestCase(unittest.TestCase):
               'units': [23, 24],
               'targets': [15, 16],
               'timezeros': [5, 7],
-              'types': ['point', 'quantile']})
+              'types': ['point', 'quantile']}),
+            ({'models': ['doc_model_abbrev']},  # 'models' can be either model name or abbreviation
+             {'models': [5]})
         ]
         for input_query, exp_output_query in input_exp_output_queries:
             act_output_query = project.query_with_ids(input_query)
@@ -352,7 +356,7 @@ MODELS_LIST_DICTS = [
         "project": "http://example.com/api/project/3/",
         "owner": None,
         "name": "docs forecast model",
-        "abbreviation": "",
+        "abbreviation": "doc_model_abbrev",
         "description": "",
         "home_url": "",
         "aux_data_url": None,

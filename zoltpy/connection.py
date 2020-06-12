@@ -387,37 +387,6 @@ class Project(ZoltarResource):
         return Job(self.zoltar_connection, job_json['url'])
 
 
-    # query_with_ids <- function(zoltar_connection, project_url, query) {
-    #   new_query <- list()  # return value. set next
-    #   if (!is.null(query$models)) {
-    #     the_models <- models(zoltar_connection, project_url)
-    #     model_ids <- the_models[the_models$name %in% query$models, "id"]
-    #     new_query$models <- model_ids
-    #   }
-    #   if (!is.null(query$units)) {
-    #     the_units <- zoltar_units(zoltar_connection, project_url)
-    #     unit_ids <- the_units[the_units$name %in% query$units, "id"]
-    #     new_query$units <- unit_ids
-    #   }
-    #   if (!is.null(query$targets)) {
-    #     the_targets <- targets(zoltar_connection, project_url)
-    #     target_ids <- the_targets[the_targets$name %in% query$targets, "id"]
-    #     new_query$targets <- target_ids
-    #   }
-    #   if (!is.null(query$timezeros)) {
-    #     the_timezeros <- timezeros(zoltar_connection, project_url)
-    #     #timezero_ids <- the_timezeros[as.Date(the_timezeros$timezero_date, YYYY_MM_DD_DATE_FORMAT) %in% query$timezeros, "id"]
-    #     timezero_ids <- the_timezeros[format(the_timezeros$timezero_date, YYYY_MM_DD_DATE_FORMAT) %in% query$timezeros, "id"]
-    #
-    #     new_query$timezeros <- timezero_ids
-    #   }
-    #   if (!is.null(query$types)) {
-    #     new_query$types <- query$types
-    #   }
-    #   new_query
-    # }
-
-
     def query_with_ids(self, query):
         """
         A convenience function that prepares a query for `submit_query()` in this project by replacing strings with
@@ -437,11 +406,16 @@ class Project(ZoltarResource):
             query_model_names = query['models']
             models = self.models
             project_model_names = {model.name for model in models}
-            if not set(query_model_names) <= project_model_names:
-                raise RuntimeError(f"one or more model names were not found in project. "
-                                   f"query_model_names={query_model_names}, project_model_names={project_model_names}")
+            project_model_abbrevs = {model.abbreviation for model in models}
+            if (not set(query_model_names) <= project_model_names) and \
+                    (not set(query_model_names) <= project_model_abbrevs):
+                raise RuntimeError(f"one or more model names or abbreviations were not found in project. "
+                                   f"query_model_names={query_model_names}, "
+                                   f"project_model_names={project_model_names}, "
+                                   f"project_model_abbrevs={project_model_abbrevs}")
 
-            model_ids = [model.id for model in models if model.name in query_model_names]
+            model_ids = [model.id for model in models if model.name in query_model_names
+                         or model.abbreviation in project_model_abbrevs]
             new_query['models'] = model_ids
         if 'units' in query:
             query_unit_names = query['units']
@@ -494,6 +468,11 @@ class Model(ZoltarResource):
     @property
     def name(self):
         return self.json['name']
+
+
+    @property
+    def abbreviation(self):
+        return self.json['abbreviation']
 
 
     @property
