@@ -476,6 +476,11 @@ class Model(ZoltarResource):
 
 
     @property
+    def team_name(self):
+        return self.json['team_name']
+
+
+    @property
     def forecasts(self):
         """
         :return: a list of this Model's Forecasts
