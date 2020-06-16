@@ -76,13 +76,13 @@ class ZoltarConnection:
     def json_for_uri(self, uri, is_return_json=True, accept='application/json; indent=4'):
         logger.info(f"json_for_uri(): {uri!r}")
         if not self.session:
-            raise RuntimeError("json_for_uri(): no session")
+            raise RuntimeError("json_for_uri(): no session. uri={uri}")
 
         response = requests.get(uri, headers={'Accept': accept,
                                               'Authorization': 'JWT {}'.format(self.session.token)})
         if response.status_code != 200:  # HTTP_200_OK
-            raise RuntimeError(f"json_for_uri(): status code was not 200. status_code={response.status_code}. "
-                               f"text={response.text}")
+            raise RuntimeError(f"json_for_uri(): status code was not 200. uri={uri},"
+                               f"status_code={response.status_code}. text={response.text}")
 
         return response.json() if is_return_json else response
 
