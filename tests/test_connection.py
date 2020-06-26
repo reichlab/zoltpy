@@ -289,6 +289,30 @@ class ConnectionTestCase(unittest.TestCase):
             self.assertIn('one or more', str(context.exception))
 
 
+    @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
+    def test_edit_model(self, json_for_uri_mock):
+        conn = ZoltarConnection()
+        mock_authenticate(conn, '', '')
+
+        json_for_uri_mock.return_value = PROJECTS_LIST_DICTS
+        projects = conn.projects  # hits /api/projects/
+        project_0 = projects[0]
+
+        json_for_uri_mock.return_value = MODELS_LIST_DICTS
+        models = project_0.models  # hits api/project/3/models/
+        model_0 = models[0]
+
+        with open('examples/example-model-config.json') as fp:
+            model_config = json.load(fp)
+
+        # case: blue sky
+        with patch('requests.put') as put_mock:
+            put_mock.return_value.status_code = 200
+            model_0.edit(model_config)
+            put_mock.assert_called_once_with('http://example.com/api/model/5/', data={'model_config': model_config},
+                                             headers={'Authorization': f'JWT {MOCK_TOKEN}'})
+
+
 PROJECTS_LIST_DICTS = [
     {
         "id": 3,

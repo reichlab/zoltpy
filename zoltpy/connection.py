@@ -58,7 +58,7 @@ class ZoltarConnection:
 
     def re_authenticate_if_necessary(self):
         if self.session.is_token_expired():
-            logger.info(f"re_authenticate_if_necessary(): re-authenticating expired token. host={self.host}")
+            logger.debug(f"re_authenticate_if_necessary(): re-authenticating expired token. host={self.host}")
             self.authenticate(self.username, self.password)
 
 
@@ -74,7 +74,7 @@ class ZoltarConnection:
 
 
     def json_for_uri(self, uri, is_return_json=True, accept='application/json; indent=4'):
-        logger.info(f"json_for_uri(): {uri!r}")
+        logger.debug(f"json_for_uri(): {uri!r}")
         if not self.session:
             raise RuntimeError("json_for_uri(): no session. uri={uri}")
 
@@ -309,8 +309,9 @@ class Project(ZoltarResource):
         """
         Creates a forecast Model with the passed configuration.
 
-        :param model_config: a dict used to initialize the new model. it must contain these fields: ['name'], and can
-            optionally contain: ['abbreviation', 'team_name', 'description', 'home_url', 'aux_data_url']
+        :param model_config: a dict used to initialize the new model. it must contain these fields: ['name',
+            'abbreviation', 'team_name', 'description', 'contributors', 'license', 'notes', 'citation', 'methods',
+            'home_url', 'aux_data_url']
         :return: a Model
         """
         # validate model_config
@@ -481,6 +482,46 @@ class Model(ZoltarResource):
 
 
     @property
+    def description(self):
+        return self.json['description']
+
+
+    @property
+    def contributors(self):
+        return self.json['contributors']
+
+
+    @property
+    def license(self):
+        return self.json['license']
+
+
+    @property
+    def notes(self):
+        return self.json['notes']
+
+
+    @property
+    def citation(self):
+        return self.json['citation']
+
+
+    @property
+    def methods(self):
+        return self.json['methods']
+
+
+    @property
+    def home_url(self):
+        return self.json['home_url']
+
+
+    @property
+    def aux_data_url(self):
+        return self.json['aux_data_url']
+
+
+    @property
     def forecasts(self):
         """
         :return: a list of this Model's Forecasts
@@ -488,6 +529,22 @@ class Model(ZoltarResource):
         forecasts_json_list = self.zoltar_connection.json_for_uri(self.uri + 'forecasts/')
         return [Forecast(self.zoltar_connection, forecast_json['url'], forecast_json)
                 for forecast_json in forecasts_json_list]
+
+
+    def edit(self, model_config):
+        """
+        Edits this model to have the passed values
+
+        :param model_config: a dict used to edit this model. it must contain these fields: ['name',
+            'abbreviation', 'team_name', 'description', 'contributors', 'license', 'notes', 'citation', 'methods',
+            'home_url', 'aux_data_url']
+        """
+        response = requests.put(self.uri,
+                                headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
+                                json={'model_config': model_config})
+        if response.status_code != 200:  # HTTP_200_OK
+            raise RuntimeError(f"edit(): status code was not 200. status_code={response.status_code}. "
+                               f"text={response.text}")
 
 
     def upload_forecast(self, forecast_json, source, timezero_date, notes=''):

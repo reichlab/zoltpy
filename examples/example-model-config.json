@@ -3,6 +3,11 @@
   "abbreviation": "an abbreviation",
   "team_name": "a team_name",
   "description": "a description",
+  "contributors": "the contributors",
+  "license": "other",
+  "notes": "some notes",
+  "citation": "a citation",
+  "methods": "the methods",
   "home_url": "http://example.com/",
   "aux_data_url": "http://example.com/"
 }
