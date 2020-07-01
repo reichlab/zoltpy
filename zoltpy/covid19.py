@@ -77,16 +77,18 @@ def covid19_row_validator(column_index_dict, row):
     # validate quantiles. recall at this point all row values are strings, but VALID_QUANTILES is numbers
     quantile = row[column_index_dict['quantile']]
     value = row[column_index_dict['value']]
+
+    try:
+        if float(value) < 0:  # value must always be non-negative regardless of row type
+            error_messages.append((MESSAGE_FORECAST_CHECKS, f"entries in the `value` column must be non-negative. "
+                                                            f"value='{value}'. row={row}"))
+    except ValueError:
+        pass  # ignore here - it will be caught by `json_io_dict_from_quantile_csv_file()`
+
     if row[column_index_dict['type']] == 'quantile':
         try:
             if float(quantile) not in VALID_QUANTILES:
                 error_messages.append((MESSAGE_FORECAST_CHECKS, f"invalid quantile: {quantile!r}. row={row}"))
-        except ValueError:
-            pass  # ignore here - it will be caught by `json_io_dict_from_quantile_csv_file()`
-        try:
-            if float(value) < 0:
-                error_messages.append((MESSAGE_FORECAST_CHECKS, f"invalid quantile value: was not >= 0. "
-                                                                f"value='{value}'. row={row}"))
         except ValueError:
             pass  # ignore here - it will be caught by `json_io_dict_from_quantile_csv_file()`
 
