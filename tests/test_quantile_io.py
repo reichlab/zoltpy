@@ -85,7 +85,7 @@ class QuantileIOTestCase(TestCase):
                     open('tests/quantile-predictions.json') as exp_json_fp:
                 exp_json_io_dict = json.load(exp_json_fp)
                 act_json_io_dict, _ = json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death',
-                                                                                        '1 day ahead cum death'])
+                                                                                        '1 day ahead inc hosp'])
                 exp_json_io_dict['predictions'].sort(key=lambda _: (_['unit'], _['target'], _['class']))
                 act_json_io_dict['predictions'].sort(key=lambda _: (_['unit'], _['target'], _['class']))
                 self.assertEqual(exp_json_io_dict, act_json_io_dict)
@@ -117,7 +117,7 @@ class QuantileIOTestCase(TestCase):
 
     def test_error_messages_actual_file_with_errors(self):
         file_exp_num_errors_message_priority_message = [
-            ('2020-04-12-IHME-CurveFit.csv', 10, MESSAGE_QUANTILES_AND_VALUES,
+            ('2020-04-12-IHME-CurveFit.csv', 5, MESSAGE_QUANTILES_AND_VALUES,
              "Entries in `value` must be non-decreasing as quantiles increase"),
             ('2020-04-15-Geneva-DeterministicGrowth.csv', 1, MESSAGE_FORECAST_CHECKS,
              "invalid target name(s)"),
@@ -164,21 +164,21 @@ class QuantileIOTestCase(TestCase):
 
     def test_json_io_dict_from_quantile_csv_file_dup_points(self):
         with open('tests/quantiles-duplicate-points.csv') as quantile_fp:
-            _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, ['1 day ahead cum death'])
+            _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, ['1 day ahead inc hosp'])
             exp_error_messages = [(MESSAGE_QUANTILES_AND_VALUES,
                                    "Within a Prediction, there cannot be more than 1 Prediction Element of the same "
                                    "class. Found these duplicate unit/target/classes tuples: [('04', '1 day ahead "
-                                   "cum death', ['point', 'point'])]"),
+                                   "inc hosp', ['point', 'point'])]"),
                                   (MESSAGE_QUANTILES_AS_A_GROUP,
                                    "There must be exactly one point prediction for each location/target pair. Found "
                                    "these unit, target, point counts tuples did not have exactly one point: [('04', "
-                                   "'1 day ahead cum death', 2)]")]
+                                   "'1 day ahead inc hosp', 2)]")]
             self.assertEqual(exp_error_messages, act_error_messages)
 
 
     def test_json_io_dict_from_quantile_csv_file_no_points(self):
         with open('tests/quantile-predictions-no-point.csv') as quantile_fp:
-            _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, ['1 day ahead cum death',
+            _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, ['1 day ahead inc hosp',
                                                                                       '1 wk ahead cum death'])
             self.assertEqual(1, len(act_error_messages))
             self.assertEqual(MESSAGE_QUANTILES_AS_A_GROUP, act_error_messages[0][0])
@@ -196,7 +196,7 @@ class QuantileIOTestCase(TestCase):
 
         with open('tests/quantile-predictions-nan-quantile.csv') as quantile_fp:
             _, error_messages = \
-                json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead cum death'])
+                json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead inc hosp'])
             self.assertEqual(1, len(error_messages))
             self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
             self.assertIn('entries in the `quantile` column must be an int or float in [0, 1]', error_messages[0][1])

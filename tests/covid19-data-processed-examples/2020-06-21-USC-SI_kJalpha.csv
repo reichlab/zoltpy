@@ -1,4 +1,4 @@
 forecast_date,target,target_end_date,location,type,quantile,value
-2020-06-21,2 day ahead inc death,2020-06-23,48,Point,NA,47.01120814028991
-2020-06-21,2 day ahead inc death,2020-06-23,31,Point,NA,-0.02443515411698627
-2020-06-21,2 day ahead inc death,2020-06-23,49,Point,NA,6.0802630455420115
+2020-06-21,2 day ahead inc hosp,2020-06-23,48,Point,NA,47.01120814028991
+2020-06-21,2 day ahead inc hosp,2020-06-23,31,Point,NA,-0.02443515411698627
+2020-06-21,2 day ahead inc hosp,2020-06-23,49,Point,NA,6.0802630455420115

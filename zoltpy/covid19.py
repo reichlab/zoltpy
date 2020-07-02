@@ -21,9 +21,7 @@ FIPS_STATE_CODES = ['01', '02', '04', '05', '06', '08', '09', '10', '11', '12', 
                     '50', '51', '53', '54', '55', '56', '60', '66', '69', '72', '74', '78', 'US']  # 'US' is extra
 
 # b/c there are so many possible targets, we generate using a range
-COVID_VALID_TARGET_NAMES = [f"{_} day ahead inc death" for _ in range(131)] + \
-                           [f"{_} day ahead cum death" for _ in range(131)] + \
-                           [f"{_} wk ahead inc death" for _ in range(1, 21)] + \
+COVID_VALID_TARGET_NAMES = [f"{_} wk ahead inc death" for _ in range(1, 21)] + \
                            [f"{_} wk ahead cum death" for _ in range(1, 21)] + \
                            [f"{_} day ahead inc hosp" for _ in range(131)]
 

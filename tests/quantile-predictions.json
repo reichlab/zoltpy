@@ -3,7 +3,7 @@
   "predictions": [
     {
       "unit": "01",
-      "target": "1 day ahead cum death",
+      "target": "1 day ahead inc hosp",
       "class": "quantile",
       "prediction": {
         "quantile": [0.01],
@@ -18,13 +18,13 @@
     },
     {
       "unit": "51",
-      "target": "1 day ahead cum death",
+      "target": "1 day ahead inc hosp",
       "class": "point",
       "prediction": {"value": 432}
     },
     {
       "unit": "51",
-      "target": "1 day ahead cum death",
+      "target": "1 day ahead inc hosp",
       "class": "quantile",
       "prediction": {
         "quantile": [0.01, 0.025],
@@ -33,7 +33,7 @@
     },
     {
       "unit": "US",
-      "target": "1 day ahead cum death",
+      "target": "1 day ahead inc hosp",
       "class": "point",
       "prediction": {"value": 90717}
     }

@@ -1,5 +1,5 @@
 target,location,type,quantile,value
-1 day ahead cum death,01,point,NA,55
-1 day ahead cum death,02,point,NA,6
-1 day ahead cum death,04,point,NA,78
-1 day ahead cum death,04,point,NA,17
+1 day ahead inc hosp,01,point,NA,55
+1 day ahead inc hosp,02,point,NA,6
+1 day ahead inc hosp,04,point,NA,78
+1 day ahead inc hosp,04,point,NA,17

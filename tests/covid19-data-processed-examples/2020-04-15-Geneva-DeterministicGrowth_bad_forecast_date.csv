@@ -1,2 +1,2 @@
 forecast_date,target,target_end_date,location,type,quantile,value
-20200415,1 day ahead inc death,2020-04-16,US,point,NA,2232
+20200415,1 day ahead inc hosp,2020-04-16,US,point,NA,2232
