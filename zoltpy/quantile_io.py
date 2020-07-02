@@ -223,12 +223,12 @@ def _validate_header(header, addl_req_cols):
     :param addl_req_cols: an optional list of strings naming columns in addition to REQUIRED_COLUMNS that are required
     :return: column_index_dict: a dict that maps column_name -> its index in header
     """
-    required_columns = list(REQUIRED_COLUMNS)
-    required_columns.extend(addl_req_cols)
-    counts = [header.count(required_column) == 1 for required_column in required_columns]
-    if not all(counts):
-        raise RuntimeError(f"invalid header. did not contain the required columns. header={header}, "
-                           f"required_columns={required_columns}")
+    required_columns = list(REQUIRED_COLUMNS) + list(addl_req_cols)
+    req_cols_set = set(required_columns)
+    header_set = set(header)
+    if (len(header) != len(required_columns)) or (header_set != req_cols_set):
+        raise RuntimeError(f"invalid header. did not exactly contain the required columns. "
+                           f"diff={header_set ^ req_cols_set}, header={header_set}, required_columns={req_cols_set}")
 
     return {column: header.index(column) for column in header}
 

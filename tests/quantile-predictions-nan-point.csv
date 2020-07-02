@@ -1,8 +1,8 @@
-target,location,location_name,type,quantile,value
-1 wk ahead cum death,02,Alaska,point,NA,nan
-1 day ahead cum death,01,Alabama,point,NA,90717
-1 day ahead cum death,01,Alabama,quantile,0.01,46.0743989840204
-1 day ahead cum death,US,US National,point,NA,90717
-1 day ahead cum death,51,Virginia,point,NA,432
-1 day ahead cum death,51,Virginia,quantile,0.01,9
-1 day ahead cum death,51,Virginia,quantile,0.025,15
+target,location,type,quantile,value
+1 wk ahead cum death,02,point,NA,nan
+1 day ahead cum death,01,point,NA,90717
+1 day ahead cum death,01,quantile,0.01,46.0743989840204
+1 day ahead cum death,US,point,NA,90717
+1 day ahead cum death,51,point,NA,432
+1 day ahead cum death,51,quantile,0.01,9
+1 day ahead cum death,51,quantile,0.025,15

@@ -8,8 +8,10 @@ from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, summarized_e
 
 
 #
-# functions specific to the COVID19 project
+# functionality specific to the COVID19 project
 #
+
+COVID_ADDL_REQ_COLS = ['forecast_date', 'target_end_date']
 
 # from https://github.com/reichlab/covid19-forecast-hub/blob/master/template/state_fips_codes.csv
 # (probably via https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code ):
@@ -19,11 +21,11 @@ FIPS_STATE_CODES = ['01', '02', '04', '05', '06', '08', '09', '10', '11', '12', 
                     '50', '51', '53', '54', '55', '56', '60', '66', '69', '72', '74', '78', 'US']  # 'US' is extra
 
 # b/c there are so many possible targets, we generate using a range
-VALID_TARGET_NAMES = [f"{_} day ahead inc death" for _ in range(131)] + \
-                     [f"{_} day ahead cum death" for _ in range(131)] + \
-                     [f"{_} wk ahead inc death" for _ in range(1, 21)] + \
-                     [f"{_} wk ahead cum death" for _ in range(1, 21)] + \
-                     [f"{_} day ahead inc hosp" for _ in range(131)]
+COVID_VALID_TARGET_NAMES = [f"{_} day ahead inc death" for _ in range(131)] + \
+                           [f"{_} day ahead cum death" for _ in range(131)] + \
+                           [f"{_} wk ahead inc death" for _ in range(1, 21)] + \
+                           [f"{_} wk ahead cum death" for _ in range(1, 21)] + \
+                           [f"{_} day ahead inc hosp" for _ in range(131)]
 
 VALID_QUANTILES = [0.010, 0.025, 0.050, 0.100, 0.150, 0.200, 0.250, 0.300, 0.350, 0.400, 0.450, 0.500, 0.550, 0.600,
                    0.650, 0.700, 0.750, 0.800, 0.850, 0.900, 0.950, 0.975, 0.990]  # incoming must be a subset of these
@@ -45,8 +47,9 @@ def validate_quantile_csv_file(csv_fp):
     click.echo(f"* validating quantile_csv_file '{quantile_csv_file}'...")
     with open(quantile_csv_file) as cdc_csv_fp:
         # toss json_io_dict:
-        _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp, VALID_TARGET_NAMES, covid19_row_validator,
-                                                                ['forecast_date', 'target_end_date'])
+        _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp, COVID_VALID_TARGET_NAMES,
+                                                                covid19_row_validator,
+                                                                COVID_ADDL_REQ_COLS)
         if error_messages:
             return summarized_error_messages(error_messages)  # summarizes and orders, converting 2-tuples to strings
         else:
@@ -61,8 +64,8 @@ def covid19_row_validator(column_index_dict, row):
     """
     Does COVID19-specific row validation. Notes:
 
-    - expects these `valid_target_names` passed to `json_io_dict_from_quantile_csv_file()`: VALID_TARGET_NAMES
-    - expects these `addl_req_cols` passed to `json_io_dict_from_quantile_csv_file()`: ['forecast_date', 'target_end_date']
+    - expects these `valid_target_names` passed to `json_io_dict_from_quantile_csv_file()`: COVID_VALID_TARGET_NAMES
+    - expects these `addl_req_cols` passed to `json_io_dict_from_quantile_csv_file()`: COVID_ADDL_REQ_COLS
     """
     from zoltpy.cdc_io import _parse_date  # avoid circular imports
 

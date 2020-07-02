@@ -1,2 +1,2 @@
-target,location,location_name,type,quantile,value
-1 wk ahead cum death,Alaska,point,NA,7.74526423651839
+target,location,type,quantile,value
+1 wk ahead cum death,point,NA,7.74526423651839
