@@ -1,0 +1,25 @@
+forecast_date,target,target_end_date,location,type,quantile,value
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,point,NA,130
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.01,100
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.025,110
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.05,120
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.1,130
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.15,140.2
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.2,150.33348
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.25,160
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.3,170
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.35,180
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.4,190
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.45,222
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.5,223
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.55,224
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.6,225
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.65,226
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.7,227
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.75,230
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.8,240
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.85,250
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.9,260
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.95,270
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.975,280
+2020-07-06,1 wk ahead inc case,2020-07-11,01001,quantile,0.99,300

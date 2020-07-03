@@ -2,7 +2,8 @@ import json
 from unittest import TestCase
 from unittest.mock import patch
 
-from zoltpy.covid19 import COVID_VALID_TARGET_NAMES, covid19_row_validator, COVID_ADDL_REQ_COLS
+from zoltpy.covid19 import covid19_row_validator, COVID_ADDL_REQ_COLS, FIPS_CODES_STATE, \
+    FIPS_CODES_COUNTY, COVID_TARGETS
 from zoltpy.csv_io import CSV_HEADER
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, _validate_header, REQUIRED_COLUMNS, \
     quantile_csv_rows_from_json_io_dict, summarized_error_messages, MESSAGE_DATE_ALIGNMENT, MESSAGE_FORECAST_CHECKS, \
@@ -15,11 +16,16 @@ class QuantileIOTestCase(TestCase):
     """
 
 
+    def test_locations(self):
+        self.assertEqual(58, len(FIPS_CODES_STATE))
+        self.assertEqual(3142, len(FIPS_CODES_COUNTY))
+
+
     def test_optional_additional_required_column_names(self):
         # target, location, location_name, type, quantile,value:
         with open('tests/quantile-predictions.csv') as quantile_fp:
             _, error_messages = \
-                json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead cum death'],
+                json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead inc hosp'],
                                                     addl_req_cols=COVID_ADDL_REQ_COLS)
             self.assertEqual(1, len(error_messages))
             self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
@@ -28,7 +34,7 @@ class QuantileIOTestCase(TestCase):
         # forecast_date, target, target_end_date, location, location_name, type, quantile, value:
         with open('tests/covid19-data-processed-examples/2020-04-15-Geneva-DeterministicGrowth.csv') as quantile_fp:
             try:
-                json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead cum death'],
+                json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead inc hosp'],
                                                     addl_req_cols=COVID_ADDL_REQ_COLS)
             except Exception as ex:
                 self.fail(f"unexpected exception: {ex}")
@@ -38,13 +44,13 @@ class QuantileIOTestCase(TestCase):
         column_index_dict = {'target': 0, 'location': 1, 'type': 2, 'quantile': 3, 'value': 4}
         with patch('zoltpy.quantile_io._validate_header', return_value=column_index_dict) as mock, \
                 open('tests/quantile-predictions.csv') as quantile_fp:
-            json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead cum death'])
+            json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead inc hosp'])
             self.assertEqual(1, mock.call_count)
 
 
     def test_json_io_dict_from_quantile_csv_file_small_tolerance(self):
         with open('tests/covid19-data-processed-examples/2020-04-20-YYG-ParamSearch-small.csv') as quantile_fp:
-            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_VALID_TARGET_NAMES,
+            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
                                                                     covid19_row_validator,
                                                                     addl_req_cols=COVID_ADDL_REQ_COLS)
             self.assertEqual(0, len(error_messages))
@@ -93,7 +99,7 @@ class QuantileIOTestCase(TestCase):
 
     def test_other_ok_quantile_files(self):
         with open('tests/quantiles-CU-60contact.csv') as quantile_fp:
-            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_VALID_TARGET_NAMES,
+            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
                                                                     covid19_row_validator,
                                                                     addl_req_cols=COVID_ADDL_REQ_COLS)
             self.assertEqual(0, len(error_messages))
@@ -109,32 +115,33 @@ class QuantileIOTestCase(TestCase):
             '2020-04-13-MOBS_NEU-GLEAM_COVID.csv']
         for quantile_file in ok_quantile_files:
             with open('tests/covid19-data-processed-examples/' + quantile_file) as quantile_fp:
-                _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_VALID_TARGET_NAMES,
+                _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
                                                                         covid19_row_validator,
                                                                         addl_req_cols=COVID_ADDL_REQ_COLS)
                 self.assertEqual(0, len(error_messages))
 
 
     def test_error_messages_actual_file_with_errors(self):
-        file_exp_num_errors_message_priority_message = [
+        file_exp_num_errors_message_priority_messages = [
             ('2020-04-12-IHME-CurveFit.csv', 5, MESSAGE_QUANTILES_AND_VALUES,
-             "Entries in `value` must be non-decreasing as quantiles increase"),
-            ('2020-04-15-Geneva-DeterministicGrowth.csv', 1, MESSAGE_FORECAST_CHECKS,
-             "invalid target name(s)"),
+             ["Entries in `value` must be non-decreasing as quantiles increase"]),
+            ('2020-04-15-Geneva-DeterministicGrowth.csv', 9, MESSAGE_FORECAST_CHECKS,
+             ["invalid location for target", "invalid target name(s)"]),
             ('2020-05-17-CovidActNow-SEIR_CAN.csv', 10, MESSAGE_FORECAST_CHECKS,
-             "entries in the `value` column must be non-negative"),
+             ["entries in the `value` column must be non-negative"]),
             ('2020-06-21-USC-SI_kJalpha.csv', 1, MESSAGE_FORECAST_CHECKS,
-             "entries in the `value` column must be non-negative"),
+             ["entries in the `value` column must be non-negative"]),
         ]
-        for quantile_file, exp_num_errors, message_priority, exp_message in \
-                file_exp_num_errors_message_priority_message:
+        for quantile_file, exp_num_errors, exp_priority, exp_error_messages in \
+                file_exp_num_errors_message_priority_messages:
             with open('tests/covid19-data-processed-examples/' + quantile_file) as quantile_fp:
-                _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_VALID_TARGET_NAMES,
+                _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
                                                                             covid19_row_validator,
                                                                             addl_req_cols=COVID_ADDL_REQ_COLS)
-                self.assertEqual(exp_num_errors, len(act_error_messages))
-                self.assertEqual(message_priority, act_error_messages[0][0])
-                self.assertIn(exp_message, act_error_messages[0][1])  # arbitrarily pick first message. all are similar
+                self.assertEqual(exp_num_errors, len(act_error_messages), exp_error_messages)
+                for act_priority, act_error_message in act_error_messages:
+                    self.assertEqual(exp_priority, act_priority)
+                    self.assertTrue(any([exp_error_message in act_error_message for exp_error_message in exp_error_messages]))
 
 
     def test_summarize_error_messages(self):
@@ -154,12 +161,11 @@ class QuantileIOTestCase(TestCase):
 
     def test_json_io_dict_from_quantile_csv_file_bad_row_count(self):
         with open('tests/quantiles-bad-row-count.csv') as quantile_fp:  # header: 6, row: 5
-            _, act_error_messages = \
-                json_io_dict_from_quantile_csv_file(quantile_fp, COVID_VALID_TARGET_NAMES)
+            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS)
             exp_errors = [(MESSAGE_FORECAST_CHECKS,
                            "invalid number of items in row. len(header)=5 but len(row)=4. "
                            "row=['1 wk ahead cum death', 'point', 'NA', '7.74526423651839']")]
-            self.assertEqual(exp_errors, act_error_messages)
+            self.assertEqual(exp_errors, error_messages)
 
 
     def test_json_io_dict_from_quantile_csv_file_dup_points(self):
@@ -178,18 +184,18 @@ class QuantileIOTestCase(TestCase):
 
     def test_json_io_dict_from_quantile_csv_file_no_points(self):
         with open('tests/quantile-predictions-no-point.csv') as quantile_fp:
-            _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, ['1 day ahead inc hosp',
-                                                                                      '1 wk ahead cum death'])
-            self.assertEqual(1, len(act_error_messages))
-            self.assertEqual(MESSAGE_QUANTILES_AS_A_GROUP, act_error_messages[0][0])
+            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, ['1 day ahead inc hosp',
+                                                                                  '1 wk ahead cum death'])
+            self.assertEqual(1, len(error_messages))
+            self.assertEqual(MESSAGE_QUANTILES_AS_A_GROUP, error_messages[0][0])
             self.assertIn("There must be exactly one point prediction for each location/target pair",
-                          act_error_messages[0][1])
+                          error_messages[0][1])
 
 
     def test_json_io_dict_from_quantile_csv_file_nan(self):
         with open('tests/quantile-predictions-nan-point.csv') as quantile_fp:
             _, error_messages = \
-                json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead cum death'])
+                json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead inc hosp'])
             self.assertEqual(1, len(error_messages))
             self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
         self.assertIn('entries in the `value` column must be an int or float', error_messages[0][1])
@@ -209,95 +215,96 @@ class QuantileIOTestCase(TestCase):
                              'type': 5, 'quantile': 6, 'value': 7}  # 2020-04-13-MOBS_NEU-GLEAM_COVID.csv
 
         # 1/4) for x day ahead targets the target_end_date should be forecast_date + x
-        row = ["2020-04-13", "1 day ahead cum death", "2020-04-14", "01", "Alabama", "point", "NA",
+        row = ["2020-04-13", "1 day ahead inc hosp", "2020-04-14", "01", "Alabama", "point", "NA",
                "45.824147927692344"]  # ok: +1
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(0, len(act_error_messages))
+        error_messages = covid19_row_validator(column_index_dict, row)
+        # (0, "invalid location for target. location='01', target='1 day ahead inc hosp'. row=['2020-04-13', '1 day ahead inc hosp', '2020-04-14', '01', 'Alabama', 'point', 'NA', '45.824147927692344']")
+        self.assertEqual(0, len(error_messages))
 
-        row = ["2020-04-13", "2 day ahead cum death", "2020-04-15", "01", "Alabama", "point", "NA",
+        row = ["2020-04-13", "2 day ahead inc hosp", "2020-04-15", "01", "Alabama", "point", "NA",
                "48.22952942521442"]  # ok: +2
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(0, len(act_error_messages))
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(0, len(error_messages))
 
-        row = ["2020-04-13", "1 day ahead cum death", "2020-04-15", "01", "Alabama", "point", "NA",
+        row = ["2020-04-13", "1 day ahead inc hosp", "2020-04-15", "01", "Alabama", "point", "NA",
                "45.824147927692344"]  # bad: +2, not 1
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(1, len(act_error_messages))
-        self.assertEqual(MESSAGE_FORECAST_CHECKS, act_error_messages[0][0])
-        self.assertIn("invalid target_end_date: was not 1 day(s) after forecast_date", act_error_messages[0][1])
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(1, len(error_messages))
+        self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
+        self.assertIn("invalid target_end_date: was not 1 day(s) after forecast_date", error_messages[0][1])
 
         # 2/4) for x week ahead targets, weekday(target_end_date) should be a Saturday (case: Sun or Mon)
         row = ["2020-04-13", "1 wk ahead cum death", "2020-04-18", "01", "Alabama", "point", "NA",
                "55.800809050176994"]  # ok: Mon -> Sat
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(0, len(act_error_messages))
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(0, len(error_messages))
 
         row = ["2020-04-13", "2 wk ahead cum death", "2020-04-25", "01", "Alabama", "point", "NA",
                "71.82206014865048"]  # ok: Mon -> Sat
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(0, len(act_error_messages))
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(0, len(error_messages))
 
         row = ["2020-04-13", "1 wk ahead cum death", "2020-04-19", "01", "Alabama", "point", "NA",
                "55.800809050176994"]  # bad: target_end_date is a Sun
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(1, len(act_error_messages))
-        self.assertEqual(MESSAGE_DATE_ALIGNMENT, act_error_messages[0][0])
-        self.assertIn("target_end_date was not a Saturday", act_error_messages[0][1])
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(1, len(error_messages))
+        self.assertEqual(MESSAGE_DATE_ALIGNMENT, error_messages[0][0])
+        self.assertIn("target_end_date was not a Saturday", error_messages[0][1])
 
         # 3/4) (case: Sun or Mon) for x week ahead targets, ensure that the 1-week ahead forecast is for the next Sat
         row = ["2020-04-12", "1 wk ahead cum death", "2020-04-18", "01", "Alabama", "point", "NA",
                "55.800809050176994"]  # ok: 1 wk ahead Sun -> Sat
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(0, len(act_error_messages))
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(0, len(error_messages))
 
         row = ["2020-04-13", "1 wk ahead cum death", "2020-04-18", "01", "Alabama", "point", "NA",
                "55.800809050176994"]  # ok: 1 wk ahead Mon -> Sat
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(0, len(act_error_messages))
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(0, len(error_messages))
 
         row = ["2020-04-14", "1 wk ahead cum death", "2020-04-18", "01", "Alabama", "point", "NA",
                "55.800809050176994"]  # bad: 1 wk ahead Tue -> this Sat but s/b next Sat
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(1, len(act_error_messages))
-        self.assertEqual(MESSAGE_DATE_ALIGNMENT, act_error_messages[0][0])
-        self.assertIn("target_end_date was not the expected Saturday", act_error_messages[0][1])
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(1, len(error_messages))
+        self.assertEqual(MESSAGE_DATE_ALIGNMENT, error_messages[0][0])
+        self.assertIn("target_end_date was not the expected Saturday", error_messages[0][1])
 
         row = ["2020-04-13", "2 wk ahead cum death", "2020-04-25", "01", "Alabama", "point", "NA",
                "71.82206014865048"]  # ok: 2 wk ahead Mon -> next Sat
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(0, len(act_error_messages))
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(0, len(error_messages))
 
         row = ["2020-04-13", "2 wk ahead cum death", "2020-04-18", "01", "Alabama", "point", "NA",
                "71.82206014865048"]  # bad: 2 wk ahead Mon -> next Sat
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(1, len(act_error_messages))
-        self.assertEqual(MESSAGE_DATE_ALIGNMENT, act_error_messages[0][0])
-        self.assertIn("target_end_date was not the expected Saturday", act_error_messages[0][1])
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(1, len(error_messages))
+        self.assertEqual(MESSAGE_DATE_ALIGNMENT, error_messages[0][0])
+        self.assertIn("target_end_date was not the expected Saturday", error_messages[0][1])
 
         # 4/4) (case: Tue through Sat) for x week ahead targets, ensures that the 1-week ahead forecast is for the Sat after next
         row = ["2020-04-14", "1 wk ahead cum death", "2020-04-25", "01", "Alabama", "point", "NA",
                "55.800809050176994"]  # ok: 1 wk ahead Tue -> next Sat
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(0, len(act_error_messages))
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(0, len(error_messages))
 
         row = ["2020-04-14", "1 wk ahead cum death", "2020-04-18", "01", "Alabama", "point", "NA",
                "55.800809050176994"]  # bad: 1 wk ahead Tue -> this Sat, but should be next Sat (2020-04-25)
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(1, len(act_error_messages))
-        self.assertEqual(MESSAGE_DATE_ALIGNMENT, act_error_messages[0][0])
-        self.assertIn("target_end_date was not the expected Saturday", act_error_messages[0][1])
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(1, len(error_messages))
+        self.assertEqual(MESSAGE_DATE_ALIGNMENT, error_messages[0][0])
+        self.assertIn("target_end_date was not the expected Saturday", error_messages[0][1])
 
         row = ["2020-04-13", "2 wk ahead cum death", "2020-04-25", "01", "Alabama", "point", "NA",
                "71.82206014865048"]  # ok: 2 wk ahead Mon -> next Sat
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(0, len(act_error_messages))
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(0, len(error_messages))
 
         row = ["2020-04-14", "2 wk ahead cum death", "2020-04-25", "01", "Alabama", "point", "NA",
                "71.82206014865048"]  # bad: 2 wk ahead Tue -> next Sat
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(1, len(act_error_messages))
-        self.assertEqual(MESSAGE_DATE_ALIGNMENT, act_error_messages[0][0])
-        self.assertIn("target_end_date was not the expected Saturday", act_error_messages[0][1])
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(1, len(error_messages))
+        self.assertEqual(MESSAGE_DATE_ALIGNMENT, error_messages[0][0])
+        self.assertIn("target_end_date was not the expected Saturday", error_messages[0][1])
 
 
     def test_covid_validation_date_format(self):
@@ -307,66 +314,69 @@ class QuantileIOTestCase(TestCase):
         test_dir = 'tests/covid19-data-processed-examples/'
         with open(test_dir + '2020-04-15-Geneva-DeterministicGrowth.csv') as quantile_fp:
             try:
-                _, act_error_messages = \
-                    json_io_dict_from_quantile_csv_file(quantile_fp, COVID_VALID_TARGET_NAMES, covid19_row_validator,
+                _, error_messages = \
+                    json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS, covid19_row_validator,
                                                         addl_req_cols=COVID_ADDL_REQ_COLS)
             except Exception as ex:
                 self.fail(f"unexpected exception: {ex}")
 
         # bad date: '2020-04-15-Geneva-DeterministicGrowth_bad_forecast_date.csv'
         with open(test_dir + '2020-04-15-Geneva-DeterministicGrowth_bad_forecast_date.csv') as quantile_fp:
-            _, act_error_messages = \
-                json_io_dict_from_quantile_csv_file(quantile_fp, COVID_VALID_TARGET_NAMES, covid19_row_validator,
+            _, error_messages = \
+                json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS, covid19_row_validator,
                                                     addl_req_cols=COVID_ADDL_REQ_COLS)
-            self.assertEqual(1, len(act_error_messages))
-            self.assertEqual(MESSAGE_FORECAST_CHECKS, act_error_messages[0][0])
-            self.assertIn("invalid forecast_date or target_end_date format", act_error_messages[0][1])
+            self.assertEqual(1, len(error_messages))
+            self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
+            self.assertIn("invalid forecast_date or target_end_date format", error_messages[0][1])
 
         # bad date: '2020-04-15-Geneva-DeterministicGrowth_bad_target_end_date.csv'
         with open(test_dir + '2020-04-15-Geneva-DeterministicGrowth_bad_target_end_date.csv') as quantile_fp:
-            _, act_error_messages = \
-                json_io_dict_from_quantile_csv_file(quantile_fp, COVID_VALID_TARGET_NAMES, covid19_row_validator,
+            _, error_messages = \
+                json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS, covid19_row_validator,
                                                     addl_req_cols=COVID_ADDL_REQ_COLS)
-            self.assertEqual(1, len(act_error_messages))
-            self.assertEqual(MESSAGE_FORECAST_CHECKS, act_error_messages[0][0])
-            self.assertIn("invalid forecast_date or target_end_date format", act_error_messages[0][1])
+            self.assertEqual(1, len(error_messages))
+            self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
+            self.assertIn("invalid forecast_date or target_end_date format", error_messages[0][1])
 
 
     def test_covid_validation_quantiles(self):
-        # tests a quantile not in VALID_QUANTILES
+        # tests a quantile not in COVID_QUANTILES_NON_CASE
         column_index_dict = {'forecast_date': 0, 'target': 1, 'target_end_date': 2, 'location': 3, 'location_name': 4,
                              'type': 5, 'quantile': 6, 'value': 7}  # 2020-04-13-MOBS_NEU-GLEAM_COVID.csv
 
-        row = ["2020-04-13", "1 day ahead cum death", "2020-04-14", "01", "Alabama", "quantile", "0.1",
+        row = ["2020-04-13", "1 day ahead inc hosp", "2020-04-14", "01", "Alabama", "quantile", "0.1",
                "18.045499696631747"]  # 0.1 is OK (matches 0.100)
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(0, len(act_error_messages))
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(0, len(error_messages))
 
-        row = ["2020-04-13", "1 day ahead cum death", "2020-04-14", "01", "Alabama", "quantile", "0.11",
+        row = ["2020-04-13", "1 day ahead inc hosp", "2020-04-14", "01", "Alabama", "quantile", "0.11",
                "18.045499696631747"]  # 0.11 bad
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(1, len(act_error_messages))
-        self.assertEqual(MESSAGE_FORECAST_CHECKS, act_error_messages[0][0])
-        self.assertIn("invalid quantile: '0.11'", act_error_messages[0][1])
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(1, len(error_messages))
+        self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
+        self.assertIn("invalid quantile for target. quantile='0.11'", error_messages[0][1])
 
         # from 2020-05-17-CovidActNow-SEIR_CAN.csv
         column_index_dict = {'forecast_date': 0, 'location': 1, 'location_name': 2, 'target': 3, 'type': 4,
                              'target_end_date': 5, 'quantile': 6, 'value': 7}
-        row = ['2020-05-17', '01', 'Alabama', '1 day ahead inc death', 'quantile', '2020-05-18', '0.010',
+        row = ['2020-05-17', '01', 'Alabama', '1 day ahead inc hosp', 'quantile', '2020-05-18', '0.010',
                '-29.859790255308283']  # quantile not >= 0
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(1, len(act_error_messages))
-        self.assertEqual(MESSAGE_FORECAST_CHECKS, act_error_messages[0][0])
-        self.assertIn("entries in the `value` column must be non-negative", act_error_messages[0][1])
+        error_messages = covid19_row_validator(column_index_dict, row)
+        # [(0, "invalid location for target. location='01', target='1 day ahead inc hosp'.      row=['2020-05-17', '01', 'Alabama', '1 day ahead inc hosp', 'quantile', '2020-05-18', '0.010', '-29.859790255308283']"),
+        #  (0, "entries in the `value` column must be non-negative. value='-29.859790255308283'. row=['2020-05-17', '01', 'Alabama', '1 day ahead inc hosp', 'quantile', '2020-05-18', '0.010', '-29.859790255308283']"),
+        #  (0, "invalid quantile for target. quantile='0.010', target='1 day ahead inc hosp'.   row=['2020-05-17', '01', 'Alabama', '1 day ahead inc hosp', 'quantile', '2020-05-18', '0.010', '-29.859790255308283']")]
+        self.assertEqual(1, len(error_messages))
+        self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
+        self.assertIn("entries in the `value` column must be non-negative", error_messages[0][1])
 
         column_index_dict = {'forecast_date': 0, 'target': 1, 'target_end_date': 2, 'location': 3, 'location_name': 4,
                              'type': 5, 'quantile': 6, 'value': 7}  # from 2020-06-21-USC-SI_kJalpha.csv
-        row = ['2020-06-21', '2 day ahead inc death', '2020-06-23', '31', 'Nebraska', 'Point', 'NA',
+        row = ['2020-06-21', '2 day ahead inc hosp', '2020-06-23', '31', 'Nebraska', 'Point', 'NA',
                '-0.02443515411698627']  # value not >= 0
-        act_error_messages = covid19_row_validator(column_index_dict, row)
-        self.assertEqual(1, len(act_error_messages))
-        self.assertEqual(MESSAGE_FORECAST_CHECKS, act_error_messages[0][0])
-        self.assertIn("entries in the `value` column must be non-negative", act_error_messages[0][1])
+        error_messages = covid19_row_validator(column_index_dict, row)
+        self.assertEqual(1, len(error_messages))
+        self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
+        self.assertIn("entries in the `value` column must be non-negative", error_messages[0][1])
 
 
     def test_json_io_dict_from_quantile_csv_file_bad_covid_fips_code(self):
@@ -375,11 +385,11 @@ class QuantileIOTestCase(TestCase):
                          'quantiles-bad-row-fip-bad-two-digits.csv']:
             with open('tests/' + csv_file) as quantile_fp:
                 _, error_messages = \
-                    json_io_dict_from_quantile_csv_file(quantile_fp, COVID_VALID_TARGET_NAMES, covid19_row_validator,
+                    json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS, covid19_row_validator,
                                                         COVID_ADDL_REQ_COLS)
             self.assertEqual(1, len(error_messages))
             self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
-            self.assertIn("invalid FIPS location", error_messages[0][1])
+            self.assertIn("invalid location for target", error_messages[0][1])
 
 
     def test_quantile_csv_rows_from_json_io_dict(self):
@@ -425,6 +435,31 @@ class QuantileIOTestCase(TestCase):
                         ['location1', 'pct next week', 'point', '', 2.1],
                         ['location2', 'pct next week', 'quantile', 0.025, 1.0]]
             self.assertEqual(exp_rows, act_rows)
+
+
+    def test_county_cases(self):
+        # test blue sky
+        with open('tests/county-examples/correct.csv') as quantile_fp:
+            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp,
+                                                                    COVID_TARGETS, covid19_row_validator,
+                                                                    addl_req_cols=COVID_ADDL_REQ_COLS)
+        self.assertEqual(0, len(error_messages))
+
+        # test invalid combinations
+        file_exp_num_errors_messages = [
+            ('invalid-inc-hosp-target-for-county.csv', 8, 'invalid location for target'),
+            ('invalid-quantiles-for-case-target.csv', 16, 'invalid quantile for target'),
+            ('invalid-wk-cum-death-target-for-county.csv', 8, 'invalid location for target'),
+            ('invalid-wk-inc-death-target-for-county.csv', 8, 'invalid location for target'),
+        ]
+        for quantile_file, exp_num_errors, exp_message in file_exp_num_errors_messages:
+            with open('tests/county-examples/' + quantile_file) as quantile_fp:
+                _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
+                                                                        covid19_row_validator,
+                                                                        addl_req_cols=COVID_ADDL_REQ_COLS)
+                self.assertEqual(exp_num_errors, len(error_messages))
+                self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
+                self.assertIn(exp_message, error_messages[0][1])  # arbitrarily pick first message. all are similar
 
 
 # todo move to test_util.py
