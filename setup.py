@@ -11,6 +11,7 @@ setuptools.setup(
     description="A package of Reich Lab Zoltar utility functions.",
     long_description=long_description,
     long_description_content_type="text/markdown",
+    include_package_data=True,
     url="https://github.com/reichlab/zoltpy",
     packages=setuptools.find_packages(),
     classifiers=[
