@@ -309,7 +309,7 @@ class ConnectionTestCase(unittest.TestCase):
         with patch('requests.put') as put_mock:
             put_mock.return_value.status_code = 200
             model_0.edit(model_config)
-            put_mock.assert_called_once_with('http://example.com/api/model/5/', data={'model_config': model_config},
+            put_mock.assert_called_once_with('http://example.com/api/model/5/', json={'model_config': model_config},
                                              headers={'Authorization': f'JWT {MOCK_TOKEN}'})
 
 
