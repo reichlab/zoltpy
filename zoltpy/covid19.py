@@ -96,7 +96,7 @@ def validate_quantile_csv_file(csv_fp):
 # `json_io_dict_from_quantile_csv_file()` row validator
 #
 
-def covid19_row_validator(column_index_dict, row):
+def covid19_row_validator(column_index_dict, row, is_valid_target):
     """
     Does COVID19-specific row validation. Notes:
 
@@ -116,9 +116,9 @@ def covid19_row_validator(column_index_dict, row):
     is_non_case_target = target in COVID_TARGETS_NON_CASE
 
     # validate location (FIPS code)
-    if not ((is_case_target and is_state_location) or
-            (is_case_target and is_county_location) or
-            (is_non_case_target and is_state_location)):
+    if is_valid_target and not ((is_case_target and is_state_location) or
+                                (is_case_target and is_county_location) or
+                                (is_non_case_target and is_state_location)):
         error_messages.append((MESSAGE_FORECAST_CHECKS, f"invalid location for target. location={location!r}, "
                                                         f"target={target!r}. row={row}"))
 
@@ -138,9 +138,9 @@ def covid19_row_validator(column_index_dict, row):
             quantile_float = float(quantile)
             is_case_quantile = quantile_float in COVID_QUANTILES_CASE
             is_non_case_quantile = quantile_float in COVID_QUANTILES_CASE + COVID_QUANTILES_NON_CASE
-            if not ((is_case_target and is_case_quantile) or
-                    (is_non_case_target and is_case_quantile) or
-                    (is_non_case_target and is_non_case_quantile)):
+            if is_valid_target and not ((is_case_target and is_case_quantile) or
+                                        (is_non_case_target and is_case_quantile) or
+                                        (is_non_case_target and is_non_case_quantile)):
                 error_messages.append((MESSAGE_FORECAST_CHECKS, f"invalid quantile for target. quantile={quantile!r}, "
                                                                 f"target={target!r}. row={row}"))
         except ValueError:

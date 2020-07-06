@@ -59,11 +59,12 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
     :param csv_fp: an open quantile csv file-like object. the quantile CSV file format is documented at
         https://docs.zoltardata.com/
     :param valid_target_names: list of strings of valid targets to validate against
-    :param row_validator: an optional function of these args that is run to perform additional project-specific
-        validations. returns a list of `error_messages`.
+    :param row_validator: an optional function that takes the following args and that is run to perform additional
+        project-specific validations. returns `error_messages` (a list of strings).
         - column_index_dict: as returned by _validate_header(): a dict that maps column_name -> its index in header (row)
         - row: the raw row being validated. NB: the order of columns is variable, but callers can use column_index_dict
             to index into row
+        - is_target_valid: True or False depending on whether the row's target was in valid_target_names
     :param addl_req_cols: an optional list of strings naming columns in addition to REQUIRED_COLUMNS that are required
     :return 2-tuple: (json_io_dict, error_messages) where the former is a "JSON IO dict" (aka 'json_io_dict' by callers)
         that contains the two types of predictions. see https://docs.zoltardata.com/ for details. json_io_dict is None
@@ -178,7 +179,8 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
         location, target, row_type, quantile, value = [row[column_index_dict[column]] for column in REQUIRED_COLUMNS]
 
         # validate target
-        if target not in valid_target_names:
+        is_valid_target = target in valid_target_names
+        if not is_valid_target:
             error_targets.add(target)
 
         # validate quantile and value
@@ -200,7 +202,7 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
 
         # do optional application-specific row validation. NB: error_messages is modified in-place as a side-effect
         if row_validator:
-            error_messages.extend(row_validator(column_index_dict, row))
+            error_messages.extend(row_validator(column_index_dict, row, is_valid_target))
 
         # convert parsed date back into string suitable for JSON.
         # NB: recall all targets are "type": "discrete", so we only accept ints and floats
