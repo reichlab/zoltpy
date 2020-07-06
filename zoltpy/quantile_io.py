@@ -159,10 +159,11 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
 
     csv_reader = csv.reader(csv_fp, delimiter=',')
     header = next(csv_reader)
-    try:
-        column_index_dict = _validate_header(header, addl_req_cols)
-    except RuntimeError as re:
-        error_messages.append((MESSAGE_FORECAST_CHECKS, re.args[0]))
+    column_index_dict, error_message = _validate_header(header, addl_req_cols)
+    if error_message is not None:
+        error_messages.append((MESSAGE_FORECAST_CHECKS, error_message))
+
+    if column_index_dict is None:
         return [], error_messages  # terminate processing b/c column_index_dict is required to get columns
 
     error_targets = set()  # output set of invalid target names
@@ -220,16 +221,29 @@ def _validate_header(header, addl_req_cols):
 
     :param header: first row from the csv file
     :param addl_req_cols: an optional list of strings naming columns in addition to REQUIRED_COLUMNS that are required
-    :return: column_index_dict: a dict that maps column_name -> its index in header
+    :return 2-tuple: (column_index_dict, error_message) where the former is a dict that maps column_name -> its index
+        in header. column_index_dict is None if there was a *terminal* error, in this case when any of the required
+        columns were not present or when there are duplicate column names. error_message is a str if there was an error,
+        and None o/w
     """
+    header_set = set(header)
+    if len(header_set) != len(header):
+        return None, f"invalid header. found duplicate column(s): header={header}"  # terminal error
+
     required_columns = list(REQUIRED_COLUMNS) + list(addl_req_cols)
     req_cols_set = set(required_columns)
-    header_set = set(header)
-    if (len(header) != len(required_columns)) or (header_set != req_cols_set):
-        raise RuntimeError(f"invalid header. did not exactly contain the required columns. "
-                           f"diff={header_set ^ req_cols_set}, header={header_set}, required_columns={req_cols_set}")
+    if not (req_cols_set <= header_set):
+        return None, \
+               f"invalid header. did not contain the required column(s). diff={header_set ^ req_cols_set}, " \
+               f"header={header_set}, required_columns={req_cols_set}"  # non-terminal error
 
-    return {column: header.index(column) for column in header}
+    column_index_dict = {column: header.index(column) for column in required_columns}
+    if header_set != req_cols_set:
+        return column_index_dict, \
+               f"invalid header. contained extra columns(s). diff={header_set ^ req_cols_set}, " \
+               f"header={header_set}, required_columns={req_cols_set}"  # non-terminal error
+    else:
+        return column_index_dict, None  # no error
 
 
 def _validate_quantile_prediction_dict(prediction_dict):

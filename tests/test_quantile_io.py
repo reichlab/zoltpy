@@ -29,7 +29,7 @@ class QuantileIOTestCase(TestCase):
                                                     addl_req_cols=COVID_ADDL_REQ_COLS)
             self.assertEqual(1, len(error_messages))
             self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
-            self.assertIn('invalid header. did not exactly contain the required columns', error_messages[0][1])
+            self.assertIn('invalid header. did not contain the required column(s)', error_messages[0][1])
 
         # forecast_date, target, target_end_date, location, location_name, type, quantile, value:
         with open('tests/covid19-data-processed-examples/2020-04-15-Geneva-DeterministicGrowth.csv') as quantile_fp:
@@ -42,7 +42,7 @@ class QuantileIOTestCase(TestCase):
 
     def test_json_io_dict_from_quantile_csv_file_calls_validate_header(self):
         column_index_dict = {'target': 0, 'location': 1, 'type': 2, 'quantile': 3, 'value': 4}
-        with patch('zoltpy.quantile_io._validate_header', return_value=column_index_dict) as mock, \
+        with patch('zoltpy.quantile_io._validate_header', return_value=(column_index_dict, None)) as mock, \
                 open('tests/quantile-predictions.csv') as quantile_fp:
             json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead inc hosp'])
             self.assertEqual(1, mock.call_count)
@@ -57,31 +57,41 @@ class QuantileIOTestCase(TestCase):
 
 
     def test_validate_header(self):
-        # test various valid headers
-        for columns_exp_idxs in [
-            (REQUIRED_COLUMNS,  # canonical order: 'location', 'target', 'type', 'quantile', 'value'
-             {'location': 0, 'target': 1, 'type': 2, 'quantile': 3, 'value': 4}),
+        for columns, exp_column_index_dict, exp_error in [
+            (REQUIRED_COLUMNS,  # canonical order
+             {'location': 0, 'target': 1, 'type': 2, 'quantile': 3, 'value': 4},
+             None),
             (['location', 'type', 'target', 'quantile', 'value'],  # different order
-             {'location': 0, 'type': 1, 'target': 2, 'quantile': 3, 'value': 4})]:
-            try:
-                act_column_index_dict = _validate_header(columns_exp_idxs[0], [])
-                self.assertEqual(columns_exp_idxs[1], act_column_index_dict)
-            except Exception as ex:
-                self.fail(f"unexpected exception: {ex}")
+             {'location': 0, 'type': 1, 'target': 2, 'quantile': 3, 'value': 4},
+             None),
+            (['location', 'type', 'target', 'quantile', 'foo', 'value'],  # extra column
+             {'location': 0, 'type': 1, 'target': 2, 'quantile': 3, 'value': 5},
+             "invalid header. contained extra columns(s)"),
+            (['bar', 'location', 'type', 'target', 'quantile', 'foo', 'value'],  # extra columns
+             {'location': 1, 'type': 2, 'target': 3, 'quantile': 4, 'value': 6},
+             "invalid header. contained extra columns(s)"),
+            (list(REQUIRED_COLUMNS) + ['type'],  # duplicate required column
+             None,
+             "invalid header. found duplicate column(s)"),
+            (list(REQUIRED_COLUMNS) + ['foo', 'foo'],  # duplicate extra column
+             None,
+             "invalid header. found duplicate column(s)"),
+        ]:
+            act_column_index_dict, act_error = _validate_header(columns, [])
+            self.assertEqual(exp_column_index_dict, act_column_index_dict)
+            if exp_error is None:
+                self.assertIsNone(act_error)
+            else:
+                self.assertIn(exp_error, act_error)
 
         # test removing each required_column one at a time
         for required_column in REQUIRED_COLUMNS:
             columns_exp_idxs = list(REQUIRED_COLUMNS)  # copy
             req_col_idx = columns_exp_idxs.index(required_column)
             del columns_exp_idxs[req_col_idx]
-            with self.assertRaises(RuntimeError) as context:
-                _validate_header(columns_exp_idxs, [])
-            self.assertIn("invalid header. did not exactly contain the required columns", str(context.exception))
-
-        # test duplicate required column
-        with self.assertRaises(RuntimeError) as context:
-            _validate_header(list(REQUIRED_COLUMNS) + ['type'], [])
-        self.assertIn("invalid header. did not exactly contain the required columns", str(context.exception))
+            act_column_index_dict, act_error = _validate_header(columns_exp_idxs, [])
+            self.assertIsNone(act_column_index_dict)
+            self.assertIn("invalid header. did not contain the required column(s)", act_error)
 
 
     def test_json_io_dict_from_quantile_csv_file_ok(self):
@@ -131,6 +141,11 @@ class QuantileIOTestCase(TestCase):
              ["entries in the `value` column must be non-negative"]),
             ('2020-06-21-USC-SI_kJalpha.csv', 1, MESSAGE_FORECAST_CHECKS,
              ["entries in the `value` column must be non-negative"]),
+            ('2020-07-04-YYG-ParamSearch.csv', 49, MESSAGE_FORECAST_CHECKS,
+             ["invalid header. contained extra columns(s).",
+              "invalid location for target",
+              "invalid quantile for target",
+              "invalid target name(s)"]),
         ]
         for quantile_file, exp_num_errors, exp_priority, exp_error_messages in \
                 file_exp_num_errors_message_priority_messages:

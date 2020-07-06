@@ -1,0 +1,25 @@
+forecast_date,target,target_end_date,location,location_name,type,quantile,value
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.01,355.79307635199996
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.025,372.38629803599997
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.05,395.531702387
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.1,424.92189767800005
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.15,446.853529759
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.2,465.458035594
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.25,476.533798605
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.3,488.144674
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.35,499.78025451800005
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.4,510.670154115
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.45,525.534337635
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.5,542.07769748
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.55,554.093727739
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.6,568.091316914
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.65,580.909381738
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.7,595.874792658
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.75,611.469038587
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.8,626.702921352
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.85,644.047173761
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.9,677.255788589
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.95,717.484208025
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.975,751.802408602
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,quantile,0.99,781.56066023
+2020-07-04,1 day ahead inc death,2020-07-05,US,US,point,NA,549.197803548
