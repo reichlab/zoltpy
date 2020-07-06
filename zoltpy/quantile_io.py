@@ -46,13 +46,13 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
     QuantileDistributions), returning them as a "JSON IO dict" suitable for loading into the database (see
     `load_predictions_from_json_io_dict()`). Note that the returned dict's "meta" section is empty. This function is
     flexible with respect to the inputted column contents and order: It allows the required columns to be in any
-    position, and it ignores all other columns. The required columns are:
+    position. The base required columns are (from REQUIRED_COLUMNS):
 
     - `target`: a unique id for the target
-    - `location`: translated to Zoltar's `unit` concept.
+    - `location`: translated to Zoltar's `unit` concept
     - `type`: one of either `point` or `quantile`
     - `quantile`: a value between 0 and 1 (inclusive), representing the quantile displayed in this row. if
-        `type=="point"` then `NULL`.
+        `type=="point"` then `NULL`
     - `value`: a numeric value representing the value of the cumulative distribution function evaluated at the specified
         `quantile`
 
@@ -73,12 +73,11 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
     # load and validate the rows (validation step 1/4). error_messages is one of the the return values (filled next)
     rows, error_messages = _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, addl_req_cols)
 
-    # step 2/4: process rows, validating and collecting point and quantile values for each row. then add the actual
-    # prediction dicts. each point row has its own dict, but quantile rows are grouped into one dict.
+    # step 2/4: process rows, collecting point and quantile values for each row. then add the actual prediction dicts.
+    # each point row has its own dict, but quantile rows are grouped into one dict.
     prediction_dicts = []  # the 'predictions' section of the returned value. filled next
     rows.sort(key=lambda _: (_[0], _[1], _[2]))  # sorted for groupby()
-    for (target_name, location, is_point_row), quantile_val_grouper in \
-            groupby(rows, key=lambda _: (_[0], _[1], _[2])):
+    for (target, location, is_point_row), quantile_val_grouper in groupby(rows, key=lambda _: (_[0], _[1], _[2])):
         # fill values for points and bins
         point_values = []
         quant_quantiles, quant_values = [], []
@@ -92,13 +91,13 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
         # add the actual prediction dicts
         for point_value in point_values:
             prediction_dicts.append({'unit': location,
-                                     'target': target_name,
+                                     'target': target,
                                      'class': POINT_PREDICTION_CLASS,  # PointPrediction
                                      'prediction': {
                                          'value': point_value}})
         if quant_quantiles:
             prediction_dicts.append({'unit': location,
-                                     'target': target_name,
+                                     'target': target,
                                      'class': QUANTILE_PREDICTION_CLASS,  # QuantileDistribution
                                      'prediction': {
                                          'quantile': quant_quantiles,
@@ -107,14 +106,14 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
     # step 3/4: validate individual prediction_dicts. along the way fill loc_targ_to_pred_classes, which helps to do
     # "prediction"-level validations at the end of this function. it maps 2-tuples to a list of prediction classes
     # (strs):
-    loc_targ_to_pred_classes = defaultdict(list)  # (unit_name, target_name) -> [prediction_class1, ...]
+    loc_targ_to_pred_classes = defaultdict(list)  # (unit, target) -> [prediction_class1, ...]
     for prediction_dict in prediction_dicts:
-        unit_name = prediction_dict['unit']
-        target_name = prediction_dict['target']
+        unit = prediction_dict['unit']
+        target = prediction_dict['target']
         prediction_class = prediction_dict['class']
-        loc_targ_to_pred_classes[(unit_name, target_name)].append(prediction_class)
+        loc_targ_to_pred_classes[(unit, target)].append(prediction_class)
         if prediction_dict['class'] == QUANTILE_PREDICTION_CLASS:
-            pred_dict_error_messages = _validate_quantile_prediction_dict(prediction_dict)  # raises o/w
+            pred_dict_error_messages = _validate_quantile_prediction_dict(prediction_dict)
             error_messages.extend(pred_dict_error_messages)
 
     # step 4/4: do "prediction"-level validations
@@ -148,7 +147,7 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
 
 def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, addl_req_cols):
     """
-    `json_io_dict_from_quantile_csv_file()` helper function.
+    `json_io_dict_from_quantile_csv_file()` helper function
 
     :return: 2-tuple: (validated_rows, error_messages). the latter is the same as
         `json_io_dict_from_quantile_csv_file()`
@@ -160,10 +159,11 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
 
     csv_reader = csv.reader(csv_fp, delimiter=',')
     header = next(csv_reader)
-    try:
-        column_index_dict = _validate_header(header, addl_req_cols)
-    except RuntimeError as re:
-        error_messages.append((MESSAGE_FORECAST_CHECKS, re.args[0]))
+    column_index_dict, error_message = _validate_header(header, addl_req_cols)
+    if error_message is not None:
+        error_messages.append((MESSAGE_FORECAST_CHECKS, error_message))
+
+    if column_index_dict is None:
         return [], error_messages  # terminate processing b/c column_index_dict is required to get columns
 
     error_targets = set()  # output set of invalid target names
@@ -175,11 +175,11 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
                                                             f"{len(header)} but len(row)={len(row)}. row={row}"))
             return [], error_messages  # terminate processing b/c column_index_dict requires correct number of rows
 
-        location, target_name, row_type, quantile, value = [row[column_index_dict[column]] for column in
-                                                            REQUIRED_COLUMNS]
-        # validate target_name
-        if target_name not in valid_target_names:
-            error_targets.add(target_name)
+        location, target, row_type, quantile, value = [row[column_index_dict[column]] for column in REQUIRED_COLUMNS]
+
+        # validate target
+        if target not in valid_target_names:
+            error_targets.add(target)
 
         # validate quantile and value
         row_type = row_type.lower()
@@ -206,7 +206,7 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
         # NB: recall all targets are "type": "discrete", so we only accept ints and floats
         # if isinstance(value, datetime.date):
         #     value = value.strftime(YYYY_MM_DD_DATE_FORMAT)
-        rows.append([target_name, location, is_point_row, quantile, value])
+        rows.append([target, location, is_point_row, quantile, value])
 
     # Add invalid targets to errors
     if len(error_targets) > 0:
@@ -221,16 +221,29 @@ def _validate_header(header, addl_req_cols):
 
     :param header: first row from the csv file
     :param addl_req_cols: an optional list of strings naming columns in addition to REQUIRED_COLUMNS that are required
-    :return: column_index_dict: a dict that maps column_name -> its index in header
+    :return 2-tuple: (column_index_dict, error_message) where the former is a dict that maps column_name -> its index
+        in header. column_index_dict is None if there was a *terminal* error, in this case when any of the required
+        columns were not present or when there are duplicate column names. error_message is a str if there was an error,
+        and None o/w
     """
-    required_columns = list(REQUIRED_COLUMNS)
-    required_columns.extend(addl_req_cols)
-    counts = [header.count(required_column) == 1 for required_column in required_columns]
-    if not all(counts):
-        raise RuntimeError(f"invalid header. did not contain the required columns. header={header}, "
-                           f"required_columns={required_columns}")
+    header_set = set(header)
+    if len(header_set) != len(header):
+        return None, f"invalid header. found duplicate column(s): header={header}"  # terminal error
 
-    return {column: header.index(column) for column in header}
+    required_columns = list(REQUIRED_COLUMNS) + list(addl_req_cols)
+    req_cols_set = set(required_columns)
+    if not (req_cols_set <= header_set):
+        return None, \
+               f"invalid header. did not contain the required column(s). diff={header_set ^ req_cols_set}, " \
+               f"header={header_set}, required_columns={req_cols_set}"  # non-terminal error
+
+    column_index_dict = {column: header.index(column) for column in required_columns}
+    if header_set != req_cols_set:
+        return column_index_dict, \
+               f"invalid header. contained extra columns(s). diff={header_set ^ req_cols_set}, " \
+               f"header={header_set}, required_columns={req_cols_set}"  # non-terminal error
+    else:
+        return column_index_dict, None  # no error
 
 
 def _validate_quantile_prediction_dict(prediction_dict):

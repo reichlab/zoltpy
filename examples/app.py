@@ -81,7 +81,7 @@ def zoltar_connection_app():
     print(f'\n* working with a quantile csv file: {quantile_csv_file}')
     with open(quantile_csv_file) as fp:
         json_io_dict, error_messages = \
-            json_io_dict_from_quantile_csv_file(fp, ['1 wk ahead cum death', '1 day ahead cum death'])
+            json_io_dict_from_quantile_csv_file(fp, ['1 wk ahead cum death', '1 day ahead inc hosp'])
     print(f"- converted quantile data to json: {len(json_io_dict['predictions'])} predictions")  # 5 predictions
 
     # convert to a Pandas DataFrame
