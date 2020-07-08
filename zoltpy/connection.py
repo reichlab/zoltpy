@@ -1,3 +1,4 @@
+import base64
 import csv
 import datetime
 import json
@@ -6,8 +7,6 @@ import tempfile
 from abc import ABC
 
 import requests
-
-from zoltpy.cdc_io import YYYY_MM_DD_DATE_FORMAT, _parse_value
 
 
 logger = logging.getLogger(__name__)
@@ -109,10 +108,31 @@ class ZoltarSession:  # internal use
 
     def is_token_expired(self):
         """
-        :return: True if my token is expired, and False o/w
+        Details: based on how Zoltar implements JWT, we determine expiration by comparing the current datetime to the
+        token's payload's "exp" field. its value is a POSIX timestamp of a UTC date and time as returned by
+        datetime.utcnow().timestamp() - https://docs.python.org/3.6/library/datetime.html#datetime.datetime.utcnow
+
+        :return: True if my token is expired, and False if still valid
         """
-        # see zoltr: is_token_expired(), token_expiration_date()
-        return True  # todo fix!
+        return self.token_expiration_date().timestamp() <= datetime.datetime.utcnow().timestamp()
+
+
+    def token_expiration_date(self):
+        # # returns a POSIXct for the zoltar_session's token. see notes in is_token_expired() for details on extracting the date
+
+        token_split = self.token.split('.')  # 3 parts: header, payload, signature
+        payload_encoded = token_split[1]
+
+        # per https://stackoverflow.com/questions/2941995/python-ignore-incorrect-padding-error-when-base64-decoding/49459036
+        missing_padding = len(payload_encoded) % 4
+        if missing_padding:
+            payload_encoded += '=' * (4 - missing_padding)
+
+        payload_decoded = base64.b64decode(payload_encoded)
+        payload = json.loads(payload_decoded)
+        timestamp_utc = payload['exp']
+        exp_timestamp_date = datetime.datetime.utcfromtimestamp(timestamp_utc)
+        return exp_timestamp_date
 
 
 class ZoltarResource(ABC):

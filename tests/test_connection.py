@@ -1,3 +1,5 @@
+import base64
+import datetime
 import json
 import unittest
 from unittest import mock
@@ -325,6 +327,26 @@ class ConnectionTestCase(unittest.TestCase):
             re_auth_mock.assert_called_once()
 
 
+    def test_is_token_expired(self):
+        # test an expired token
+        conn = mock_authenticate(ZoltarConnection('http://example.com'))  # default token (mock_token) is expired
+        self.assertTrue(conn.session.is_token_expired())
+
+        # construct and test an unexpired token
+        token_split = MOCK_TOKEN.split('.')  # 3 parts: header, payload, signature
+        old_header = token_split[0]
+        old_signature = token_split[1]
+
+        # round to exclude decimal portion - throws off some JWT tools:
+        ten_min_from_now = round((datetime.datetime.utcnow() + datetime.timedelta(minutes=10)).timestamp())
+        new_payload = {'user_id': 3, 'username': 'model_owner1', 'exp': ten_min_from_now, 'email': ''}
+        new_payload_json = json.dumps(new_payload)
+        payload_b64 = base64.b64encode(new_payload_json.encode('utf_8'))
+        unexpired_token = f"{old_header}.{payload_b64.decode('utf-8') }.{old_signature}"
+        conn.session.token = unexpired_token
+        self.assertFalse(conn.session.is_token_expired())
+
+
 #
 # mock_authenticate()
 #
@@ -509,6 +531,7 @@ FORECASTS_LIST_DICTS = [
         "forecast_data": "http://example.com/api/forecast/3/data/"
     }
 ]
+
 
 if __name__ == '__main__':
     unittest.main()
