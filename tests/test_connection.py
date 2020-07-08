@@ -7,28 +7,8 @@ from zoltpy.connection import ZoltarConnection, ZoltarSession, ZoltarResource, P
     Forecast, Job
 
 
-# MOCK_TOKEN is an expired token as returned by zoltar. decoded contents:
-# - header:  {"typ": "JWT", "alg": "HS256"}
-# - payload: {"user_id": 3, "username": "model_owner1", "exp": 1558442805, "email": ""}
-# - expiration:
-#   05/21/2019 @ 12:46pm               (UTC)
-#   2019-05-21T12:46:45+00:00          (ISO 8601)
-#   Tuesday, May 21, 2019 12:46:45 PM  (GMT)
-#   datetime(2019, 5, 21, 12, 46, 45)  (python): datetime.utcfromtimestamp(1558442805)
-MOCK_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjozLCJ1c2VybmFtZSI6Im1vZGVsX293bmVyMSIsImV4cCI6MTU1ODQ0MjgwNSwiZW1haWwiOiIifQ.o03V2RxkFpA5ThhRAidwDWCdcQNeJzr1wwFkOFKUI74"
-
-
-def mock_authenticate(conn, username='', password=''):
-    with patch('requests.post') as post_mock:
-        post_mock.return_value.status_code = 200
-        post_mock.return_value.json = MagicMock(return_value={'token': MOCK_TOKEN})
-        conn.authenticate(username, password)
-        return conn
-
-
 class ConnectionTestCase(unittest.TestCase):
     """
-    todo implement additional tests
     """
 
 
@@ -53,6 +33,27 @@ class ConnectionTestCase(unittest.TestCase):
         self.assertEqual(71, ZoltarResource.id_for_uri('http://example.com/api/forecast/71/'))
 
 
+    def test_json_for_uri_calls_re_authenticate_if_necessary(self):
+        with patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary') as re_auth_mock, \
+                patch('requests.get') as get_mock:
+            get_mock.return_value.status_code = 200
+            conn = mock_authenticate(ZoltarConnection('http://example.com'))
+            conn.json_for_uri('/')
+            re_auth_mock.assert_called_once()
+
+
+    def test_delete_calls_re_authenticate_if_necessary(self):
+        with patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary') as re_auth_mock, \
+                patch('zoltpy.connection.ZoltarConnection.json_for_uri') as json_for_uri_mock, \
+                patch('requests.delete') as delete_mock:
+            json_for_uri_mock.return_value = PROJECTS_LIST_DICTS
+            delete_mock.return_value.status_code = 200
+            conn = mock_authenticate(ZoltarConnection('http://example.com'))
+            projects = conn.projects
+            projects[0].delete()
+            re_auth_mock.assert_called_once()
+
+
     @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
     def test_verify_instance_api_hits(self, json_for_uri_mock):
         json_for_uri_mock.return_value = PROJECTS_LIST_DICTS
@@ -65,20 +66,20 @@ class ConnectionTestCase(unittest.TestCase):
         json_for_uri_mock.assert_called_once_with('http://example.com/api/project/3/models/')
 
         json_for_uri_mock.reset_mock()
-        projects[0].units
+        _ = projects[0].units
         json_for_uri_mock.assert_called_once_with('http://example.com/api/project/3/units/')
 
         json_for_uri_mock.reset_mock()
-        projects[0].targets
+        _ = projects[0].targets
         json_for_uri_mock.assert_called_once_with('http://example.com/api/project/3/targets/')
 
         json_for_uri_mock.reset_mock()
-        projects[0].timezeros
+        _ = projects[0].timezeros
         json_for_uri_mock.assert_called_once_with('http://example.com/api/project/3/timezeros/')
 
         json_for_uri_mock.return_value = MODELS_LIST_DICTS[0]
         json_for_uri_mock.reset_mock()
-        models[0].name
+        _ = models[0].name
         json_for_uri_mock.assert_not_called()
 
 
@@ -142,47 +143,51 @@ class ConnectionTestCase(unittest.TestCase):
 
 
     @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
-    def test_upload_truth(self, json_for_uri_mock):
+    def test_upload_truth_data(self, json_for_uri_mock):
         conn = mock_authenticate(ZoltarConnection('http://example.com'))
         project = Project(conn, 'http://example.com/api/project/3/')
-
-        # test valid POST args
         with open('tests/job-2.json') as ufj_fp, \
                 open('tests/docs-ground-truth.csv') as csv_fp, \
-                patch('requests.post') as post_mock:
+                patch('requests.post') as post_mock, \
+                patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary') as re_auth_mock:
             job_json = json.load(ufj_fp)
             post_mock.return_value.status_code = 200
-            post_return_value = job_json
-            post_mock.return_value.json = MagicMock(return_value=post_return_value)
+            post_mock.return_value.json = MagicMock(return_value=job_json)
             act_job_json = project.upload_truth_data(csv_fp)
+            re_auth_mock.assert_called_once()
             self.assertEqual(1, post_mock.call_count)
             self.assertEqual('http://example.com/api/project/3/truth/', post_mock.call_args[0][0])
             self.assertIsInstance(act_job_json, Job)
             self.assertEqual(job_json['url'], act_job_json.uri)
 
 
+    @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
+    def test_upload_forecast(self, json_for_uri_mock):
+        conn = mock_authenticate(ZoltarConnection('http://example.com'))
+        with open('tests/job-2.json') as ufj_fp, \
+                open("examples/example-model-config.json") as fp, \
+                patch('requests.post') as post_mock, \
+                patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary') as re_auth_mock:
+            job_json = json.load(ufj_fp)
+            model_config = json.load(fp)
+            model_config['url'] = 'http://example.com/api/model/5/'
+            post_mock.return_value.status_code = 200
+            post_mock.return_value.json = MagicMock(return_value=job_json)
+            forecast_model = Model(conn, model_config['url'], model_config)
+            act_job_json = forecast_model.upload_forecast({}, None, None)
+            re_auth_mock.assert_called_once()
+            self.assertEqual(1, post_mock.call_count)
+            self.assertEqual('http://example.com/api/model/5/forecasts/', post_mock.call_args[0][0])
+            self.assertIsInstance(act_job_json, Job)
+            self.assertEqual(job_json['url'], act_job_json.uri)
+
+
     def test_create_timezero(self):
         conn = mock_authenticate(ZoltarConnection('http://example.com'))
-        with patch('zoltpy.connection.ZoltarConnection.json_for_uri', return_value=PROJECTS_LIST_DICTS):
+        with patch('zoltpy.connection.ZoltarConnection.json_for_uri', return_value=PROJECTS_LIST_DICTS), \
+             patch('requests.post') as post_mock, \
+                patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary') as re_auth_mock:
             project = conn.projects[0]
-
-        # test valid arg combinations
-        valid_args_tuples = [("2011-10-02", None, False, ''),
-                             ("2011-10-02", "2011-10-03", False, ''),
-                             ("2011-10-02", "2011-10-03", True, "'tis the season")]
-        for timezero_date, data_version_date, is_season_start, season_name in valid_args_tuples:
-            with patch('requests.post') as post_mock:
-                post_mock.return_value.status_code = 200
-                post_mock.return_value.json = MagicMock(return_value={
-                    "url": "http://example.com/api/timezero/497/"})
-                try:
-                    project.create_timezero(timezero_date, data_version_date, is_season_start, season_name)
-                    post_mock.assert_called_once()
-                except Exception as ex:
-                    self.fail(f"unexpected exception: {ex}")
-
-        # test valid POST args
-        with patch('requests.post') as post_mock:
             post_mock.return_value.status_code = 200
             post_return_value = {"id": 705,
                                  "url": "http://example.com/api/timezero/705/",
@@ -191,26 +196,14 @@ class ConnectionTestCase(unittest.TestCase):
                                  "is_season_start": True,
                                  "season_name": "2011-2012"}
             post_mock.return_value.json = MagicMock(return_value=post_return_value)
-            try:
-                project.create_timezero("2011-10-02", "2011-10-03", True, "2011-2012")
-                post_mock.assert_called_once()
-                exp_timezero_config = dict(post_return_value)  # copy
-                del exp_timezero_config['id']
-                del exp_timezero_config['url']
-                act_timezero_config = post_mock.call_args[1]['json']['timezero_config']
-                self.assertEqual(exp_timezero_config, act_timezero_config)
-            except Exception as ex:
-                self.fail(f"unexpected exception: {ex}")
-
-        # test yes is_season_start but no season_name
-        with self.assertRaises(RuntimeError) as context:
-            project.create_timezero("2011-10-02", "2011-10-03", True)
-        self.assertIn('season_name not found but is required when is_season_start is passed', str(context.exception))
-
-        # test no is_season_start but yes season_name
-        with self.assertRaises(RuntimeError) as context:
-            project.create_timezero("2011-10-02", False, "'tis the season")
-        self.assertIn('season_name not found but is required when is_season_start is passed', str(context.exception))
+            project.create_timezero("2011-10-02", "2011-10-03", True, "2011-2012")
+            post_mock.assert_called_once()
+            exp_timezero_config = dict(post_return_value)  # copy
+            del exp_timezero_config['id']
+            del exp_timezero_config['url']
+            act_timezero_config = post_mock.call_args[1]['json']['timezero_config']
+            self.assertEqual(exp_timezero_config, act_timezero_config)
+            re_auth_mock.assert_called_once()
 
 
     @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
@@ -220,7 +213,8 @@ class ConnectionTestCase(unittest.TestCase):
         project = conn.projects[0]
 
         with open('tests/job-submit-query.json') as job_submit_json_fp, \
-                patch('requests.post') as post_mock:
+                patch('requests.post') as post_mock, \
+                patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary'):
             # test submit
             query = {}  # all forecasts
             job_submit_json = json.load(job_submit_json_fp)
@@ -311,6 +305,52 @@ class ConnectionTestCase(unittest.TestCase):
             model_0.edit(model_config)
             put_mock.assert_called_once_with('http://example.com/api/model/5/', json={'model_config': model_config},
                                              headers={'Authorization': f'JWT {MOCK_TOKEN}'})
+
+
+    @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
+    def test_create_model(self, json_for_uri_mock):
+        with open('examples/example-model-config.json') as fp:
+            model_config = json.load(fp)
+            model_config['url'] = 'http://example.com/api/model/5/'
+        conn = mock_authenticate(ZoltarConnection('http://example.com'))
+        project = Project(conn, 'http://example.com/api/project/3/')
+        with patch('requests.post') as post_mock, \
+                patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary') as re_auth_mock:
+            post_mock.return_value.status_code = 200
+            post_mock.return_value.json = MagicMock(return_value=model_config)
+            new_model = project.create_model(model_config)
+            self.assertEqual(1, post_mock.call_count)
+            self.assertEqual('http://example.com/api/project/3/models/', post_mock.call_args[0][0])
+            self.assertIsInstance(new_model, Model)
+            re_auth_mock.assert_called_once()
+
+
+#
+# mock_authenticate()
+#
+
+# MOCK_TOKEN is an expired token as returned by zoltar. decoded contents:
+# - header:  {"typ": "JWT", "alg": "HS256"}
+# - payload: {"user_id": 3, "username": "model_owner1", "exp": 1558442805, "email": ""}
+# - expiration:
+#   05/21/2019 @ 12:46pm               (UTC)
+#   2019-05-21T12:46:45+00:00          (ISO 8601)
+#   Tuesday, May 21, 2019 12:46:45 PM  (GMT)
+#   datetime(2019, 5, 21, 12, 46, 45)  (python): datetime.utcfromtimestamp(1558442805)
+MOCK_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjozLCJ1c2VybmFtZSI6Im1vZGVsX293bmVyMSIsImV4cCI6MTU1ODQ0MjgwNSwiZW1haWwiOiIifQ.o03V2RxkFpA5ThhRAidwDWCdcQNeJzr1wwFkOFKUI74"
+
+
+def mock_authenticate(conn, username='', password=''):
+    with patch('requests.post') as post_mock:
+        post_mock.return_value.status_code = 200
+        post_mock.return_value.json = MagicMock(return_value={'token': MOCK_TOKEN})
+        conn.authenticate(username, password)
+        return conn
+
+
+#
+# test data
+#
 
 
 PROJECTS_LIST_DICTS = [

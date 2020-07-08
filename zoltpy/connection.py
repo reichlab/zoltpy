@@ -78,6 +78,7 @@ class ZoltarConnection:
         if not self.session:
             raise RuntimeError("json_for_uri(): no session. uri={uri}")
 
+        self.re_authenticate_if_necessary()
         response = requests.get(uri, headers={'Accept': accept,
                                               'Authorization': 'JWT {}'.format(self.session.token)})
         if response.status_code != 200:  # HTTP_200_OK
@@ -180,6 +181,7 @@ class ZoltarResource(ABC):
 
 
     def delete(self):
+        self.zoltar_connection.re_authenticate_if_necessary()
         response = requests.delete(self.uri, headers={'Accept': 'application/json; indent=4',
                                                       'Authorization': f'JWT {self.zoltar_connection.session.token}'})
         if (response.status_code != 200) and (response.status_code != 204):  # HTTP_200_OK, HTTP_204_NO_CONTENT
@@ -282,6 +284,7 @@ class Project(ZoltarResource):
             https://docs.zoltardata.com/
         :return: a Job to use to track the upload
         """
+        self.zoltar_connection.re_authenticate_if_necessary()
         response = requests.post(self.uri + 'truth/',
                                  headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
                                  files={'data_file': truth_csv_fp})
@@ -314,12 +317,7 @@ class Project(ZoltarResource):
             'home_url', 'aux_data_url']
         :return: a Model
         """
-        # validate model_config
-        actual_keys = set(model_config.keys())
-        expected_keys = {'name', 'abbreviation', 'team_name', 'description', 'home_url', 'aux_data_url'}
-        if actual_keys != expected_keys:
-            raise RuntimeError(f"Wrong keys in 'model_config'. expected={expected_keys}, actual={actual_keys}")
-
+        self.zoltar_connection.re_authenticate_if_necessary()
         response = requests.post(f'{self.uri}models/',
                                  headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
                                  json={'model_config': model_config})
@@ -341,17 +339,6 @@ class Project(ZoltarResource):
         :return: the new TimeZero
         """
         # validate args
-        if not isinstance(_parse_value(timezero_date), datetime.date):  # returns a date if valid
-            raise RuntimeError(f"invalid timezero_date={timezero_date}. "
-                               f"was not in the format {YYYY_MM_DD_DATE_FORMAT}")
-        elif data_version_date and (not isinstance(_parse_value(data_version_date), datetime.date)):
-            raise RuntimeError(f"invalid data_version_date={data_version_date}. "
-                               f"was not in the format {YYYY_MM_DD_DATE_FORMAT}")
-        elif is_season_start and not season_name:
-            raise RuntimeError(f"season_name not found but is required when is_season_start is passed")
-        elif not is_season_start and season_name:
-            raise RuntimeError(f"season_name was found but is_season_start was not True")
-
         # POST. 'timezero_config' args:
         # - required: 'timezero_date', 'data_version_date', 'is_season_start'
         # - optional: 'season_name'
@@ -360,6 +347,7 @@ class Project(ZoltarResource):
                            'is_season_start': is_season_start}
         if is_season_start:
             timezero_config['season_name'] = season_name
+        self.zoltar_connection.re_authenticate_if_necessary()
         response = requests.post(f'{self.uri}timezeros/',
                                  headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
                                  json={'timezero_config': timezero_config})
@@ -378,6 +366,7 @@ class Project(ZoltarResource):
             contains IDs and not strings for objects. use utility methods to convert from strings to IDs
         :return: a Job for the query
         """
+        self.zoltar_connection.re_authenticate_if_necessary()
         response = requests.post(self.uri + 'forecast_queries/',
                                  headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
                                  json={'query': query})
