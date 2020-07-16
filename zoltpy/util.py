@@ -56,7 +56,7 @@ def create_project(conn, project_json):
     return new_project
 
 
-def delete_forecast(conn, project_name, model_name, timezero_date):
+def delete_forecast(conn, project_name, model_abbr, timezero_date):
     """
     Deletes the forecast corresponding to the args.
 
@@ -68,7 +68,7 @@ def delete_forecast(conn, project_name, model_name, timezero_date):
     """
     conn.re_authenticate_if_necessary()
     project = [project for project in conn.projects if project.name == project_name][0]
-    model = [model for model in project.models if model.name == model_name][0]
+    model = [model for model in project.models if model.abbreviation == model_abbr][0]
     forecast_for_tz_date = [forecast for forecast in model.forecasts
                             if forecast.timezero.timezero_date == timezero_date]
     if forecast_for_tz_date:
@@ -84,7 +84,7 @@ def delete_forecast(conn, project_name, model_name, timezero_date):
         return None
 
 
-def delete_model(conn, project_name, model_name):
+def delete_model(conn, project_name, model_abbr):
     """Deletes a model corresponding to the args.
 
     :param conn: a ZoltarConnection
@@ -93,22 +93,22 @@ def delete_model(conn, project_name, model_name):
     """
     conn.re_authenticate_if_necessary()
     project = [project for project in conn.projects if project.name == project_name][0]
-    model = [model for model in project.models if model.name == model_name][0]
+    model = [model for model in project.models if model.abbreviation == model_abbr][0]
     # num_forecasts = len(model.forecasts) - TODO
     if model:
         proceed = input("%s may have forecasts - these WILL BE DELETED.\nReturn Y to Proceed, N to Cancel: "
-                        % (model_name))
+                        % (model_abbr))
         if proceed == "Y":
             logger.info(
                 f"delete_model(): deleting existing model. model={model.id}, ")
             model.delete()
             logger.info(f"delete_model(): delete done")
     else:
-        logger.info(f"delete_model(): no existing model. model={model_name}")
+        logger.info(f"delete_model(): no existing model. model={model_abbr}")
 
 
-def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_name, timezero_date, notes='',
-                    overwrite=False):
+def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_abbr, timezero_date, notes='',
+                    overwrite=False, sync=True):
     """
     Uploads the passed JSON dictionary file to the model corresponding to the args.
 
@@ -116,17 +116,18 @@ def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_n
     :param json_io_dict: a JSON dictionary
     :param forecast_filename: filename of original forecast
     :param project_name: name of the Project that contains model_name
-    :param model_name: name of the Model that contains a Forecast for timezero_date
+    :param model_abbr: abbreviation of the Model that contains a Forecast for timezero_date
     :param timezero_date: YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
     :param notes: optional user notes for the new forecast
     :param overwrite: True if you would like to overwrite the existing forecast for that timezero_date. Default is False
+    :param sync: if True, job is polled and returned after success/failure, otherwise, just job returned.
     :return: a Job. it can be polled for status via busy_poll_job(), and then the new forecast
         can be obtained via job.output_json['forecast_pk']
     """
     conn.re_authenticate_if_necessary()
 
     if overwrite:
-        delete_forecast(conn, project_name, model_name, timezero_date)
+        delete_forecast(conn, project_name, model_abbr, timezero_date)
 
     # get projects
     projects = conn.projects
@@ -134,7 +135,7 @@ def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_n
 
     # get models for project
     models = project.models
-    model = [model for model in models if model.name == model_name][0]
+    model = [model for model in models if model.abbreviation == model_abbr][0]
 
     # check json formatting before upload
     # accepts either string or dictionary
@@ -149,11 +150,14 @@ def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_n
             sys.exit(1)
 
     job = model.upload_forecast(json_io_dict, forecast_filename, timezero_date, notes)
-    return busy_poll_job(job)
+    if sync:
+        return busy_poll_job(job)
+    else:
+        return job
 
 
-def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, project_name, model_name,
-                          timezero_date_batch, overwrite=False):
+def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, project_name,
+                          model_abbr, timezero_date_batch, overwrite=False):
     """
     Uploads a batch (list) of JSON dictionaries to the model corresponding
     to the args. This only iterates through timezeros, not models or projects.
@@ -162,7 +166,7 @@ def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, pro
     :param json_io_dict_batch: an list of a JSON dictionaries,
     :param forecast_filename_batch: a list of filenames of original forecast, paired with json_io_dict_batch
     :param project_name: name of the Project that contains model_name
-    :param model_name: name of the Model that contains a Forecast for timezero_date
+    :param model_abbr: abbreviation of the Model that contains a Forecast for timezero_date
     :param timezero_date_batch: an list of YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03', , paired with json_io_dict_batch
     :param overwrite: True if you would like to overwrite the existing forecast for that timezero_date. Default is False
     :return: the last Job. it can be polled for status via busy_poll_job(), and then the new
@@ -178,22 +182,22 @@ def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, pro
     conn.re_authenticate_if_necessary()
     project = [project for project in conn.projects if project.name == project_name][0]
     models = project.models
-    model = [model for model in models if model.name == model_name][0]
+    model = [model for model in models if model.abbreviatoin == model_abbr][0]
 
     print(f"uploading {len(json_io_dict_batch)} forecasts...")
     jobs = []
     for json_io_dict, forecast_filename, timezero_date in \
             zip(json_io_dict_batch, forecast_filename_batch, timezero_date_batch):
-        print(f"uploading {project_name!r} project, {model_name!r} model, {timezero_date !r} timezero...")
+        print(f"uploading {project_name!r} project, {model_abbr!r} model, {timezero_date !r} timezero...")
         if overwrite:
-            delete_forecast(conn, project_name, model_name, timezero_date)
+            delete_forecast(conn, project_name, model_abbr, timezero_date)
         job = model.upload_forecast(json_io_dict, forecast_filename, timezero_date)
         jobs.append(job)
         print("upload complete")
     return jobs[-1] if jobs else None
 
 
-def download_forecast(conn, project_name, model_name, timezero_date):
+def download_forecast(conn, project_name, model_abbr, timezero_date):
     """
     Downloads the data for the forecast corresponding to the args, in Zoltar's native json format, AKA a "json_io_dict".
     The resulting dict can then be passed to dataframe_from_json_io_dict(), or to the underlying csv utility function
@@ -202,16 +206,16 @@ def download_forecast(conn, project_name, model_name, timezero_date):
     :param conn: a ZoltarConnection
     :param project_name: name of the Project that contains model_name
     :param project_name: name of the Project that contains model_name
-    :param model_name: name of the Model that contains a Forecast for timezero_date
+    :param model_abbr: abbreviation of the Model that contains a Forecast for timezero_date
     :param timezero_date: YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
     :return: a json_io_dict
     """
     conn.re_authenticate_if_necessary()
     project = [project for project in conn.projects if project.name == project_name][0]
-    model = [model for model in project.models if model.name == model_name][0]
+    model = [model for model in project.models if model.abbreviation == model_abbr][0]
     forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
     if not forecast_for_tz_date:
-        raise RuntimeError(f"forecast not found. project_name={project_name}, model_name={model_name}, "
+        raise RuntimeError(f"forecast not found. project_name={project_name}, model_abbr={model_abbr}, "
                            f"timezero_date={timezero_date}")
 
     existing_forecast = forecast_for_tz_date[0]
@@ -295,7 +299,6 @@ def print_projects():
 def print_models(conn, project_name):
     """A simple utility that outputs a list of models a Zoltar project."""
     print("* models in %s" % project_name)
-    zoltar = authenticate()
     project = [project for project in conn.projects if project.name == project_name][0]
     for model in project.models:
         print("-", model)
