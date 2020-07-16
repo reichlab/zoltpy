@@ -327,6 +327,27 @@ class ConnectionTestCase(unittest.TestCase):
             re_auth_mock.assert_called_once()
 
 
+    def test_forecasts_set_source(self):
+        from tests.test_util import FORECAST_DICT  # avoid circular imports
+
+
+        conn = mock_authenticate(ZoltarConnection('http://example.com'))  # default token (mock_token) is expired
+        with patch('requests.put') as put_mock, \
+                patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary') as re_auth_mock, \
+                patch('zoltpy.connection.ZoltarConnection.json_for_uri') as json_for_uri_mock:
+            put_mock.return_value.status_code = 200
+            forecast = Forecast(conn, "http://example.com/api/forecast/3/", FORECAST_DICT)
+            self.assertEqual(FORECAST_DICT['source'], forecast.source)  # "2020-04-12-CU-60contact.csv"
+
+            new_source = 'new source'
+            new_forecast_dict = dict(FORECAST_DICT)  # non-deep copy OK
+            new_forecast_dict['source'] = new_source
+            forecast.source = new_source  # call setter. does not refresh
+            json_for_uri_mock.return_value = new_forecast_dict
+            forecast.refresh()
+            self.assertEqual(new_source, forecast.source)
+
+
     def test_is_token_expired(self):
         # test an expired token
         conn = mock_authenticate(ZoltarConnection('http://example.com'))  # default token (mock_token) is expired
@@ -342,7 +363,7 @@ class ConnectionTestCase(unittest.TestCase):
         new_payload = {'user_id': 3, 'username': 'model_owner1', 'exp': ten_min_from_now, 'email': ''}
         new_payload_json = json.dumps(new_payload)
         payload_b64 = base64.b64encode(new_payload_json.encode('utf_8'))
-        unexpired_token = f"{old_header}.{payload_b64.decode('utf-8') }.{old_signature}"
+        unexpired_token = f"{old_header}.{payload_b64.decode('utf-8')}.{old_signature}"
         conn.session.token = unexpired_token
         self.assertFalse(conn.session.is_token_expired())
 
@@ -531,7 +552,6 @@ FORECASTS_LIST_DICTS = [
         "forecast_data": "http://example.com/api/forecast/3/data/"
     }
 ]
-
 
 if __name__ == '__main__':
     unittest.main()

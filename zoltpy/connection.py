@@ -609,6 +609,21 @@ class Forecast(ZoltarResource):
         return self.json['source']
 
 
+    @source.setter
+    def source(self, source):
+        """
+        NB: does *not* call `self.refresh()`, for efficiency
+
+        :param source:
+        """
+        response = requests.put(self.uri,
+                                headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
+                                json={'source': source})
+        if response.status_code != 200:  # HTTP_200_OK
+            raise RuntimeError(f"set_source(): status code was not 200. status_code={response.status_code}. "
+                               f"text={response.text}")
+
+
     @property
     def created_at(self):
         return self.json['created_at']
