@@ -17,8 +17,9 @@ SAMPLE_PREDICTION_CLASS = 'sample'
 QUANTILE_PREDICTION_CLASS = 'quantile'
 
 # quantile csv I/O
-
 REQUIRED_COLUMNS = ('location', 'target', 'type', 'quantile', 'value')
+POINT_ROW_TYPE = 'point'
+QUANTILE_ROW_TYPE = 'quantile'
 
 #
 # Note: The following code is a somewhat temporary solution to validation during COVID-19 crunch time. As such, we
@@ -153,7 +154,7 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
     :return: 2-tuple: (validated_rows, error_messages). the latter is the same as
         `json_io_dict_from_quantile_csv_file()`
     """
-    from zoltpy.cdc_io import CDC_POINT_ROW_TYPE, _parse_value  # avoid circular imports
+    from zoltpy.cdc_io import _parse_value  # avoid circular imports
 
 
     error_messages = []  # return value. set below if any issues
@@ -183,9 +184,15 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
         if not is_valid_target:
             error_targets.add(target)
 
-        # validate quantile and value
+        # validate row_type, quantile, and value
         row_type = row_type.lower()
-        is_point_row = (row_type == CDC_POINT_ROW_TYPE.lower())
+        if (not row_type == POINT_ROW_TYPE) and (not row_type == QUANTILE_ROW_TYPE):
+            error_messages.append((MESSAGE_FORECAST_CHECKS, f"entries in the `type` column must be either "
+                                                            f"{POINT_ROW_TYPE!r} or {QUANTILE_ROW_TYPE!r}: "
+                                                            f"{row_type!r}. row={row}"))
+            return [], error_messages  # terminate processing b/c we don't know how to handle the row type
+
+        is_point_row = (row_type == POINT_ROW_TYPE)
         quantile = _parse_value(quantile)  # None if not an int, float, or Date. float might be inf or nan
         value = _parse_value(value)  # ""
         if (not is_point_row) and ((quantile is None) or

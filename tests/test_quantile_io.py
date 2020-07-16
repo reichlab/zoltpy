@@ -143,6 +143,8 @@ class QuantileIOTestCase(TestCase):
              ["entries in the `value` column must be non-negative"]),
             ('2020-07-04-YYG-ParamSearch.csv', 2, MESSAGE_FORECAST_CHECKS,
              ["invalid header. contained extra columns(s)", "invalid target name(s)"]),
+            ('2020-07-12-UMass-MechBayes.csv', 2, MESSAGE_FORECAST_CHECKS,
+             ["invalid quantile for target", "entries in the `type` column must be either 'point' or 'quantile'"]),
         ]
         for quantile_file, exp_num_errors, exp_priority, exp_error_messages in \
                 file_exp_num_errors_message_priority_messages:

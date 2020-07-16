@@ -1,0 +1,11 @@
+quantile,value,type,location,target,forecast_date,target_end_date
+0.025,224,quantile,01003,1 wk ahead inc case,2020-07-12,2020-07-18
+0.100,316,quantile,01003,1 wk ahead inc case,2020-07-12,2020-07-18
+0.250,417,quantile,01003,1 wk ahead inc case,2020-07-12,2020-07-18
+0.500,592,quantile,01003,1 wk ahead inc case,2020-07-12,2020-07-18
+,592,point,01003,1 wk ahead inc case,2020-07-12,2020-07-18
+0.501,593,quantile,01003,1 wk ahead inc case,2020-07-12,2020-07-18
+,660,point_mean,01003,1 wk ahead inc case,2020-07-12,2020-07-18
+0.750,827,quantile,01003,1 wk ahead inc case,2020-07-12,2020-07-18
+0.900,1070,quantile,01003,1 wk ahead inc case,2020-07-12,2020-07-18
+0.975,1458,quantile,01003,1 wk ahead inc case,2020-07-12,2020-07-18
