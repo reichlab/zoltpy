@@ -72,7 +72,7 @@ COVID_QUANTILES_CASE = [0.025, 0.1, 0.25, 0.5, 0.75, 0.9, 0.975]
 # validate_quantile_csv_file()
 #
 
-def validate_quantile_csv_file(csv_fp):
+def validate_quantile_csv_file(csv_fp, silent=False):
     """
     A simple wrapper of `json_io_dict_from_quantile_csv_file()` that tosses the json_io_dict and just prints validation
     error_messages.
@@ -81,7 +81,8 @@ def validate_quantile_csv_file(csv_fp):
     :return: error_messages: a list of strings
     """
     quantile_csv_file = Path(csv_fp)
-    click.echo(f"* validating quantile_csv_file '{quantile_csv_file}'...")
+    if not silent:
+        click.echo(f"* validating quantile_csv_file '{quantile_csv_file}'...")
     with open(quantile_csv_file) as cdc_csv_fp:
         # toss json_io_dict:
         _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp, COVID_TARGETS, covid19_row_validator,
