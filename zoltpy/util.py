@@ -252,12 +252,13 @@ def busy_poll_job(job):
         status = job.status_as_str
         failure_message = job.json["failure_message"]
         print(f"- {status}")
-        if status == "FAILED":
-            print("x FAILED")
+        if (status == "FAILED") or (status == "TIMEOUT"):
+            print(f"x {status}")
             print("\n", failure_message)
             raise RuntimeError(f"job failed: job={job}, failure_message={failure_message!r}")
         if status == "SUCCESS":
             break
+
         time.sleep(1)
         job.refresh()
 

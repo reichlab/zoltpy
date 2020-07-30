@@ -442,7 +442,7 @@ class Project(ZoltarResource):
             targets = self.targets
             project_target_names = {target.name for target in targets}
             if not set(query_target_names) <= project_target_names:
-                raise RuntimeError(f"one or more unit names were not found in project. "
+                raise RuntimeError(f"one or more target names were not found in project. "
                                    f"query_target_names={query_target_names}, "
                                    f"project_target_names={project_target_names}")
 
@@ -453,7 +453,7 @@ class Project(ZoltarResource):
             timezeros = self.timezeros
             project_tz_names = {timezero.timezero_date for timezero in timezeros}
             if not set(query_tz_names) <= project_tz_names:
-                raise RuntimeError(f"one or more unit names were not found in project. "
+                raise RuntimeError(f"one or more timezeros were not found in project. "
                                    f"query_tz_names={query_tz_names}, project_tz_names={project_tz_names}")
 
             timezero_ids = [timezero.id for timezero in timezeros if timezero.timezero_date in query_tz_names]
@@ -731,6 +731,7 @@ class Job(ZoltarResource):
         3: 'CLOUD_FILE_DOWNLOADED',
         4: 'SUCCESS',
         5: 'FAILED',
+        6: 'TIMEOUT',
     }
 
 
