@@ -778,9 +778,15 @@ class Job(ZoltarResource):
 
     def download_data(self):
         """
-        :return: the Job's data as CSV rows with columns matching that of `csv_rows_from_json_io_dict()`. Should only be
-            called on Jobs that are the results of a project forecast query via `Project.submit_query()`.
-            See docs at https://docs.zoltardata.com/ .
+        Returns the Job's data as CSV rows with columns matching that of `csv_rows_from_json_io_dict()`. Called on Jobs
+        that are the results of a project forecast query via `Project.submit_query()`. NB: It is a 404 Not Found error
+        if this is called on a Job that has no underlying S3 data file, which can happen b/c: 1) 24 hours has passed
+        (the expiration time) or 2) the Job is not complete and therefore has not saved the data file. For the latter
+        you may use `zoltpy.util.busy_poll_job()` to ensure the job is done.
+
+        See docs at https://docs.zoltardata.com/ .
+
+        :return: list of CSV rows
         """
         job_data_url = f"{self.uri}data/"
         score_data_response = self.zoltar_connection.json_for_uri(job_data_url, False, 'text/csv')
