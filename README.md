@@ -81,7 +81,7 @@ print(project)
 
 
 ### Print Project Names
-This fuction returns the project names that you have authorization to view in Zoltar.
+This function returns the project names that you have authorization to view in Zoltar.
 ```
 util.print_projects()
 ```
@@ -154,10 +154,21 @@ util.upload_forecast_batch(conn, predx_batch, forecast_filename_batch, project_n
                            overwrite=False)
 ```
 
+### Download a forecast
+
+```python
+conn = util.authenticate()
+project_name = 'Docs Example Project'
+model_name = 'docs forecast model'
+timezero_date = '2011-10-09'
+json_io_dict = download_forecast(conn, project_name, model_name, timezero_date)
+print(f"downloaded {len(json_io_dict['predictions'])} predictions")
+```
+
+
 ### Return Forecast as a Pandas Dataframe
 
-TODO
-Example:
-```
-util.forecast_to_dataframe('Impetus Province Forecasts','gam_lag1_tops3','20181203')
+```python
+df = dataframe_from_json_io_dict(json_io_dict)
+print(f"dataframe:\n{df}")
 ```
