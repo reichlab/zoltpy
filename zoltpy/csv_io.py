@@ -13,9 +13,8 @@ CSV_HEADER = ['unit', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'quan
 def csv_rows_from_json_io_dict(json_io_dict):
     """
     A utility that converts a "JSON IO dict" as returned by zoltar to a list of zoltar-specific CSV row format. The
-    'class' of each row is named to be the same as Zoltar's utils.forecast.PREDICTION_CLASS_TO_JSON_IO_DICT_CLASS
-    variable. Column ordering is CSV_HEADER. Note that the csv is 'sparse': not every row uses all columns, and unused
-    ones are empty (''). However, the first four columns are always non-empty, i.e., every prediction has them.
+    columns are: 'unit', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'quantile', 'family', 'param1', 'param2',
+    'param3'. They are documented at https://docs.zoltardata.com/fileformats/#forecast-data-format-csv .
 
     :param json_io_dict: a "JSON IO dict" to load from. see docs for details. the "meta" section is ignored
     :return: a list of CSV rows including header - see CSV_HEADER
