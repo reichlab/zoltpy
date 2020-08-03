@@ -11,7 +11,7 @@ import pandas as pd
 import requests
 
 from zoltpy.cdc_io import json_io_dict_from_cdc_csv_file
-from zoltpy.connection import ZoltarConnection, Project, Job
+from zoltpy.connection import ZoltarConnection, Project
 from zoltpy.csv_io import csv_rows_from_json_io_dict
 
 
@@ -211,14 +211,24 @@ def download_forecast(conn, project_name, model_abbr, timezero_date):
     :return: a json_io_dict
     """
     conn.re_authenticate_if_necessary()
-    project = [project for project in conn.projects if project.name == project_name][0]
-    model = [model for model in project.models if model.abbreviation == model_abbr][0]
-    forecast_for_tz_date = [forecast for forecast in model.forecasts if forecast.timezero_date == timezero_date]
-    if not forecast_for_tz_date:
-        raise RuntimeError(f"forecast not found. project_name={project_name}, model_abbr={model_abbr}, "
-                           f"timezero_date={timezero_date}")
+    projects = conn.projects
+    matching_projects = [project for project in projects if project.name == project_name]
+    if not matching_projects:
+        raise RuntimeError(f"found no project named '{project_name}' in {projects}")
 
-    existing_forecast = forecast_for_tz_date[0]
+    project = matching_projects[0]
+    models = project.models
+    matching_models = [model for model in models if model.abbreviation == model_abbr]
+    if not matching_models:
+        raise RuntimeError(f"found no model named '{model_abbr}' in {models}")
+
+    model = matching_models[0]
+    forecasts_for_tz_date = [forecast for forecast in model.forecasts
+                             if forecast.timezero.timezero_date == timezero_date]
+    if not forecasts_for_tz_date:
+        raise RuntimeError(f"found no forecast with timezero date '{timezero_date}'")
+
+    existing_forecast = forecasts_for_tz_date[0]
     return existing_forecast.data()
 
 

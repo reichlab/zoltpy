@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from tests.test_connection import PROJECTS_LIST_DICTS, mock_authenticate
 from zoltpy.connection import ZoltarConnection
-from zoltpy.util import delete_forecast
+from zoltpy.util import delete_forecast, download_forecast
 
 
 class UtilTestCase(TestCase):
@@ -33,15 +33,50 @@ class UtilTestCase(TestCase):
       - can take filename string or json_io_dict
       - calls model.upload_forecast() on each
       - returns the last job
-    - download_forecast():
-      - no existing project
-      - no existing model
-      = 'forecast not found'
-      - calls existing_forecast.data()
     - dataframe_from_json_io_dict():
       - input examples/docs-predictions.json
       - test output df
     """
+
+
+    def test_download_forecast(self):
+        def json_for_uri_mock_side_effect(*args, **kwargs):  # returns a sequence of return args
+            return {'http://example.com/api/projects/': PROJECTS_LIST_DICTS,
+                    'http://example.com/api/project/3/models/': [MODEL_DICT],
+                    'https://example.com/api/model/150/forecasts/': [FORECAST_DICT]}[args[0]]
+
+
+        conn = mock_authenticate(ZoltarConnection('http://example.com'))
+        with patch('zoltpy.connection.ZoltarConnection.json_for_uri') as json_for_uri_mock, \
+                patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary'), \
+                patch('zoltpy.connection.Forecast.data') as forecast_data_mock:
+            json_for_uri_mock.side_effect = json_for_uri_mock_side_effect
+
+            project_name = "Docs Example Project"
+            model_abbr = "60-contact"
+            timezero_date = "2020-04-12"
+
+            # case: blue sky
+            download_forecast(conn, project_name, model_abbr, timezero_date)
+            forecast_data_mock.assert_called_once()
+
+            # case: bad project name
+            forecast_data_mock.reset_mock()
+            with self.assertRaises(RuntimeError) as context:
+                download_forecast(conn, project_name + 'bad', model_abbr, timezero_date)
+            self.assertIn('found no project named', str(context.exception))
+
+            # case: bad model name
+            forecast_data_mock.reset_mock()
+            with self.assertRaises(RuntimeError) as context:
+                download_forecast(conn, project_name, model_abbr + 'bad', timezero_date)
+            self.assertIn('found no model named', str(context.exception))
+
+            # case: bad timezero_date
+            forecast_data_mock.reset_mock()
+            with self.assertRaises(RuntimeError) as context:
+                download_forecast(conn, project_name, model_abbr, "2020-02-22")
+            self.assertIn('found no forecast with timezero date', str(context.exception))
 
 
     def test_delete_forecast(self):
