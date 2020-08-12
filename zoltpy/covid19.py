@@ -134,6 +134,12 @@ def covid19_row_validator(column_index_dict, row, is_valid_target):
     except ValueError:
         pass  # ignore here - it will be caught by `json_io_dict_from_quantile_csv_file()`
 
+    #validate type columns is one of `quantile` or `point`
+
+    if row[column_index_dict['type']] not in ['point', 'quantile']:
+        error_messages.append((MESSAGE_FORECAST_CHECKS, f"invalid value of type. Should be one of ['quantile', 'point']"))
+        pass
+
     if row[column_index_dict['type']] == 'quantile':
         try:
             quantile_float = float(quantile)
