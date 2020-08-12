@@ -56,7 +56,7 @@ class QuantileIOTestCase(TestCase):
             self.assertEqual(0, len(error_messages))
 
     def test_json_io_dict_from_invalid_type_header(self):
-        with open('covid19-data-processed-examples/2020-04-20-YYG-invalid-type.csv') as quantile_fp:
+        with open('tests/covid19-data-processed-examples/2020-04-20-YYG-invalid-type.csv') as quantile_fp:
             _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
                                                                     covid19_row_validator,
                                                                     addl_req_cols=COVID_ADDL_REQ_COLS)
