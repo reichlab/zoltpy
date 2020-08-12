@@ -18,7 +18,7 @@ jobs:
         python-version: '3.6' # Version range or exact version of a Python version to use, using SemVer's version range syntax
         architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
     - name: Install pipenv
-      uses: dschep/install-pipenv-action@v1
+      run: pip3 install pipenv
     - name: Install deps
       run: pipenv install -d
     - name: Run tests
