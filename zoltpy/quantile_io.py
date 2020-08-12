@@ -185,7 +185,6 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
             error_targets.add(target)
 
         # validate row_type, quantile, and value
-        row_type = row_type.lower()
         if (not row_type == POINT_ROW_TYPE) and (not row_type == QUANTILE_ROW_TYPE):
             error_messages.append((MESSAGE_FORECAST_CHECKS, f"entries in the `type` column must be either "
                                                             f"{POINT_ROW_TYPE!r} or {QUANTILE_ROW_TYPE!r}: "
