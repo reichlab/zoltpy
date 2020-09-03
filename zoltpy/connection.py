@@ -316,18 +316,6 @@ class Project(ZoltarResource):
         return Job(self.zoltar_connection, job_json['url'])
 
 
-    def score_data(self):
-        """
-        :return: the Project's score data as CSV rows with these columns:
-            `model`, `timezero`, `season`, `unit`, `target`, plus a column for each score. the header row is included
-        """
-        score_data_url = self.json['score_data']
-        score_data_response = self.zoltar_connection.json_for_uri(score_data_url, False, 'text/csv')
-        decoded_content = score_data_response.content.decode('utf-8')
-        csv_reader = csv.reader(decoded_content.splitlines(), delimiter=',')
-        return list(csv_reader)
-
-
     def create_model(self, model_config):
         """
         Creates a forecast Model with the passed configuration.
@@ -378,16 +366,28 @@ class Project(ZoltarResource):
         return TimeZero(self.zoltar_connection, new_timezero_json['url'], new_timezero_json)
 
 
-    def submit_query(self, query):
+    def submit_query(self, is_forecast_query, query):
         """
         Submits a request for the execution of a query of forecasts in this Project.
 
-        :param query: a dict as documented at https://docs.zoltardata.com/ . NB: this is a "raw" query in that it
-            contains IDs and not strings for objects. use utility methods to convert from strings to IDs
+        :param is_forecast_query: boolean indicating whether this is to query forecasts or scores
+        :param query: a dict that constrains the queried data. It is the analog of the JSON object documented at
+            https://docs.zoltardata.com/ . Briefly, query is a dict of up to five keys, each containing a list of
+            strings. The first four are independent of is_forecast_query, and contain object identifiers in project_url:
+
+            - "models": optional list of model abbreviation strings
+            - "units": "" unit name strings
+            - "targets": "" target name strings
+            - "timezeros": "" timezero timezero_date strings in YYYY_MM_DD_DATE_FORMAT, e.g., '2017-01-17'
+
+            The fifth key is either "types" (if is_forecast_query is TRUE) or "scores" (if FALSE). 'types': contains
+            one or more of: `bin`, `named`, `point`, `sample`, and `quantile`. "scores": contains one or more score
+            abbreviations, currently: 'error' 'abs_error', 'log_single_bin', 'log_multi_bin', 'pit', 'interval_2',
+            'interval_5', 'interval_10', 'interval_20', ..., 'interval_100'.
         :return: a Job for the query
         """
         self.zoltar_connection.re_authenticate_if_necessary()
-        response = requests.post(self.uri + 'forecast_queries/',
+        response = requests.post(self.uri + ('forecast_queries/' if is_forecast_query else 'scores_queries/'),
                                  headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
                                  json={'query': query})
         job_json = response.json()
@@ -395,72 +395,6 @@ class Project(ZoltarResource):
             raise RuntimeError(f"error submitting query: {job_json['error']}")
 
         return Job(self.zoltar_connection, job_json['url'])
-
-
-    def query_with_ids(self, query):
-        """
-        A convenience function that prepares a query for `submit_query()` in this project by replacing strings with
-        database IDs. Replaces these strings:
-
-        - "models": model_name -> ID
-        - "units": unit_name -> ID
-        - "targets": target_name -> ID
-        - "timezeros" timezero_date in YYYY_MM_DD_DATE_FORMAT-> ID
-
-        :param query: as passed to `submit_query()`, but which contains strings and not IDs (ints)
-        :return: a copy of `query` that has IDs substituted for strings
-        :raises RuntimeError: if any names or timezeros could not be found in this project
-        """
-        new_query = {}  # return value. set next
-        if 'models' in query:
-            query_model_names = query['models']
-            models = self.models
-            project_model_names = {model.name for model in models}
-            project_model_abbrevs = {model.abbreviation for model in models}
-            if (not set(query_model_names) <= project_model_names) and \
-                    (not set(query_model_names) <= project_model_abbrevs):
-                raise RuntimeError(f"one or more model names or abbreviations were not found in project. "
-                                   f"query_model_names={query_model_names}, "
-                                   f"project_model_names={project_model_names}, "
-                                   f"project_model_abbrevs={project_model_abbrevs}")
-
-            model_ids = [model.id for model in models if model.name in query_model_names
-                         or model.abbreviation in project_model_abbrevs]
-            new_query['models'] = model_ids
-        if 'units' in query:
-            query_unit_names = query['units']
-            units = self.units
-            project_unit_names = {unit.name for unit in units}
-            if not set(query_unit_names) <= project_unit_names:
-                raise RuntimeError(f"one or more unit names were not found in project. "
-                                   f"query_unit_names={query_unit_names}, project_unit_names={project_unit_names}")
-
-            unit_ids = [unit.id for unit in units if unit.name in query_unit_names]
-            new_query['units'] = unit_ids
-        if 'targets' in query:
-            query_target_names = query['targets']
-            targets = self.targets
-            project_target_names = {target.name for target in targets}
-            if not set(query_target_names) <= project_target_names:
-                raise RuntimeError(f"one or more target names were not found in project. "
-                                   f"query_target_names={query_target_names}, "
-                                   f"project_target_names={project_target_names}")
-
-            target_ids = [target.id for target in targets if target.name in query_target_names]
-            new_query['targets'] = target_ids
-        if 'timezeros' in query:
-            query_tz_names = query['timezeros']
-            timezeros = self.timezeros
-            project_tz_names = {timezero.timezero_date for timezero in timezeros}
-            if not set(query_tz_names) <= project_tz_names:
-                raise RuntimeError(f"one or more timezeros were not found in project. "
-                                   f"query_tz_names={query_tz_names}, project_tz_names={project_tz_names}")
-
-            timezero_ids = [timezero.id for timezero in timezeros if timezero.timezero_date in query_tz_names]
-            new_query['timezeros'] = timezero_ids
-        if 'types' in query:
-            new_query['types'] = query['types']
-        return new_query
 
 
 class Model(ZoltarResource):
@@ -778,18 +712,19 @@ class Job(ZoltarResource):
 
     def download_data(self):
         """
-        Returns the Job's data as CSV rows with columns matching that of `csv_rows_from_json_io_dict()`. Called on Jobs
-        that are the results of a project forecast query via `Project.submit_query()`. NB: It is a 404 Not Found error
-        if this is called on a Job that has no underlying S3 data file, which can happen b/c: 1) 24 hours has passed
-        (the expiration time) or 2) the Job is not complete and therefore has not saved the data file. For the latter
-        you may use `zoltpy.util.busy_poll_job()` to ensure the job is done.
+        Downloads the data for jobs that have an associated file, such as a query's results. Called on Jobs
+        that are the results of a project forecast or score queries via `submit_query()`. NB: It is a 404 Not Found
+        error if this is called on a Job that has no underlying S3 data file, which can happen b/c: 1) 24 hours has
+        passed (the expiration time) or 2) the Job is not complete and therefore has not saved the data file. For
+        the latter you may use `busy_poll_job()` to ensure the job is done.
 
         See docs at https://docs.zoltardata.com/ .
 
-        :return: list of CSV rows
+        :return: list of CSV rows. The columns depend on the originating query. Full documentation at
+            https://docs.zoltardata.com/
         """
         job_data_url = f"{self.uri}data/"
-        score_data_response = self.zoltar_connection.json_for_uri(job_data_url, False, 'text/csv')
-        decoded_content = score_data_response.content.decode('utf-8')
+        response_json = self.zoltar_connection.json_for_uri(job_data_url, False, 'text/csv')
+        decoded_content = response_json.content.decode('utf-8')
         csv_reader = csv.reader(decoded_content.splitlines(), delimiter=',')
         return list(csv_reader)

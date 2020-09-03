@@ -50,13 +50,6 @@ def zoltar_connection_app():
     print(f'- truth data as rows: {len(truth_data_rows)} rows')
     print(f'- truth data as df:\n{truth_data_df.describe()}')
 
-    # get the project's score data as both rows and a dataframe
-    score_data_rows = project.score_data()
-    score_data_df = dataframe_from_rows(score_data_rows)
-    print(f'\n* scores for {project}')
-    print(f'- score data as rows: {len(score_data_rows)} rows')
-    print(f'- score data as df:\n{score_data_df.describe()}')
-
     # work with a model
     model = [model for model in project.models if model.name == 'docs forecast model'][0]
     print(f'\n* working with {model}')
@@ -89,14 +82,23 @@ def zoltar_connection_app():
     dataframe = dataframe_from_json_io_dict(forecast_data)
     print(f'- dataframe: {dataframe}')
 
-    print(f"\n* querying data")
-    query = {'targets': ['pct next week', 'cases next week'],
-             'types': ['point']}
-    job = project.submit_query(project.query_with_ids(query))
+    # query forecast data
+    print(f"\n* querying forecast data")
+    query = {'targets': ['pct next week', 'cases next week'], 'types': ['point']}
+    job = project.submit_query(query)
     busy_poll_job(job)  # does refresh()
     forecast_rows = job.download_data()
     print(f"- got {len(forecast_rows)} rows. as a dataframe:")
     print(dataframe_from_rows(forecast_rows))
+
+    # query score data
+    print(f"\n* querying score data")
+    query = {'targets': ['pct next week', 'cases next week'], 'scores': ['abs_error', 'pit']}
+    job = project.submit_query(query)
+    busy_poll_job(job)  # does refresh()
+    score_rows = job.download_data()
+    print(f"- got {len(score_rows)} rows. as a dataframe:")
+    print(dataframe_from_rows(score_rows))
 
     #
     # try out destructive functions

@@ -209,7 +209,7 @@ class ConnectionTestCase(unittest.TestCase):
 
 
     @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
-    def test_submit_and_download_query(self, json_for_uri_mock):
+    def test_submit_and_download_forecast_query(self, json_for_uri_mock):
         json_for_uri_mock.return_value = PROJECTS_LIST_DICTS
         conn = mock_authenticate(ZoltarConnection('http://example.com'))
         project = conn.projects[0]
@@ -222,7 +222,7 @@ class ConnectionTestCase(unittest.TestCase):
             job_submit_json = json.load(job_submit_json_fp)
             post_mock.return_value.status_code = 200
             post_mock.return_value.json = MagicMock(return_value=job_submit_json)
-            job = project.submit_query(query)
+            job = project.submit_query(True, query)
             self.assertEqual('http://example.com/api/project/3/forecast_queries/', post_mock.call_args[0][0])
             self.assertEqual(post_mock.call_args[1]['json'], {'query': query})
             self.assertIsInstance(job, Job)
@@ -241,48 +241,23 @@ class ConnectionTestCase(unittest.TestCase):
 
 
     @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
-    def test_query_with_ids(self, json_for_uri_mock):
-        def json_for_uri_mock_side_effect(*args, **kwargs):
-            return {'http://example.com/api/projects/': PROJECTS_LIST_DICTS,
-                    'http://example.com/api/project/3/models/': MODELS_LIST_DICTS,
-                    'http://example.com/api/project/3/units/': UNITS_LIST_DICTS,
-                    'http://example.com/api/project/3/targets/': TARGETS_LIST_DICTS,
-                    'http://example.com/api/project/3/timezeros/': TIMEZEROS_LIST_DICTS}[args[0]]
-
-
-        json_for_uri_mock.side_effect = json_for_uri_mock_side_effect
+    def test_submit_scores_query(self, json_for_uri_mock):
+        json_for_uri_mock.return_value = PROJECTS_LIST_DICTS
         conn = mock_authenticate(ZoltarConnection('http://example.com'))
-
         project = conn.projects[0]
 
-        # case: blue sky
-        input_exp_output_queries = [
-            ({}, {}),
-            ({'models': ['docs forecast model'],
-              'units': ['location1', 'location2'],
-              'targets': ['pct next week', 'cases next week'],
-              'timezeros': ['2011-10-02', '2011-10-16'],
-              'types': ['point', 'quantile']},
-             {'models': [5],
-              'units': [23, 24],
-              'targets': [15, 16],
-              'timezeros': [5, 7],
-              'types': ['point', 'quantile']}),
-            ({'models': ['doc_model_abbrev']},  # 'models' can be either model name or abbreviation
-             {'models': [5]})
-        ]
-        for input_query, exp_output_query in input_exp_output_queries:
-            act_output_query = project.query_with_ids(input_query)
-            self.assertEqual(exp_output_query, act_output_query)
-
-        # case: name not found
-        for query in [{'models': ['bad model name']},
-                      {'units': ['bad unit name']},
-                      {'targets': ['bad target name']},
-                      {'timezeros': ['1999-10-02']}]:
-            with self.assertRaises(RuntimeError) as context:
-                project.query_with_ids(query)
-            self.assertIn('one or more', str(context.exception))
+        with open('tests/job-submit-query.json') as job_submit_json_fp, \
+                patch('requests.post') as post_mock, \
+                patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary'):
+            # test submit
+            query = {}  # all forecasts
+            job_submit_json = json.load(job_submit_json_fp)
+            post_mock.return_value.status_code = 200
+            post_mock.return_value.json = MagicMock(return_value=job_submit_json)
+            job = project.submit_query(False, query)
+            self.assertEqual('http://example.com/api/project/3/scores_queries/', post_mock.call_args[0][0])
+            self.assertEqual(post_mock.call_args[1]['json'], {'query': query})
+            self.assertIsInstance(job, Job)
 
 
     @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
@@ -410,7 +385,6 @@ PROJECTS_LIST_DICTS = [
         "core_data": "",
         "truth": "http://example.com/api/project/3/truth/",
         "model_owners": [],
-        "score_data": "http://example.com/api/project/3/score_data/",
         "models": [
             "http://example.com/api/model/5/"
         ],
@@ -440,7 +414,6 @@ PROJECTS_LIST_DICTS = [
         "core_data": "",
         "truth": "http://example.com/api/project/4/truth/",
         "model_owners": [],
-        "score_data": "http://example.com/api/project/4/score_data/",
         "models": [
             "http://example.com/api/model/6/"
         ],
