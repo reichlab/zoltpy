@@ -76,8 +76,8 @@ print(project)
 ## Zoltpy currently has 4 Key Functions
 1) [print_projects()](#print-project-names) - Print project names
 2) [print_models(`conn`,`project_name`)](#print-model-names) - Print model names for a specified project
-3) [delete_forecast(`conn`, `project_name`, `model_name`, `timezero_date`)](#delete-forecast) - Deletes a forecast from Zoltar
-4) [upload_forecast(`conn`, `project_name`, `model_name`, `timezero_date`, `forecast_csv_file`)](#Upload-a-Forecast) - Upload a forecast to Zoltar
+3) [delete_forecast(`conn`, `project_name`, `model_abbr`, `timezero_date`)](#delete-forecast) - Deletes a forecast from Zoltar
+4) [upload_forecast(`conn`, `project_name`, `model_abbr`, `timezero_date`, `forecast_csv_file`)](#Upload-a-Forecast) - Upload a forecast to Zoltar
 
 
 ### Print Project Names
@@ -95,7 +95,7 @@ util.print_models(conn, project_name = 'My Project')
 ### Delete a Forecast
 Deletes a single forecast for a specified model and timezero.
 ```
-util.delete_forecast(conn, project_name='My Project', model_name='My Model', timezero_date='YYYY-MM-DD')
+util.delete_forecast(conn, project_name='My Project', model_abbr='My Model', timezero_date='YYYY-MM-DD')
 ```
 Example:
 ```
@@ -107,14 +107,14 @@ util.delete_forecast(conn, `'Impetus Province Forecasts','gam_lag1_tops3','20181
 ### Upload a Single Forecast
 ```
 project_name = 'Docs Example Project'
-model_name = 'docs forecast model'
+model_abbr = 'docs forecast model'
 timezero_date = '2011-10-09'
 predx_json_file = 'examples/docs-predictions.json'
 forecast_filename = 'docs-predictions'
 
 conn = util.authenticate()
 
-util.upload_forecast(conn, predx_json_file, forecast_filename, project_name, model_name, timezero_date overwrite=True)
+util.upload_forecast(conn, predx_json_file, forecast_filename, project_name, model_abbr, timezero_date overwrite=True)
 ```
 
 ### Uploading Multiple Forecasts
@@ -127,7 +127,7 @@ import datetime
 
 # initialize parameters
 project_name = 'private project'
-model_name = 'Test ForecastModel1'
+model_abbr = 'Test ForecastModel1'
 
 # set up batch variables
 predx_batch = []
@@ -150,7 +150,7 @@ for csv_file in '/Users/my/forecast/directory':
     forecast_filename_batch += [forecast_filename]
     timezero_batch += [timezero]
 
-util.upload_forecast_batch(conn, predx_batch, forecast_filename_batch, project_name, model_name, timezero_batch,
+util.upload_forecast_batch(conn, predx_batch, forecast_filename_batch, project_name, model_abbr, timezero_batch,
                            overwrite=False)
 ```
 
