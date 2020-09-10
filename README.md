@@ -159,9 +159,9 @@ util.upload_forecast_batch(conn, predx_batch, forecast_filename_batch, project_n
 ```python
 conn = util.authenticate()
 project_name = 'Docs Example Project'
-model_name = 'docs forecast model'
+model_abbr = 'docs forecast model'
 timezero_date = '2011-10-09'
-json_io_dict = download_forecast(conn, project_name, model_name, timezero_date)
+json_io_dict = download_forecast(conn, project_name, model_abbr, timezero_date)
 print(f"downloaded {len(json_io_dict['predictions'])} predictions")
 ```
 
