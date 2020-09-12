@@ -1,4 +1,5 @@
 import csv
+import datetime
 import io
 import json
 import logging
@@ -10,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from zoltpy.cdc_io import json_io_dict_from_cdc_csv_file
+from zoltpy.cdc_io import json_io_dict_from_cdc_csv_file, YYYY_MM_DD_DATE_FORMAT
 from zoltpy.connection import ZoltarConnection, Project
 from zoltpy.csv_io import csv_rows_from_json_io_dict
 
@@ -63,12 +64,13 @@ def delete_forecast(conn, project_name, model_abbr, timezero_date):
     :param conn: a ZoltarConnection
     :param project_name: name of the Project that contains model_name
     :param model_name: name of the Model that contains a Forecast for timezero_date
-    :param timezero_date: YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
+    :param timezero_date: string in YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
     :return: a Job to use to track the deletion, or None if the forecast was not found
     """
     conn.re_authenticate_if_necessary()
     project = [project for project in conn.projects if project.name == project_name][0]
     model = [model for model in project.models if model.abbreviation == model_abbr][0]
+    timezero_date = datetime.datetime.strptime(timezero_date, YYYY_MM_DD_DATE_FORMAT).date()
     forecast_for_tz_date = [forecast for forecast in model.forecasts
                             if forecast.timezero.timezero_date == timezero_date]
     if forecast_for_tz_date:
@@ -207,7 +209,7 @@ def download_forecast(conn, project_name, model_abbr, timezero_date):
     :param project_name: name of the Project that contains model_name
     :param project_name: name of the Project that contains model_name
     :param model_abbr: abbreviation of the Model that contains a Forecast for timezero_date
-    :param timezero_date: YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
+    :param timezero_date: a string in YYYY-MM-DD DATE FORMAT, e.g., '2018-12-03'
     :return: a json_io_dict
     """
     conn.re_authenticate_if_necessary()
@@ -223,6 +225,7 @@ def download_forecast(conn, project_name, model_abbr, timezero_date):
         raise RuntimeError(f"found no model named '{model_abbr}' in {models}")
 
     model = matching_models[0]
+    timezero_date = datetime.datetime.strptime(timezero_date, YYYY_MM_DD_DATE_FORMAT).date()
     forecasts_for_tz_date = [forecast for forecast in model.forecasts
                              if forecast.timezero.timezero_date == timezero_date]
     if not forecasts_for_tz_date:

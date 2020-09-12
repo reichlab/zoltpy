@@ -6,7 +6,10 @@ import logging
 import tempfile
 from abc import ABC
 
+import dateutil
 import requests
+
+from zoltpy.cdc_io import YYYY_MM_DD_DATE_FORMAT
 
 
 logger = logging.getLogger(__name__)
@@ -277,11 +280,11 @@ class Project(ZoltarResource):
     @property
     def truth_updated_at(self):
         """
-        :return: the Project's truth_updated_at
+        :return: the Project's truth_updated_at, a datetime.datetime
         """
         # recall the json contains these keys: 'id', 'url', 'project', 'truth_csv_filename', 'truth_updated_at,
         # 'truth_data'
-        return self.zoltar_connection.json_for_uri(self.uri + 'truth/')['truth_updated_at']
+        return dateutil.parser.parse(self.zoltar_connection.json_for_uri(self.uri + 'truth/')['truth_updated_at'])
 
 
     def truth_data(self):
@@ -474,6 +477,18 @@ class Model(ZoltarResource):
                 for forecast_json in forecasts_json_list]
 
 
+    @property
+    def latest_forecast(self):
+        """
+        :return: the forecast in my forecasts that has the latest timezero date, or None if no forecasts
+        """
+        the_forecast = None
+        for forecast in self.forecasts:
+            if not the_forecast or (forecast.timezero.timezero_date > the_forecast.timezero.timezero_date):
+                the_forecast = forecast
+        return the_forecast
+
+
     def edit(self, model_config):
         """
         Edits this model to have the passed values
@@ -639,12 +654,19 @@ class TimeZero(ZoltarResource):
 
     @property
     def timezero_date(self):
-        return self.json['timezero_date']
+        """
+        :return: my timezero_date, a datetime.date
+        """
+        return datetime.datetime.strptime(self.json['timezero_date'], YYYY_MM_DD_DATE_FORMAT).date()  # never None
 
 
     @property
     def data_version_date(self):
-        return self.json['data_version_date']
+        """
+        :return: my data_version_date, a datetime.date
+        """
+        return datetime.datetime.strptime(self.json['data_version_date'], YYYY_MM_DD_DATE_FORMAT).date() \
+            if self.json['data_version_date'] else None
 
 
     @property

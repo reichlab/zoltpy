@@ -5,6 +5,9 @@ import unittest
 from unittest import mock
 from unittest.mock import patch, MagicMock
 
+import dateutil
+
+from zoltpy.cdc_io import YYYY_MM_DD_DATE_FORMAT
 from zoltpy.connection import ZoltarConnection, ZoltarSession, ZoltarResource, Project, Model, Unit, Target, TimeZero, \
     Forecast, Job
 
@@ -131,17 +134,44 @@ class ConnectionTestCase(unittest.TestCase):
         self.assertEqual(3, len(timezeros))
 
         timezero_0 = timezeros[0]
-        self.assertIsInstance(timezero_0, TimeZero)
-        self.assertEqual("2011-10-02", timezero_0.timezero_date)
+        self.assertIsInstance(timezero_0, TimeZero)  # "2011-10-02"
+        self.assertIsInstance(timezero_0.timezero_date, datetime.date)
+        self.assertIsInstance(timezero_0.data_version_date, datetime.date)
+        self.assertEqual(datetime.date(2011, 10, 2), timezero_0.timezero_date)
+        self.assertEqual(datetime.date(2011, 10, 22), timezero_0.data_version_date)
+
+        timezero_1 = timezeros[1]  # None
+        self.assertIsInstance(timezero_1.timezero_date, datetime.date)
+        self.assertEqual(datetime.date(2011, 10, 9), timezero_1.timezero_date)
+        self.assertEqual(None, timezero_1.data_version_date)
+
+        # test Project.truth_updated_at
+        json_for_uri_mock.return_value = {
+            "id": 44,
+            "url": "https://www.zoltardata.com/api/project/44/truth/",
+            "project": "https://www.zoltardata.com/api/project/44/",
+            "truth_csv_filename": "zoltar-truth.csv",
+            "truth_updated_at": "2020-09-12T08:25:02.877459-04:00",
+            "truth_data": "https://www.zoltardata.com/api/project/44/truth_data/"
+        }
+        truth_updated_at = project_0.truth_updated_at
+        self.assertIsInstance(truth_updated_at, datetime.datetime)
+        self.assertEqual(dateutil.parser.parse("2020-09-12T08:25:02.877459-04:00"), truth_updated_at)
 
         # test Model.forecasts
         json_for_uri_mock.return_value = FORECASTS_LIST_DICTS
         forecasts = model_0.forecasts  # hits api/model/5/forecasts/
-        self.assertEqual(1, len(forecasts))
+        self.assertEqual(2, len(forecasts))
+
+        # test Model.latest_forecast
+        json_for_uri_mock.return_value = FORECASTS_LIST_DICTS
+        latest_forecast = model_0.latest_forecast  # hits api/model/5/forecasts/
+        self.assertIsInstance(latest_forecast, Forecast)
+        self.assertEqual('2020-08-17', latest_forecast.timezero.timezero_date.strftime(YYYY_MM_DD_DATE_FORMAT))
 
         forecast_0 = forecasts[0]
         self.assertIsInstance(forecast_0, Forecast)
-        self.assertEqual("docs-predictions.json", forecast_0.source)
+        self.assertEqual('2020-08-17-COVIDhub-ensemble.csv', forecast_0.source)
 
 
     @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
@@ -492,7 +522,7 @@ TIMEZEROS_LIST_DICTS = [
         "id": 5,
         "url": "http://example.com/api/timezero/5/",
         "timezero_date": "2011-10-02",
-        "data_version_date": None,
+        "data_version_date": "2011-10-22",
         "is_season_start": True,
         "season_name": "2011-2012"
     },
@@ -516,13 +546,36 @@ TIMEZEROS_LIST_DICTS = [
 
 FORECASTS_LIST_DICTS = [
     {
-        "id": 3,
-        "url": "http://example.com/api/forecast/3/",
-        "forecast_model": "http://example.com/api/model/5/",
-        "source": "docs-predictions.json",
-        "time_zero": "http://example.com/api/timezero/5/",
-        "created_at": "2020-03-05T15:47:47.369231-05:00",
-        "forecast_data": "http://example.com/api/forecast/3/data/"
+        "id": 12888,
+        "url": "https://www.zoltardata.com/api/forecast/12888/",
+        "forecast_model": "https://www.zoltardata.com/api/model/159/",
+        "source": "2020-08-17-COVIDhub-ensemble.csv",
+        "time_zero": {
+            "id": 565,
+            "url": "https://www.zoltardata.com/api/timezero/565/",
+            "timezero_date": "2020-08-17",
+            "data_version_date": None,
+            "is_season_start": False
+        },
+        "created_at": "2020-08-18T15:16:23.217655-04:00",
+        "notes": "",
+        "forecast_data": "https://www.zoltardata.com/api/forecast/12888/data/"
+    },
+    {
+        "id": 12385,
+        "url": "https://www.zoltardata.com/api/forecast/12385/",
+        "forecast_model": "https://www.zoltardata.com/api/model/159/",
+        "source": "2020-07-06-COVIDhub-ensemble.csv",
+        "time_zero": {
+            "id": 559,
+            "url": "https://www.zoltardata.com/api/timezero/559/",
+            "timezero_date": "2020-07-06",
+            "data_version_date": None,
+            "is_season_start": False
+        },
+        "created_at": "2020-07-08T15:19:25.557095-04:00",
+        "notes": "",
+        "forecast_data": "https://www.zoltardata.com/api/forecast/12385/data/"
     }
 ]
 

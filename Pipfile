@@ -10,6 +10,7 @@ requests = "*"
 numpy = "*"
 black = "==18.5b0"
 pymmwr = "==0.1.0"
+python-dateutil = "*"
 
 [dev-packages]
 
