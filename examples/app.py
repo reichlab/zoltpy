@@ -85,7 +85,7 @@ def zoltar_connection_app():
     # query forecast data
     print(f"\n* querying forecast data")
     query = {'targets': ['pct next week', 'cases next week'], 'types': ['point']}
-    job = project.submit_query(query)
+    job = project.submit_query(True, query)
     busy_poll_job(job)  # does refresh()
     forecast_rows = job.download_data()
     print(f"- got {len(forecast_rows)} rows. as a dataframe:")
@@ -94,7 +94,7 @@ def zoltar_connection_app():
     # query score data
     print(f"\n* querying score data")
     query = {'targets': ['pct next week', 'cases next week'], 'scores': ['abs_error', 'pit']}
-    job = project.submit_query(query)
+    job = project.submit_query(False, query)
     busy_poll_job(job)  # does refresh()
     score_rows = job.download_data()
     print(f"- got {len(score_rows)} rows. as a dataframe:")
