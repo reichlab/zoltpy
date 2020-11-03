@@ -296,9 +296,9 @@ def authenticate(env_user="Z_USERNAME", env_pass="Z_PASSWORD"):
         conn = ZoltarConnection()
         conn.authenticate(os.environ.get(env_user), os.environ.get(env_pass))
         return conn
-    except:
-        print("ERROR: Cannot authenticate zoltar credentials")
-        print("Ensure the environment variables for your username and password are correct")
+    except Exception as exc:
+        print(f"Error authenticating Zoltar credentials: {exc!r}.")
+        print(f"Ensure the environment variables for your username and password are correct.")
     return print("ERROR")
 
 
