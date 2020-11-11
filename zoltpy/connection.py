@@ -525,7 +525,7 @@ class Model(ZoltarResource):
                                      files={'data_file': (source, forecast_json_fp, 'application/json')})
             if response.status_code != 200:  # HTTP_200_OK
                 raise RuntimeError(f"upload_forecast(): status code was not 200. status_code={response.status_code}. "
-                                   f"text={response.text}")
+                                   f"text={response.text}", response)
 
             job_json = response.json()
             return Job(self.zoltar_connection, job_json['url'])
