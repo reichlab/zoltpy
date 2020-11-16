@@ -532,7 +532,7 @@ class Model(ZoltarResource):
 
 
 class Forecast(ZoltarResource):
-    _repr_keys = ('source', 'created_at', 'notes')
+    _repr_keys = ('source', 'issue_date')
 
 
     def __init__(self, zoltar_connection, uri, initial_json=None):
@@ -561,15 +561,33 @@ class Forecast(ZoltarResource):
     @source.setter
     def source(self, source):
         """
-        NB: does *not* call `self.refresh()`, for efficiency
-
-        :param source:
+        Sets my source to `source`. NB: does *not* call `self.refresh()`, for efficiency
         """
-        response = requests.put(self.uri,
-                                headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
-                                json={'source': source})
+        response = requests.patch(self.uri,
+                                  headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
+                                  json={'source': source})
         if response.status_code != 200:  # HTTP_200_OK
-            raise RuntimeError(f"set_source(): status code was not 200. status_code={response.status_code}. "
+            raise RuntimeError(f"set source(): status code was not 200. status_code={response.status_code}. "
+                               f"text={response.text}")
+
+
+    @property
+    def issue_date(self):
+        return self.json['issue_date']
+
+
+    @issue_date.setter
+    def issue_date(self, issue_date):
+        """
+        Sets my issue_date to `issue_date`. NB: does *not* call `self.refresh()`, for efficiency
+
+        :param issue_date: new issue_date. must be a string in YYYY_MM_DD_DATE_FORMAT, e.g., '2017-01-17'
+        """
+        response = requests.patch(self.uri,
+                                  headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
+                                  json={'issue_date': issue_date})
+        if response.status_code != 200:  # HTTP_200_OK
+            raise RuntimeError(f"set issue_date(): status code was not 200. status_code={response.status_code}. "
                                f"text={response.text}")
 
 

@@ -337,12 +337,12 @@ class ConnectionTestCase(unittest.TestCase):
 
 
         conn = mock_authenticate(ZoltarConnection('http://example.com'))  # default token (mock_token) is expired
-        with patch('requests.put') as put_mock, \
+        with patch('requests.patch') as patch_mock, \
                 patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary') as re_auth_mock, \
                 patch('zoltpy.connection.ZoltarConnection.json_for_uri') as json_for_uri_mock:
-            put_mock.return_value.status_code = 200
+            patch_mock.return_value.status_code = 200
             forecast = Forecast(conn, "http://example.com/api/forecast/3/", FORECAST_DICT)
-            self.assertEqual(FORECAST_DICT['source'], forecast.source)  # "2020-04-12-CU-60contact.csv"
+            self.assertEqual(FORECAST_DICT['source'], forecast.source)
 
             new_source = 'new source'
             new_forecast_dict = dict(FORECAST_DICT)  # non-deep copy OK
@@ -351,6 +351,27 @@ class ConnectionTestCase(unittest.TestCase):
             json_for_uri_mock.return_value = new_forecast_dict
             forecast.refresh()
             self.assertEqual(new_source, forecast.source)
+
+
+    def test_forecasts_set_issue_date(self):
+        from tests.test_util import FORECAST_DICT  # avoid circular imports
+
+
+        conn = mock_authenticate(ZoltarConnection('http://example.com'))  # default token (mock_token) is expired
+        with patch('requests.patch') as patch_mock, \
+                patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary') as re_auth_mock, \
+                patch('zoltpy.connection.ZoltarConnection.json_for_uri') as json_for_uri_mock:
+            patch_mock.return_value.status_code = 200
+            forecast = Forecast(conn, "http://example.com/api/forecast/3/", FORECAST_DICT)
+            self.assertEqual(FORECAST_DICT['issue_date'], forecast.issue_date)
+
+            new_issue_date = 'new issue_date'  # type isn't checked locally, just remotely
+            new_forecast_dict = dict(FORECAST_DICT)  # non-deep copy OK
+            new_forecast_dict['issue_date'] = new_issue_date
+            forecast.issue_date = new_issue_date  # call setter. does not refresh
+            json_for_uri_mock.return_value = new_forecast_dict
+            forecast.refresh()
+            self.assertEqual(new_issue_date, forecast.issue_date)
 
 
     def test_is_token_expired(self):

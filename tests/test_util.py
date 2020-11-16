@@ -115,6 +115,7 @@ FORECAST_DICT = {
         "is_season_start": False
     },
     "created_at": "2020-05-05T14:37:59.446110-04:00",
+    "issue_date": "2011-10-02",
     "notes": "",
     "forecast_data": "https://example.com/api/forecast/9921/data/"
 }
