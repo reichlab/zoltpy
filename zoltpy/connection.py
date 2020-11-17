@@ -572,6 +572,24 @@ class Forecast(ZoltarResource):
 
 
     @property
+    def notes(self):
+        return self.json['notes']
+
+
+    @notes.setter
+    def notes(self, notes):
+        """
+        Sets my notes to `notes`. NB: does *not* call `self.refresh()`, for efficiency
+        """
+        response = requests.patch(self.uri,
+                                  headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
+                                  json={'notes': notes})
+        if response.status_code != 200:  # HTTP_200_OK
+            raise RuntimeError(f"set notes(): status code was not 200. status_code={response.status_code}. "
+                               f"text={response.text}")
+
+
+    @property
     def issue_date(self):
         return self.json['issue_date']
 
@@ -594,11 +612,6 @@ class Forecast(ZoltarResource):
     @property
     def created_at(self):
         return self.json['created_at']
-
-
-    @property
-    def notes(self):
-        return self.json['notes']
 
 
     def data(self):
