@@ -2,7 +2,7 @@ import json
 import os
 
 from zoltpy.cdc_io import json_io_dict_from_cdc_csv_file
-from zoltpy.connection import ZoltarConnection
+from zoltpy.connection import ZoltarConnection, QueryType
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file
 from zoltpy.util import busy_poll_job, create_project, dataframe_from_json_io_dict, dataframe_from_rows
 
@@ -42,13 +42,9 @@ def zoltar_connection_app():
           f"  = timezeros: {project.timezeros}\n"
           f"  = models: {project.models}")
 
-    # get the project's truth detail and data as both rows and a dataframe
-    truth_data_rows = project.truth_data()
-    truth_data_df = dataframe_from_rows(truth_data_rows)
+    # get the project's truth detail
     print(f'\n* truth for {project}')
     print(f'- truth_csv_filename, truth_updated_at: {project.truth_csv_filename}, {project.truth_updated_at}')
-    print(f'- truth data as rows: {len(truth_data_rows)} rows')
-    print(f'- truth data as df:\n{truth_data_df.describe()}')
 
     # work with a model
     model = [model for model in project.models if model.name == 'docs forecast model'][0]
@@ -85,20 +81,29 @@ def zoltar_connection_app():
     # query forecast data
     print(f"\n* querying forecast data")
     query = {'targets': ['pct next week', 'cases next week'], 'types': ['point']}
-    job = project.submit_query(True, query)
+    job = project.submit_query(QueryType.FORECASTS, query)
     busy_poll_job(job)  # does refresh()
-    forecast_rows = job.download_data()
-    print(f"- got {len(forecast_rows)} rows. as a dataframe:")
-    print(dataframe_from_rows(forecast_rows))
+    rows = job.download_data()
+    print(f"- got {len(rows)} forecast rows. as a dataframe:")
+    print(dataframe_from_rows(rows))
 
     # query score data
     print(f"\n* querying score data")
     query = {'targets': ['pct next week', 'cases next week'], 'scores': ['abs_error', 'pit']}
-    job = project.submit_query(False, query)
+    job = project.submit_query(QueryType.SCORES, query)
     busy_poll_job(job)  # does refresh()
-    score_rows = job.download_data()
-    print(f"- got {len(score_rows)} rows. as a dataframe:")
-    print(dataframe_from_rows(score_rows))
+    rows = job.download_data()
+    print(f"- got {len(rows)} score rows. as a dataframe:")
+    print(dataframe_from_rows(rows))
+
+    # query score data
+    print(f"\n* querying truth data")
+    query = {'targets': ['pct next week', 'cases next week']}
+    job = project.submit_query(QueryType.TRUTH, query)
+    busy_poll_job(job)  # does refresh()
+    rows = job.download_data()
+    print(f"- got {len(rows)} truth rows. as a dataframe:")
+    print(dataframe_from_rows(rows))
 
     #
     # try out destructive functions

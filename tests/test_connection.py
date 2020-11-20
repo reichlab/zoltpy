@@ -9,7 +9,7 @@ import dateutil
 
 from zoltpy.cdc_io import YYYY_MM_DD_DATE_FORMAT
 from zoltpy.connection import ZoltarConnection, ZoltarSession, ZoltarResource, Project, Model, Unit, Target, TimeZero, \
-    Forecast, Job
+    Forecast, Job, QueryType
 
 
 class ConnectionTestCase(unittest.TestCase):
@@ -151,9 +151,7 @@ class ConnectionTestCase(unittest.TestCase):
             "url": "https://www.zoltardata.com/api/project/44/truth/",
             "project": "https://www.zoltardata.com/api/project/44/",
             "truth_csv_filename": "zoltar-truth.csv",
-            "truth_updated_at": "2020-09-12T08:25:02.877459-04:00",
-            "truth_data": "https://www.zoltardata.com/api/project/44/truth_data/"
-        }
+            "truth_updated_at": "2020-09-12T08:25:02.877459-04:00"}
         truth_updated_at = project_0.truth_updated_at
         self.assertIsInstance(truth_updated_at, datetime.datetime)
         self.assertEqual(dateutil.parser.parse("2020-09-12T08:25:02.877459-04:00"), truth_updated_at)
@@ -252,7 +250,7 @@ class ConnectionTestCase(unittest.TestCase):
             job_submit_json = json.load(job_submit_json_fp)
             post_mock.return_value.status_code = 200
             post_mock.return_value.json = MagicMock(return_value=job_submit_json)
-            job = project.submit_query(True, query)
+            job = project.submit_query(QueryType.FORECASTS, query)
             self.assertEqual('http://example.com/api/project/3/forecast_queries/', post_mock.call_args[0][0])
             self.assertEqual(post_mock.call_args[1]['json'], {'query': query})
             self.assertIsInstance(job, Job)
@@ -284,8 +282,28 @@ class ConnectionTestCase(unittest.TestCase):
             job_submit_json = json.load(job_submit_json_fp)
             post_mock.return_value.status_code = 200
             post_mock.return_value.json = MagicMock(return_value=job_submit_json)
-            job = project.submit_query(False, query)
+            job = project.submit_query(QueryType.SCORES, query)
             self.assertEqual('http://example.com/api/project/3/scores_queries/', post_mock.call_args[0][0])
+            self.assertEqual(post_mock.call_args[1]['json'], {'query': query})
+            self.assertIsInstance(job, Job)
+
+
+    @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
+    def test_submit_truth_query(self, json_for_uri_mock):
+        json_for_uri_mock.return_value = PROJECTS_LIST_DICTS
+        conn = mock_authenticate(ZoltarConnection('http://example.com'))
+        project = conn.projects[0]
+
+        with open('tests/job-submit-query.json') as job_submit_json_fp, \
+                patch('requests.post') as post_mock, \
+                patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary'):
+            # test submit
+            query = {}  # all forecasts
+            job_submit_json = json.load(job_submit_json_fp)
+            post_mock.return_value.status_code = 200
+            post_mock.return_value.json = MagicMock(return_value=job_submit_json)
+            job = project.submit_query(QueryType.TRUTH, query)
+            self.assertEqual('http://example.com/api/project/3/truth_queries/', post_mock.call_args[0][0])
             self.assertEqual(post_mock.call_args[1]['json'], {'query': query})
             self.assertIsInstance(job, Job)
 

@@ -1,6 +1,7 @@
 import base64
 import csv
 import datetime
+import enum
 import json
 import logging
 import tempfile
@@ -213,6 +214,15 @@ class ZoltarResource(ABC):
         return response
 
 
+class QueryType(enum.Enum):
+    """
+    Types of queries that `submit_query()` can handle.
+    """
+    FORECASTS = enum.auto()
+    SCORES = enum.auto()
+    TRUTH = enum.auto()
+
+
 class Project(ZoltarResource):
     """
     Represents a Zoltar project, and is the entry point for getting its list of Models.
@@ -287,18 +297,6 @@ class Project(ZoltarResource):
         return dateutil.parser.parse(self.zoltar_connection.json_for_uri(self.uri + 'truth/')['truth_updated_at'])
 
 
-    def truth_data(self):
-        """
-        :return: the Project's truth data downloaded as CSV rows with these columns: `timezero`, `unit`, `target`,
-            `value`. the header row is included
-        """
-        truth_data_url = self.zoltar_connection.json_for_uri(self.uri + 'truth/')['truth_data']
-        truth_data_response = self.zoltar_connection.json_for_uri(truth_data_url, False, 'text/csv')
-        decoded_content = truth_data_response.content.decode('utf-8')
-        csv_reader = csv.reader(decoded_content.splitlines(), delimiter=',')
-        return list(csv_reader)
-
-
     def upload_truth_data(self, truth_csv_fp):
         """
         Uploads truth data to this project, deleting existing truth if any.
@@ -369,28 +367,45 @@ class Project(ZoltarResource):
         return TimeZero(self.zoltar_connection, new_timezero_json['url'], new_timezero_json)
 
 
-    def submit_query(self, is_forecast_query, query):
+    def submit_query(self, query_type, query):
         """
         Submits a request for the execution of a query of forecasts in this Project.
 
-        :param is_forecast_query: boolean indicating whether this is to query forecasts or scores
+        :param query_type: a QueryType enum value indicating the type of query to run
         :param query: a dict that constrains the queried data. It is the analog of the JSON object documented at
-            https://docs.zoltardata.com/ . Briefly, query is a dict of up to five keys, each containing a list of
-            strings. The first four are independent of is_forecast_query, and contain object identifiers in project_url:
+            https://docs.zoltardata.com/ . Briefly, query is a dict whose keys vary depending on query_type. References
+            to models, units, targets, and timezeros are strings that name the objects, and not IDs. Following are some
+            examples of the three types of queries:
 
-            - "models": optional list of model abbreviation strings
-            - "units": "" unit name strings
-            - "targets": "" target name strings
-            - "timezeros": "" timezero timezero_date strings in YYYY_MM_DD_DATE_FORMAT, e.g., '2017-01-17'
+        Forecasts:
+            {"models": ["60-contact", "CovidIL_100"],
+             "units": ["US"],
+             "targets": ["0 day ahead cum death", "1 day ahead cum death"],
+             "timezeros": ["2020-05-14", "2020-05-09"],
+             "types": ["point", "quantile"]}
 
-            The fifth key is either "types" (if is_forecast_query is TRUE) or "scores" (if FALSE). 'types': contains
-            one or more of: `bin`, `named`, `point`, `sample`, and `quantile`. "scores": contains one or more score
-            abbreviations, currently: 'error' 'abs_error', 'log_single_bin', 'log_multi_bin', 'pit', 'interval_2',
-            'interval_5', 'interval_10', 'interval_20', ..., 'interval_100'.
+         Scores:
+            {"models": ["60-contact", "CovidIL_100"],
+             "units": ["US"],
+             "targets": ["0 day ahead cum death", "1 day ahead cum death"],
+             "timezeros": ["2020-05-14", "2020-05-09"],
+             "scores": ["log_single_bin", "interval_100"]}
+
+        Truth:
+            {"units": ["US"],
+             "targets": ["0 day ahead cum death", "1 day ahead cum death"],
+             "timezeros": ["2020-05-14", "2020-05-09"]}
+
         :return: a Job for the query
         """
+        if not isinstance(query_type, QueryType):
+            raise RuntimeError(f"invalid query_type: {query_type!r} ({type(query_type)})")
+
+        query_url = {QueryType.FORECASTS: 'forecast_queries/',
+                     QueryType.SCORES: 'scores_queries/',
+                     QueryType.TRUTH: 'truth_queries/'}[query_type]
         self.zoltar_connection.re_authenticate_if_necessary()
-        response = requests.post(self.uri + ('forecast_queries/' if is_forecast_query else 'scores_queries/'),
+        response = requests.post(self.uri + query_url,
                                  headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
                                  json={'query': query})
         job_json = response.json()
