@@ -369,7 +369,7 @@ class Project(ZoltarResource):
 
     def submit_query(self, query_type, query):
         """
-        Submits a request for the execution of a query of forecasts in this Project.
+        Submits a request for the execution of a query of either forecasts, scores, or truth in this Project.
 
         :param query_type: a QueryType enum value indicating the type of query to run
         :param query: a dict that constrains the queried data. It is the analog of the JSON object documented at
