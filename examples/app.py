@@ -44,7 +44,7 @@ def zoltar_connection_app():
 
     # get the project's truth detail
     print(f'\n* truth for {project}')
-    print(f'- truth_csv_filename, truth_updated_at: {project.truth_csv_filename}, {project.truth_updated_at}')
+    print(f'- source, created_at: {project.source}, {project.created_at}')
 
     # work with a model
     model = [model for model in project.models if model.name == 'docs forecast model'][0]

@@ -145,16 +145,16 @@ class ConnectionTestCase(unittest.TestCase):
         self.assertEqual(datetime.date(2011, 10, 9), timezero_1.timezero_date)
         self.assertEqual(None, timezero_1.data_version_date)
 
-        # test Project.truth_updated_at
+        # test Project.created_at
         json_for_uri_mock.return_value = {
             "id": 44,
             "url": "https://www.zoltardata.com/api/project/44/truth/",
             "project": "https://www.zoltardata.com/api/project/44/",
-            "truth_csv_filename": "zoltar-truth.csv",
-            "truth_updated_at": "2020-09-12T08:25:02.877459-04:00"}
-        truth_updated_at = project_0.truth_updated_at
-        self.assertIsInstance(truth_updated_at, datetime.datetime)
-        self.assertEqual(dateutil.parser.parse("2020-09-12T08:25:02.877459-04:00"), truth_updated_at)
+            "source": "zoltar-truth.csv",
+            "created_at": "2020-09-12T08:25:02.877459-04:00"}
+        created_at = project_0.created_at
+        self.assertIsInstance(created_at, datetime.datetime)
+        self.assertEqual(dateutil.parser.parse("2020-09-12T08:25:02.877459-04:00"), created_at)
 
         # test Model.forecasts
         json_for_uri_mock.return_value = FORECASTS_LIST_DICTS

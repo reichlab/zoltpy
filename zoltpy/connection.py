@@ -278,23 +278,23 @@ class Project(ZoltarResource):
 
 
     @property
-    def truth_csv_filename(self):
+    def source(self):
         """
-        :return: the Project's truth_csv_filename
+        :return: the Project's source
         """
-        # recall the json contains these keys: 'id', 'url', 'project', 'truth_csv_filename', 'truth_updated_at,
+        # recall the json contains these keys: 'id', 'url', 'project', 'source', 'created_at,
         # 'truth_data'
-        return self.zoltar_connection.json_for_uri(self.uri + 'truth/')['truth_csv_filename']
+        return self.zoltar_connection.json_for_uri(self.uri + 'truth/')['source']
 
 
     @property
-    def truth_updated_at(self):
+    def created_at(self):
         """
-        :return: the Project's truth_updated_at, a datetime.datetime
+        :return: the Project's created_at, a datetime.datetime
         """
-        # recall the json contains these keys: 'id', 'url', 'project', 'truth_csv_filename', 'truth_updated_at,
+        # recall the json contains these keys: 'id', 'url', 'project', 'source', 'created_at,
         # 'truth_data'
-        return dateutil.parser.parse(self.zoltar_connection.json_for_uri(self.uri + 'truth/')['truth_updated_at'])
+        return dateutil.parser.parse(self.zoltar_connection.json_for_uri(self.uri + 'truth/')['created_at'])
 
 
     def upload_truth_data(self, truth_csv_fp):
