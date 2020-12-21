@@ -219,7 +219,6 @@ class QueryType(enum.Enum):
     Types of queries that `submit_query()` can handle.
     """
     FORECASTS = enum.auto()
-    SCORES = enum.auto()
     TRUTH = enum.auto()
 
 
@@ -369,7 +368,7 @@ class Project(ZoltarResource):
 
     def submit_query(self, query_type, query):
         """
-        Submits a request for the execution of a query of either forecasts, scores, or truth in this Project.
+        Submits a request for the execution of a query of either forecasts or truth in this Project.
 
         :param query_type: a QueryType enum value indicating the type of query to run
         :param query: a dict that constrains the queried data. It is the analog of the JSON object documented at
@@ -384,13 +383,6 @@ class Project(ZoltarResource):
              "timezeros": ["2020-05-14", "2020-05-09"],
              "types": ["point", "quantile"]}
 
-         Scores:
-            {"models": ["60-contact", "CovidIL_100"],
-             "units": ["US"],
-             "targets": ["0 day ahead cum death", "1 day ahead cum death"],
-             "timezeros": ["2020-05-14", "2020-05-09"],
-             "scores": ["log_single_bin", "interval_100"]}
-
         Truth:
             {"units": ["US"],
              "targets": ["0 day ahead cum death", "1 day ahead cum death"],
@@ -402,7 +394,6 @@ class Project(ZoltarResource):
             raise RuntimeError(f"invalid query_type: {query_type!r} ({type(query_type)})")
 
         query_url = {QueryType.FORECASTS: 'forecast_queries/',
-                     QueryType.SCORES: 'scores_queries/',
                      QueryType.TRUTH: 'truth_queries/'}[query_type]
         self.zoltar_connection.re_authenticate_if_necessary()
         response = requests.post(self.uri + query_url,
@@ -781,7 +772,7 @@ class Job(ZoltarResource):
     def download_data(self):
         """
         Downloads the data for jobs that have an associated file, such as a query's results. Called on Jobs
-        that are the results of a project forecast or score queries via `submit_query()`. NB: It is a 404 Not Found
+        that are the results of a project forecast or truth queries via `submit_query()`. NB: It is a 404 Not Found
         error if this is called on a Job that has no underlying S3 data file, which can happen b/c: 1) 24 hours has
         passed (the expiration time) or 2) the Job is not complete and therefore has not saved the data file. For
         the latter you may use `busy_poll_job()` to ensure the job is done.

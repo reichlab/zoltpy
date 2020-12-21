@@ -269,26 +269,6 @@ class ConnectionTestCase(unittest.TestCase):
 
 
     @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
-    def test_submit_scores_query(self, json_for_uri_mock):
-        json_for_uri_mock.return_value = PROJECTS_LIST_DICTS
-        conn = mock_authenticate(ZoltarConnection('http://example.com'))
-        project = conn.projects[0]
-
-        with open('tests/job-submit-query.json') as job_submit_json_fp, \
-                patch('requests.post') as post_mock, \
-                patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary'):
-            # test submit
-            query = {}  # all forecasts
-            job_submit_json = json.load(job_submit_json_fp)
-            post_mock.return_value.status_code = 200
-            post_mock.return_value.json = MagicMock(return_value=job_submit_json)
-            job = project.submit_query(QueryType.SCORES, query)
-            self.assertEqual('http://example.com/api/project/3/scores_queries/', post_mock.call_args[0][0])
-            self.assertEqual(post_mock.call_args[1]['json'], {'query': query})
-            self.assertIsInstance(job, Job)
-
-
-    @mock.patch('zoltpy.connection.ZoltarConnection.json_for_uri')
     def test_submit_truth_query(self, json_for_uri_mock):
         json_for_uri_mock.return_value = PROJECTS_LIST_DICTS
         conn = mock_authenticate(ZoltarConnection('http://example.com'))
