@@ -57,7 +57,7 @@ from zoltpy import util
 ## Authentication
 To access your project, you'll first need to authenticate via the `authenticate(username, password)` method from the `ZoltarConnection()` object. Pass it the username and password saved in your [environment variables](#one-time-environment-variable-configuration): 
 ```
-from zoltpy import util
+from zoltpy import util, connection
 
 conn = util.authenticate()
 ```
@@ -73,11 +73,13 @@ print(project)
   the connection object returned by the `re_authenticate_if_necessary()` function stores a token internally, so be careful if saving that object into a file.
   
   
-## Zoltpy currently has 4 Key Functions
+## Zoltpy currently has 6 Key Functions
 1) [print_projects()](#print-project-names) - Print project names
 2) [print_models(`conn`,`project_name`)](#print-model-names) - Print model names for a specified project
 3) [delete_forecast(`conn`, `project_name`, `model_abbr`, `timezero_date`)](#delete-forecast) - Deletes a forecast from Zoltar
 4) [upload_forecast(`conn`, `project_name`, `model_abbr`, `timezero_date`, `forecast_csv_file`)](#Upload-a-Forecast) - Upload a forecast to Zoltar
+5) [download_forecast(`conn`, `project_name`, `model_abbr`, `timezero_date`)](#Download-a-Forecast) - Download a forecast from Zoltar
+6) [query_project(`conn`, `project_name`, `query_type`, `query`)](#Query-a-Project) - Query a Zoltar project for forecasts or truth data
 
 
 ### Print Project Names
@@ -161,7 +163,7 @@ conn = util.authenticate()
 project_name = 'Docs Example Project'
 model_abbr = 'docs forecast model'
 timezero_date = '2011-10-09'
-json_io_dict = download_forecast(conn, project_name, model_abbr, timezero_date)
+json_io_dict = util.download_forecast(conn, project_name, model_abbr, timezero_date)
 print(f"downloaded {len(json_io_dict['predictions'])} predictions")
 ```
 
@@ -169,6 +171,37 @@ print(f"downloaded {len(json_io_dict['predictions'])} predictions")
 ### Return Forecast as a Pandas Dataframe
 
 ```python
-df = dataframe_from_json_io_dict(json_io_dict)
+df = util.dataframe_from_json_io_dict(json_io_dict)
 print(f"dataframe:\n{df}")
 ```
+
+### Query a Project
+
+We can query a project to retrieve forecasts or truth data:
+
+```python
+conn = util.authenticate()
+project_name = 'COVID-19 Forecasts'
+query = {
+  'models': ['epiforecasts-ensemble1', 'LNQ-ens1', 'UMass-MechBayes'],
+  'units': ['39'],
+  'targets': [str(h + 1) + ' wk ahead inc death' for h in range(4)],
+  'timezeros': ['2021-02-14', '2021-02-15'],
+  'types': ['quantile']}
+
+forecasts_df = util.query_project(conn, project_name, connection.QueryType.FORECASTS, query)
+print(f"dataframe:\n{forecasts_df}")
+```
+
+```python
+conn = util.authenticate()
+project_name = 'COVID-19 Forecasts'
+query = {
+  'units': ['39'],
+  'targets': [str(h + 1) + ' wk ahead inc death' for h in range(4)],
+  'timezeros': ['2021-02-14', '2021-02-15']}
+
+truth_df = util.query_project(conn, project_name, connection.QueryType.TRUTH, query)
+print(f"dataframe:\n{truth_df}")
+```
+
