@@ -235,6 +235,53 @@ def download_forecast(conn, project_name, model_abbr, timezero_date):
     return existing_forecast.data()
 
 
+def query_project(conn, project_name, query_type, query):
+    """
+    Submits a request for the execution of a query of either forecasts or truth
+    in a specified Zoltar project.
+    :param conn: a ZoltarConnection
+    :param project_name: name of the Project to query
+    :param query_type: a QueryType enum value indicating the type of query to run
+    :param query: a dict that constrains the queried data. It is the analog of the JSON object documented at
+        https://docs.zoltardata.com/ . Briefly, query is a dict whose keys vary depending on query_type. References
+        to models, units, targets, and timezeros are strings that name the objects, and not IDs. Following are some
+        examples of the three types of queries:
+    Forecasts:
+        {"models": ["60-contact", "CovidIL_100"],
+          "units": ["US"],
+          "targets": ["0 day ahead cum death", "1 day ahead cum death"],
+          "timezeros": ["2020-05-14", "2020-05-09"],
+          "types": ["point", "quantile"]}
+    Truth:
+        {"units": ["US"],
+          "targets": ["0 day ahead cum death", "1 day ahead cum death"],
+          "timezeros": ["2020-05-14", "2020-05-09"]}
+    :return: a pandas data frame of query results. The columns depend on the originating query.
+    """
+    # identify project to query from project_name
+    conn.re_authenticate_if_necessary()
+    projects = conn.projects
+    matching_projects = [project for project in projects if project.name == project_name]
+    if not matching_projects:
+        raise RuntimeError(f"found no project named '{project_name}' in {projects}")
+
+    project = matching_projects[0]
+
+    # submit query
+    job = project.submit_query(query_type, query)
+
+    # poll job until results are available
+    busy_poll_job(job)
+
+    # get results, format is rows of a csv
+    csv_rows = job.download_data()
+
+    # convert to a pandas data frame
+    result_df = dataframe_from_rows(csv_rows)
+
+    return result_df
+
+
 def dataframe_from_rows(rows):
     string_io = io.StringIO()
     csv_writer = csv.writer(string_io, delimiter=",")
