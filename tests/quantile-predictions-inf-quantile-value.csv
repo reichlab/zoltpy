@@ -1,0 +1,4 @@
+target,location,type,quantile,value
+1 day ahead inc hosp,51,point,NA,432
+1 day ahead inc hosp,51,quantile,0.01,9
+1 day ahead inc hosp,51,quantile,0.025,inf
