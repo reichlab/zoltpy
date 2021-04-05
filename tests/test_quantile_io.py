@@ -360,6 +360,22 @@ class QuantileIOTestCase(TestCase):
             self.assertIn("invalid forecast_date or target_end_date format", error_messages[0][1])
 
 
+    def test_covid19_point_with_nonempty_quantile_validation(self):
+        # test whether a point row has an empty quantile column
+        with open(
+                'tests/covid19-data-processed-examples/covid19-predictions-point-nonempty-quantile.csv') as quantile_fp:
+            try:
+                _, error_messages = \
+                    json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS, covid19_row_validator,
+                                                        addl_req_cols=COVID_ADDL_REQ_COLS)
+                self.assertEqual(1, len(error_messages))
+                self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
+                self.assertIn("entries in the `quantile` column must be empty for `point` entries.", error_messages[0][1])
+
+            except Exception as ex:
+                self.fail(f"unexpected exception: {ex}")
+
+
     def test_covid_validation_quantiles(self):
         # tests a quantile not in COVID_QUANTILES_NON_CASE
         column_index_dict = {'forecast_date': 0, 'target': 1, 'target_end_date': 2, 'location': 3, 'location_name': 4,

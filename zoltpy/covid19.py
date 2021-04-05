@@ -1,9 +1,12 @@
 import csv
 import datetime
+import math
 import os
 from pathlib import Path
 
 import click
+
+import numbers
 
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, summarized_error_messages, MESSAGE_FORECAST_CHECKS, \
     MESSAGE_DATE_ALIGNMENT
@@ -146,6 +149,23 @@ def covid19_row_validator(column_index_dict, row, is_valid_target):
                                                                 f"target={target!r}. row={row}"))
         except ValueError:
             pass  # ignore here - it will be caught by `json_io_dict_from_quantile_csv_file()`
+
+    # check if point rows have empty quantile column.
+    if row[column_index_dict['type']] == 'point' and quantile is not None:
+        try:
+            # try parsing the quantile to a number
+            quantile_float = float(quantile)
+            # if quantile is not finite
+            if math.isfinite(quantile_float):
+                # if it successfully parsed the value, throw an error
+                error_messages.append((MESSAGE_FORECAST_CHECKS,
+                                       f"entries in the `quantile` column must be empty for `point` "
+                                       f"entries. Current value is: "
+                                       f"{quantile_float}. row={row}"))
+        except ValueError:
+            # if parsing the quantile fails, do nothing as it is what we expect
+            pass
+
 
     # validate forecast_date and target_end_date date formats
     forecast_date = row[column_index_dict['forecast_date']]
