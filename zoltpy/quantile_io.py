@@ -4,7 +4,6 @@ import math
 from collections import defaultdict
 from itertools import groupby
 
-
 #
 # project-independent variables
 #
@@ -23,6 +22,7 @@ QUANTILE_PREDICTION_CLASS = 'quantile'
 REQUIRED_COLUMNS = ('location', 'target', 'type', 'quantile', 'value')
 POINT_ROW_TYPE = 'point'
 QUANTILE_ROW_TYPE = 'quantile'
+RETRACTION_VALUE = 'NULL'  # point or quantile value that represents a retraction
 
 #
 # Note: The following code is a somewhat temporary solution to validation during COVID-19 crunch time. As such, we
@@ -37,7 +37,7 @@ QUANTILE_ROW_TYPE = 'quantile'
 #
 
 # these vars are used to order error messages according to the list here:
-# https://github.com/reichlab/covid19-forecast-hub/wiki/Validation-Checks#current-validation-checks
+# https://github.com/reichlab/covid19-forecast-hub/wiki/Forecast-Checks
 MESSAGE_FORECAST_CHECKS = 0  # 2. forecast checks
 MESSAGE_DATE_ALIGNMENT = 1  # 3. validates date alignment as documented in the issue add additional validations
 MESSAGE_QUANTILES_AND_VALUES = 2  # 4. validates quantiles and values (i.e,. at the prediction level)
@@ -46,8 +46,8 @@ MESSAGE_QUANTILES_AS_A_GROUP = 3  # 5. validates quantiles as a group
 
 def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validator=None, addl_req_cols=()):
     """
-    Utility that validates and extracts the two types of predictions found in quantile CSV files (PointPredictions and
-    QuantileDistributions), returning them as a "JSON IO dict" suitable for loading into the database (see
+    Utility that validates and extracts the two types of predictions found in quantile CSV files (points and quantiles),
+    returning them as a "JSON IO dict" suitable for loading into the database (see
     `load_predictions_from_json_io_dict()`). Note that the returned dict's "meta" section is empty. This function is
     flexible with respect to the inputted column contents and order: It allows the required columns to be in any
     position. The base required columns are (from REQUIRED_COLUMNS):
@@ -93,20 +93,25 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
                 quant_quantiles.append(quantile)
                 quant_values.append(value)
 
-        # add the actual prediction dicts
+        # add the actual prediction dicts, converting retraction flags (value = NULL) into actual retractions as needed
         for point_value in point_values:
             prediction_dicts.append({'unit': location,
                                      'target': target,
-                                     'class': POINT_PREDICTION_CLASS,  # PointPrediction
-                                     'prediction': {
-                                         'value': point_value}})
+                                     'class': POINT_PREDICTION_CLASS,
+                                     'prediction': None if point_value is None else {'value': point_value}})
         if quant_quantiles:
-            prediction_dicts.append({'unit': location,
-                                     'target': target,
-                                     'class': QUANTILE_PREDICTION_CLASS,  # QuantileDistribution
-                                     'prediction': {
-                                         'quantile': quant_quantiles,
-                                         'value': quant_values}})
+            is_all_vals_none = all(map(lambda _: _ is None, quant_values))
+            is_any_vals_none = any(map(lambda _: _ is None, quant_values))
+            if is_any_vals_none and not is_all_vals_none:  # some but not all
+                error_messages.append((MESSAGE_QUANTILES_AND_VALUES,
+                                       f"Retracted quantile values must all be {RETRACTION_VALUE!r}, but only some "
+                                       f"were. quant_values={quant_values}"))
+            else:
+                prediction_dicts.append({'unit': location,
+                                         'target': target,
+                                         'class': QUANTILE_PREDICTION_CLASS,
+                                         'prediction': None if is_all_vals_none else {'quantile': quant_quantiles,
+                                                                                      'value': quant_values}})
 
     # step 3/4: validate individual prediction_dicts. along the way fill loc_targ_to_pred_classes, which helps to do
     # "prediction"-level validations at the end of this function. it maps 2-tuples to a list of prediction classes
@@ -116,8 +121,9 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
         unit = prediction_dict['unit']
         target = prediction_dict['target']
         prediction_class = prediction_dict['class']
+        is_retraction = prediction_dict['prediction'] is None
         loc_targ_to_pred_classes[(unit, target)].append(prediction_class)
-        if prediction_dict['class'] == QUANTILE_PREDICTION_CLASS:
+        if (prediction_dict['class'] == QUANTILE_PREDICTION_CLASS) and (not is_retraction):
             pred_dict_error_messages = _validate_quantile_prediction_dict(prediction_dict)
             error_messages.extend(pred_dict_error_messages)
 
@@ -195,19 +201,20 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
             return [], error_messages  # terminate processing b/c we don't know how to handle the row type
 
         is_point_row = (row_type == POINT_ROW_TYPE)
+        is_retraction = (value == RETRACTION_VALUE)
         quantile = _parse_value(quantile)  # None if not an int, float, or Date. float might be inf or nan
-        value = _parse_value(value)  # ""
+        parsed_value = _parse_value(value)  # ""
         if (not is_point_row) and ((quantile is None) or
                                    (isinstance(quantile, datetime.date)) or
                                    (not math.isfinite(quantile)) or  # inf, nan
                                    not (0 <= quantile <= 1)):
             error_messages.append((MESSAGE_FORECAST_CHECKS, f"entries in the `quantile` column must be an int or "
                                                             f"float in [0, 1]: {quantile}. row={row}"))
-        elif (value is None) or \
-                (isinstance(value, datetime.date)) or \
-                (not math.isfinite(value)):  # inf, nan
+        elif (not is_retraction) and ((parsed_value is None) or
+                                      (isinstance(parsed_value, datetime.date)) or
+                                      (not math.isfinite(parsed_value))):  # inf, nan
             error_messages.append((MESSAGE_FORECAST_CHECKS, f"entries in the `value` column must be an int or float: "
-                                                            f"{value}. row={row}"))
+                                                            f"{parsed_value}. row={row}"))
 
         # do optional application-specific row validation. NB: error_messages is modified in-place as a side-effect
         if row_validator:
@@ -215,9 +222,9 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
 
         # convert parsed date back into string suitable for JSON.
         # NB: recall all targets are "type": "discrete", so we only accept ints and floats
-        # if isinstance(value, datetime.date):
-        #     value = value.strftime(YYYY_MM_DD_DATE_FORMAT)
-        rows.append([target, location, is_point_row, quantile, value])
+        # if isinstance(parsed_value, datetime.date):
+        #     parsed_value = parsed_value.strftime(YYYY_MM_DD_DATE_FORMAT)
+        rows.append([target, location, is_point_row, quantile, parsed_value])
 
     # Add invalid targets to errors
     if len(error_targets) > 0:

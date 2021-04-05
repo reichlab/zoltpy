@@ -31,29 +31,33 @@ def csv_rows_from_json_io_dict(json_io_dict):
 
         unit = prediction_dict['unit']
         target = prediction_dict['target']
-        prediction = prediction_dict['prediction']
+        prediction_data = prediction_dict['prediction']
+        is_retraction = prediction_data is None
 
         # class-specific columns all default to empty:
         value, cat, prob, sample, quantile, family, param1, param2, param3 = '', '', '', '', '', '', '', '', ''
-        if prediction_class == BIN_DISTRIBUTION_CLASS:  # BinDistribution
-            for cat, prob in zip(prediction['cat'], prediction['prob']):
+        if is_retraction:
+            rows.append([unit, target, prediction_class, value, cat, prob, sample, quantile,
+                         family, param1, param2, param3])
+        elif prediction_class == BIN_DISTRIBUTION_CLASS:  # BinDistribution
+            for cat, prob in zip(prediction_data['cat'], prediction_data['prob']):
                 rows.append([unit, target, prediction_class, value, cat, prob, sample, quantile,
                              family, param1, param2, param3])
         elif prediction_class == NAMED_DISTRIBUTION_CLASS:  # NamedDistribution
             rows.append([unit, target, prediction_class, value, cat, prob, sample, quantile,
-                         prediction['family'],
-                         prediction['param1'] if 'param1' in prediction else '',
-                         prediction['param2'] if 'param2' in prediction else '',
-                         prediction['param3'] if 'param3' in prediction else ''])
-        elif prediction_class == POINT_PREDICTION_CLASS:  # PointPrediction
-            rows.append([unit, target, prediction_class, prediction['value'], cat, prob, sample, quantile,
+                         prediction_data['family'],
+                         prediction_data['param1'] if 'param1' in prediction_data else '',
+                         prediction_data['param2'] if 'param2' in prediction_data else '',
+                         prediction_data['param3'] if 'param3' in prediction_data else ''])
+        elif prediction_class == POINT_PREDICTION_CLASS:
+            rows.append([unit, target, prediction_class, prediction_data['value'], cat, prob, sample, quantile,
                          family, param1, param2, param3])
-        elif prediction_class == SAMPLE_PREDICTION_CLASS:  # SamplePrediction
-            for sample in prediction['sample']:
+        elif prediction_class == SAMPLE_PREDICTION_CLASS:
+            for sample in prediction_data['sample']:
                 rows.append([unit, target, prediction_class, value, cat, prob, sample, quantile,
                              family, param1, param2, param3])
-        else:  # prediction_class == QUANTILE_PREDICTION_CLASS  # QuantileDistribution
-            for quantile, value in zip(prediction['quantile'], prediction['value']):
+        else:  # prediction_class == QUANTILE_PREDICTION_CLASS
+            for quantile, value in zip(prediction_data['quantile'], prediction_data['value']):
                 rows.append([unit, target, prediction_class, value, cat, prob, sample, quantile,
                              family, param1, param2, param3])
     return rows

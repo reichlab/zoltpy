@@ -39,7 +39,7 @@ SEASON_START_EW_NUMBER = 30
 
 def json_io_dict_from_cdc_csv_file(season_start_year, cdc_csv_file_fp):
     """
-    Utility that extracts the two types of predictions found in CDC CSV files (PointPredictions and BinDistributions),
+    Utility that extracts the two types of predictions found in CDC CSV files (point predictions and bin distributions),
     returning them as a "JSON IO dict" suitable for loading into the database (see
     `load_predictions_from_json_io_dict()`). Note that the returned dict's "meta" section is empty.
 
@@ -112,8 +112,8 @@ def _cleaned_rows_from_cdc_csv_file(cdc_csv_file_fp):
 def _prediction_dicts_for_csv_rows(season_start_year, rows):
     """
     json_io_dict_from_cdc_csv_file() helper that returns a list of prediction dicts for the 'predictions' section of the
-    exported json. Each dict corresponds to either a PointPrediction or BinDistribution depending on each row in rows.
-    Uses season_start_year to convert EWs to YYYY_MM_DD_DATE_FORMAT dates.
+    exported json. Each dict corresponds to either a point prediction or a bin distribution depending on each row in
+    rows. Uses season_start_year to convert EWs to YYYY_MM_DD_DATE_FORMAT dates.
 
     Recall the seven cdc-project.json targets and their types:
     -------------------------+-------------------------------+-----------+-----------+---------------------
@@ -139,7 +139,7 @@ def _prediction_dicts_for_csv_rows(season_start_year, rows):
     :param season_start_year
     :param rows: as returned by _cleaned_rows_from_cdc_csv_file():
         location_name, target_name, is_point_row, bin_start_incl, bin_end_notincl, value
-    :return: a list of PointPrediction or BinDistribution prediction dicts
+    :return: a list of point prediction or bin distribution prediction dicts
     """
     prediction_dicts = []  # return value
     rows.sort(key=lambda _: (_[0], _[1], _[2]))  # sorted for groupby()
@@ -172,13 +172,13 @@ def _prediction_dicts_for_csv_rows(season_start_year, rows):
             point_value = point_values[0]
             prediction_dicts.append({"unit": location_name,
                                      "target": target_name,
-                                     'class': POINT_PREDICTION_CLASS,  # PointPrediction
+                                     'class': POINT_PREDICTION_CLASS,
                                      'prediction': {
                                          'value': point_value}})
         if bin_cats:
             prediction_dicts.append({"unit": location_name,
                                      "target": target_name,
-                                     'class': BIN_DISTRIBUTION_CLASS,  # BinDistribution
+                                     'class': BIN_DISTRIBUTION_CLASS,
                                      'prediction': {
                                          "cat": bin_cats,
                                          "prob": bin_probs}})

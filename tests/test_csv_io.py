@@ -90,3 +90,43 @@ class CsvIOTestCase(TestCase):
             json_io_dict = json.load(fp)
             act_rows = csv_rows_from_json_io_dict(json_io_dict)
         self.assertEqual(exp_rows, act_rows)
+
+
+    def test_csv_rows_from_json_io_dict_retractions(self):
+        with open('tests/retractions/docs-predictions-with-retractions.json') as fp:
+            json_io_dict = json.load(fp)
+        exp_rows = [
+            ['unit', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'quantile', 'family', 'param1', 'param2',
+             'param3'],
+            ['location1', 'pct next week', 'point', '', '', '', '', '', '', '', '', ''],
+            ['location1', 'pct next week', 'named', '', '', '', '', '', '', '', '', ''],
+            ['location2', 'pct next week', 'point', '', '', '', '', '', '', '', '', ''],
+            ['location2', 'pct next week', 'bin', '', '', '', '', '', '', '', '', ''],
+            ['location2', 'pct next week', 'quantile', '', '', '', '', '', '', '', '', ''],
+            ['location3', 'pct next week', 'point', '', '', '', '', '', '', '', '', ''],
+            ['location3', 'pct next week', 'sample', '', '', '', '', '', '', '', '', ''],
+            ['location1', 'cases next week', 'named', '', '', '', '', '', '', '', '', ''],
+            ['location2', 'cases next week', 'point', '', '', '', '', '', '', '', '', ''],
+            ['location2', 'cases next week', 'sample', '', '', '', '', '', '', '', '', ''],
+            ['location3', 'cases next week', 'point', '', '', '', '', '', '', '', '', ''],
+            ['location3', 'cases next week', 'bin', '', '', '', '', '', '', '', '', ''],
+            ['location3', 'cases next week', 'quantile', '', '', '', '', '', '', '', '', ''],
+            ['location1', 'season severity', 'point', '', '', '', '', '', '', '', '', ''],
+            ['location1', 'season severity', 'bin', '', '', '', '', '', '', '', '', ''],
+            ['location2', 'season severity', 'point', '', '', '', '', '', '', '', '', ''],
+            ['location2', 'season severity', 'sample', '', '', '', '', '', '', '', '', ''],
+            ['location1', 'above baseline', 'point', '', '', '', '', '', '', '', '', ''],
+            ['location2', 'above baseline', 'bin', '', '', '', '', '', '', '', '', ''],
+            ['location2', 'above baseline', 'sample', '', '', '', '', '', '', '', '', ''],
+            ['location3', 'above baseline', 'sample', '', '', '', '', '', '', '', '', ''],
+            ['location1', 'Season peak week', 'point', '', '', '', '', '', '', '', '', ''],
+            ['location1', 'Season peak week', 'bin', '', '', '', '', '', '', '', '', ''],
+            ['location1', 'Season peak week', 'sample', '', '', '', '', '', '', '', '', ''],
+            ['location2', 'Season peak week', 'point', '', '', '', '', '', '', '', '', ''],
+            ['location2', 'Season peak week', 'bin', '', '', '', '', '', '', '', '', ''],
+            ['location2', 'Season peak week', 'quantile', '', '', '', '', '', '', '', '', ''],
+            ['location3', 'Season peak week', 'point', '', '', '', '', '', '', '', '', ''],
+            ['location3', 'Season peak week', 'sample', '', '', '', '', '', '', '', '', '']]
+        act_rows = csv_rows_from_json_io_dict(json_io_dict)
+        self.assertEqual(30, len(act_rows))  # 29 predictions retracted + header
+        self.assertEqual(exp_rows, act_rows)  # todo xx

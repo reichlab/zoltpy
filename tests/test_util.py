@@ -1,9 +1,10 @@
+import json
 from unittest import TestCase
 from unittest.mock import patch
 
 from tests.test_connection import PROJECTS_LIST_DICTS, mock_authenticate
 from zoltpy.connection import ZoltarConnection
-from zoltpy.util import delete_forecast, download_forecast
+from zoltpy.util import delete_forecast, download_forecast, dataframe_from_json_io_dict
 
 
 class UtilTestCase(TestCase):
@@ -100,6 +101,14 @@ class UtilTestCase(TestCase):
             delete_forecast_mock.reset_mock()
             delete_forecast(conn, PROJECTS_LIST_DICTS[0]['name'], MODEL_DICT['name'], '2020-04-22')
             self.assertEqual(0, delete_forecast_mock.call_count)
+
+
+    def test_dataframe_from_json_io_dict(self):
+        with open('tests/docs-predictions.json') as fp:
+            json_io_dict = json.load(fp)
+
+        df = dataframe_from_json_io_dict(json_io_dict)
+        self.assertEqual((64, 12), df.shape)
 
 
 FORECAST_DICT = {

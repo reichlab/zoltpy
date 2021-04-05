@@ -241,16 +241,17 @@ def query_project(conn, project_name, query_type, query):
     in a specified Zoltar project.
     :param conn: a ZoltarConnection
     :param project_name: name of the Project to query
-    :param query_type: a QueryType enum value indicating the type of query to run
-    :param query: a dict that constrains the queried data. It is the analog of the JSON object documented at
-        https://docs.zoltardata.com/ . Briefly, query is a dict whose keys vary depending on query_type. References
-        to models, units, targets, and timezeros are strings that name the objects, and not IDs. Following are some
-        examples of the three types of queries:
+    :param query_type: a QueryType enum value indicating the type of query to run (forecasts or truth)
+    :param query: a dict that constrains the queried data as documented at https://docs.zoltardata.com/forecastqueryformat/ .
+        Briefly, it is a dict whose keys vary depending on query_type. References to models, units, targets, and
+        timezeros are strings that name the objects, and not IDs. Following are some examples of the two types of
+        queries:
     Forecasts:
         {"models": ["60-contact", "CovidIL_100"],
           "units": ["US"],
           "targets": ["0 day ahead cum death", "1 day ahead cum death"],
           "timezeros": ["2020-05-14", "2020-05-09"],
+          "as_of": "2020-05-14",
           "types": ["point", "quantile"]}
     Truth:
         {"units": ["US"],

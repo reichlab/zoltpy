@@ -1,0 +1,25 @@
+forecast_date,target,target_end_date,location,type,quantile,value
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.01,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.025,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.05,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.1,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.15,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.2,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.25,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.3,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.35,1
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.4,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.45,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.5,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.55,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.6,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.65,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.7,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.75,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.8,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.85,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.9,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.95,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.975,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,quantile,0.99,NULL
+2020-07-04,1 day ahead inc hosp,2020-07-05,US,point,NA,NULL

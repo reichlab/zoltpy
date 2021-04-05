@@ -8,7 +8,6 @@ from zoltpy.csv_io import CSV_HEADER
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, _validate_header, REQUIRED_COLUMNS, \
     quantile_csv_rows_from_json_io_dict, summarized_error_messages, MESSAGE_DATE_ALIGNMENT, MESSAGE_FORECAST_CHECKS, \
     MESSAGE_QUANTILES_AND_VALUES, MESSAGE_QUANTILES_AS_A_GROUP
-from zoltpy.util import dataframe_from_json_io_dict
 
 
 class QuantileIOTestCase(TestCase):
@@ -115,11 +114,40 @@ class QuantileIOTestCase(TestCase):
                 self.assertEqual(exp_json_io_dict, act_json_io_dict)
 
 
+    def test_json_io_dict_from_quantile_csv_file_retractions(self):
+        # test valid file with retractions
+        with open('tests/retractions/2020-07-04-YYG-ParamSearch-retractions.csv') as quantile_fp:
+            try:
+                json_io_dict, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
+                                                                                   covid19_row_validator,
+                                                                                   COVID_ADDL_REQ_COLS)
+                exp_json_io_dict = [
+                    {'unit': 'US', 'target': '1 day ahead inc hosp', 'class': 'quantile', 'prediction': None},
+                    {'unit': 'US', 'target': '1 day ahead inc hosp', 'class': 'point', 'prediction': None}]
+                self.assertEqual([], error_messages)
+                self.assertEqual(exp_json_io_dict, json_io_dict['predictions'])
+            except Exception as ex:
+                self.fail(f"unexpected exception: {ex}")
+
+        # test invalid file with retractions
+        with open('tests/retractions/2020-07-04-YYG-ParamSearch-bad-retractions.csv') as quantile_fp:
+            try:
+                _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
+                                                                        covid19_row_validator,
+                                                                        COVID_ADDL_REQ_COLS)
+                self.assertEqual(1, len(error_messages))
+                self.assertEqual(MESSAGE_QUANTILES_AND_VALUES, error_messages[0][0])
+                self.assertIn("Retracted quantile values must all be 'NULL', but only some were",
+                              error_messages[0][1])
+            except Exception as ex:
+                self.fail(f"unexpected exception: {ex}")
+
+
     def test_other_ok_quantile_files(self):
         with open('tests/quantiles-CU-60contact.csv') as quantile_fp:
             _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
                                                                     covid19_row_validator,
-                                                                    addl_req_cols=COVID_ADDL_REQ_COLS)
+                                                                    COVID_ADDL_REQ_COLS)
             self.assertEqual(0, len(error_messages))
 
 
@@ -135,7 +163,7 @@ class QuantileIOTestCase(TestCase):
             with open('tests/covid19-data-processed-examples/' + quantile_file) as quantile_fp:
                 _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
                                                                         covid19_row_validator,
-                                                                        addl_req_cols=COVID_ADDL_REQ_COLS)
+                                                                        COVID_ADDL_REQ_COLS)
                 self.assertEqual(0, len(error_messages))
 
 
@@ -159,7 +187,7 @@ class QuantileIOTestCase(TestCase):
             with open('tests/covid19-data-processed-examples/' + quantile_file) as quantile_fp:
                 _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
                                                                             covid19_row_validator,
-                                                                            addl_req_cols=COVID_ADDL_REQ_COLS)
+                                                                            COVID_ADDL_REQ_COLS)
                 self.assertEqual(exp_num_errors, len(act_error_messages), exp_error_messages)
                 for act_priority, act_error_message in act_error_messages:
                     self.assertEqual(exp_priority, act_priority)
@@ -221,10 +249,12 @@ class QuantileIOTestCase(TestCase):
             ('quantile-predictions-empty-point.csv', 1, 'entries in the `value` column must be an int or float'),
             ('quantile-predictions-nan-point.csv', 1, 'entries in the `value` column must be an int or float'),
             ('quantile-predictions-inf-point.csv', 1, 'entries in the `value` column must be an int or float'),
-            ('quantile-predictions-empty-quantile-value.csv', 2, 'entries in the `value` column must be an int or float'),
+            ('quantile-predictions-empty-quantile-value.csv', 2,
+             'entries in the `value` column must be an int or float'),
             ('quantile-predictions-inf-quantile-value.csv', 1, 'entries in the `value` column must be an int or float'),
             ('quantile-predictions-nan-quantile-value.csv', 2, 'entries in the `value` column must be an int or float'),
-            ('quantile-predictions-nan-quantile.csv', 1, 'entries in the `quantile` column must be an int or float in [0, 1]'),
+            ('quantile-predictions-nan-quantile.csv', 1,
+             'entries in the `quantile` column must be an int or float in [0, 1]'),
         ]
         for quantile_file, exp_num_errors, exp_message in file_exp_num_errors_messages:
             with open('tests/bad-values/' + quantile_file) as quantile_fp:
@@ -378,7 +408,8 @@ class QuantileIOTestCase(TestCase):
                                                         addl_req_cols=COVID_ADDL_REQ_COLS)
                 self.assertEqual(1, len(error_messages))
                 self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
-                self.assertIn("entries in the `quantile` column must be empty for `point` entries.", error_messages[0][1])
+                self.assertIn("entries in the `quantile` column must be empty for `point` entries.",
+                              error_messages[0][1])
 
             except Exception as ex:
                 self.fail(f"unexpected exception: {ex}")
@@ -487,7 +518,7 @@ class QuantileIOTestCase(TestCase):
         with open('tests/county-examples/correct.csv') as quantile_fp:
             _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp,
                                                                     COVID_TARGETS, covid19_row_validator,
-                                                                    addl_req_cols=COVID_ADDL_REQ_COLS)
+                                                                    COVID_ADDL_REQ_COLS)
         self.assertEqual(0, len(error_messages))
 
         # test invalid combinations
@@ -501,16 +532,7 @@ class QuantileIOTestCase(TestCase):
             with open('tests/county-examples/' + quantile_file) as quantile_fp:
                 _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
                                                                         covid19_row_validator,
-                                                                        addl_req_cols=COVID_ADDL_REQ_COLS)
+                                                                        COVID_ADDL_REQ_COLS)
                 self.assertEqual(exp_num_errors, len(error_messages))
                 self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
                 self.assertIn(exp_message, error_messages[0][1])  # arbitrarily pick first message. all are similar
-
-
-# todo move to test_util.py
-def test_dataframe_from_json_io_dict(self):
-    with open('tests/docs-predictions.json') as fp:
-        json_io_dict = json.load(fp)
-
-    df = dataframe_from_json_io_dict(json_io_dict)
-    self.assertEqual((64, 12), df.shape)
