@@ -24,3 +24,5 @@ share/python-wheels/
 MANIFEST
 
 *.DS_Store
+venv/
+.idea/

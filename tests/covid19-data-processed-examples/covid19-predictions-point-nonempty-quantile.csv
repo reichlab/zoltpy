@@ -1,0 +1,2 @@
+quantile,value,type,location,target,forecast_date,target_end_date
+-1.0,1,point,02,1 wk ahead cum death,2020-07-12,2020-07-18
