@@ -55,6 +55,7 @@ class QuantileIOTestCase(TestCase):
                                                                     addl_req_cols=COVID_ADDL_REQ_COLS)
             self.assertEqual(0, len(error_messages))
 
+
     def test_json_io_dict_from_invalid_type_header(self):
         with open('tests/covid19-data-processed-examples/2020-04-20-YYG-invalid-type.csv') as quantile_fp:
             _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
@@ -162,7 +163,8 @@ class QuantileIOTestCase(TestCase):
                 self.assertEqual(exp_num_errors, len(act_error_messages), exp_error_messages)
                 for act_priority, act_error_message in act_error_messages:
                     self.assertEqual(exp_priority, act_priority)
-                    self.assertTrue(any([exp_error_message in act_error_message for exp_error_message in exp_error_messages]))
+                    self.assertTrue(
+                        any([exp_error_message in act_error_message for exp_error_message in exp_error_messages]))
 
 
     def test_summarize_error_messages(self):
@@ -213,20 +215,26 @@ class QuantileIOTestCase(TestCase):
                           error_messages[0][1])
 
 
-    def test_json_io_dict_from_quantile_csv_file_nan(self):
-        with open('tests/quantile-predictions-nan-point.csv') as quantile_fp:
-            _, error_messages = \
-                json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead inc hosp'])
-            self.assertEqual(1, len(error_messages))
-            self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
-        self.assertIn('entries in the `value` column must be an int or float', error_messages[0][1])
+    def test_json_io_dict_from_point_csv_file_bad_values(self):
+        # test various bad point values, quantile values, and quantiles
+        file_exp_num_errors_messages = [
+            ('quantile-predictions-empty-point.csv', 1, 'entries in the `value` column must be an int or float'),
+            ('quantile-predictions-nan-point.csv', 1, 'entries in the `value` column must be an int or float'),
+            ('quantile-predictions-inf-point.csv', 1, 'entries in the `value` column must be an int or float'),
+            ('quantile-predictions-empty-quantile-value.csv', 2, 'entries in the `value` column must be an int or float'),
+            ('quantile-predictions-inf-quantile-value.csv', 1, 'entries in the `value` column must be an int or float'),
+            ('quantile-predictions-nan-quantile-value.csv', 2, 'entries in the `value` column must be an int or float'),
+            ('quantile-predictions-nan-quantile.csv', 1, 'entries in the `quantile` column must be an int or float in [0, 1]'),
+        ]
+        for quantile_file, exp_num_errors, exp_message in file_exp_num_errors_messages:
+            with open('tests/bad-values/' + quantile_file) as quantile_fp:
+                _, error_messages = json_io_dict_from_quantile_csv_file(
+                    quantile_fp, ['1 wk ahead cum death', '1 day ahead inc hosp'])
+                self.assertEqual(exp_num_errors, len(error_messages))
+                self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
 
-        with open('tests/quantile-predictions-nan-quantile.csv') as quantile_fp:
-            _, error_messages = \
-                json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead inc hosp'])
-            self.assertEqual(1, len(error_messages))
-            self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
-            self.assertIn('entries in the `quantile` column must be an int or float in [0, 1]', error_messages[0][1])
+                # note: for those with 2 errors, the 2nd one (MESSAGE_QUANTILES_AND_VALUES) is checked elsewhere
+                self.assertIn(exp_message, error_messages[0][1])
 
 
     def test_covid_validation_date_alignment(self):

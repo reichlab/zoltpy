@@ -10,6 +10,9 @@ from itertools import groupby
 #
 
 # prediction classes for use in "JSON IO dict" conversion
+from numbers import Number
+
+
 BIN_DISTRIBUTION_CLASS = 'bin'
 NAMED_DISTRIBUTION_CLASS = 'named'
 POINT_PREDICTION_CLASS = 'point'
@@ -200,9 +203,9 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
                                    not (0 <= quantile <= 1)):
             error_messages.append((MESSAGE_FORECAST_CHECKS, f"entries in the `quantile` column must be an int or "
                                                             f"float in [0, 1]: {quantile}. row={row}"))
-        elif is_point_row and ((value is None) or
-                               (isinstance(value, datetime.date)) or
-                               (not math.isfinite(value))):  # inf, nan
+        elif (value is None) or \
+                (isinstance(value, datetime.date)) or \
+                (not math.isfinite(value)):  # inf, nan
             error_messages.append((MESSAGE_FORECAST_CHECKS, f"entries in the `value` column must be an int or float: "
                                                             f"{value}. row={row}"))
 
@@ -292,7 +295,13 @@ def _validate_quantile_prediction_dict(prediction_dict):
 
 
     def le_with_tolerance(a, b):  # a <= b ?
-        return True if math.isclose(a, b, rel_tol=1e-05) else a <= b  # default: rel_tol=1e-09
+        if (not isinstance(a, Number)) or (not isinstance(b, Number)):
+            # handles case where testing an invalid value that's == None
+            return False
+        elif math.isclose(a, b, rel_tol=1e-05):  # default: rel_tol=1e-09
+            return True
+        else:
+            return a <= b
 
 
     is_le_values = [le_with_tolerance(a, b) for a, b in zip(pred_data_values, pred_data_values[1:])]
