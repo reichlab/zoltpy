@@ -143,14 +143,6 @@ class QuantileIOTestCase(TestCase):
                 self.fail(f"unexpected exception: {ex}")
 
 
-    def test_other_ok_quantile_files(self):
-        with open('tests/quantiles-CU-60contact.csv') as quantile_fp:
-            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS,
-                                                                    covid19_row_validator,
-                                                                    COVID_ADDL_REQ_COLS)
-            self.assertEqual(0, len(error_messages))
-
-
     def test_error_messages_actual_files_no_errors(self):
         # test large-ish actual files
         ok_quantile_files = [
@@ -536,3 +528,14 @@ class QuantileIOTestCase(TestCase):
                 self.assertEqual(exp_num_errors, len(error_messages))
                 self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
                 self.assertIn(exp_message, error_messages[0][1])  # arbitrarily pick first message. all are similar
+
+
+    def test_empty_forecast(self):
+        with open('tests/bad-values/quantile-predictions-no-data.csv') as quantile_fp:
+            try:
+                _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, COVID_TARGETS)
+                self.assertEqual(1, len(error_messages))
+                self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
+                self.assertIn('no data rows in file', error_messages[0][1])
+            except Exception as ex:
+                self.fail(f"unexpected exception: {ex}")

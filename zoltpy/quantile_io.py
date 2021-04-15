@@ -230,6 +230,10 @@ def _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, 
     if len(error_targets) > 0:
         error_messages.append((MESSAGE_FORECAST_CHECKS, f"invalid target name(s): {error_targets!r}"))
 
+    # validate the rule "No uploaded forecast can have no rows of data."
+    if not rows:
+        error_messages.append((MESSAGE_FORECAST_CHECKS, f"no data rows in file"))
+
     return rows, error_messages
 
 
