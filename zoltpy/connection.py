@@ -289,7 +289,11 @@ class Project(ZoltarResource):
     @property
     def latest_forecasts(self):
         """
-        :return: the Project's latests forecasts
+        A somewhat specialized function that returns the `ID` and `source` of the latest versions of a project's
+        forecasts. (Later we may generalize to allow passing specific columns to retrieve, such as 'forecast_model_id',
+        'time_zero_id', 'issue_date', 'created_at', 'source', and 'notes'.)
+
+        :return: the Project's latest forecasts as a list of 2-tuples: (forecast_id, source)
         """
         forecasts_url = f"{self.uri}forecasts/"
         response_json = self.zoltar_connection.json_for_uri(forecasts_url, False, 'text/csv')
