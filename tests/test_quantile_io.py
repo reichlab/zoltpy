@@ -17,7 +17,7 @@ class QuantileIOTestCase(TestCase):
 
     def test_locations(self):
         self.assertEqual(58, len(FIPS_CODES_STATE))
-        self.assertEqual(3142, len(FIPS_CODES_COUNTY))
+        self.assertEqual(3144, len(FIPS_CODES_COUNTY))
 
 
     def test_optional_additional_required_column_names(self):
