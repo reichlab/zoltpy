@@ -277,9 +277,9 @@ class Project(ZoltarResource):
 
 
     @property
-    def source(self):
+    def truth_source(self):
         """
-        :return: the Project's source
+        :return: the Project's truth's source
         """
         # recall the json contains these keys: 'id', 'url', 'project', 'source', 'created_at,
         # 'truth_data'
@@ -287,7 +287,19 @@ class Project(ZoltarResource):
 
 
     @property
-    def created_at(self):
+    def latest_forecasts(self):
+        """
+        :return: the Project's latests forecasts
+        """
+        forecasts_url = f"{self.uri}forecasts/"
+        response_json = self.zoltar_connection.json_for_uri(forecasts_url, False, 'text/csv')
+        decoded_content = response_json.content.decode('utf-8')
+        csv_reader = csv.reader(decoded_content.splitlines(), delimiter=',')
+        return list(csv_reader)
+
+
+    @property
+    def truth_created_at(self):
         """
         :return: the Project's created_at, a datetime.datetime
         """
