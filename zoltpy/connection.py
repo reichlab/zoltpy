@@ -291,7 +291,7 @@ class Project(ZoltarResource):
         """
         A somewhat specialized function that returns the `ID` and `source` of the latest versions of a project's
         forecasts. (Later we may generalize to allow passing specific columns to retrieve, such as 'forecast_model_id',
-        'time_zero_id', 'issue_date', 'created_at', 'source', and 'notes'.)
+        'time_zero_id', 'issued_at', 'created_at', 'source', and 'notes'.)
 
         :return: the Project's latest forecasts as a list of 2-tuples: (forecast_id, source)
         """
@@ -396,7 +396,7 @@ class Project(ZoltarResource):
               "units": ["US"],
               "targets": ["0 day ahead cum death", "1 day ahead cum death"],
               "timezeros": ["2020-05-14", "2020-05-09"],
-              "as_of": "2020-05-14",
+              "as_of": "2020-05-14 12N EST",
               "types": ["point", "quantile"]}
         Truth:
             {"units": ["US"],
@@ -552,7 +552,7 @@ class Model(ZoltarResource):
 
 
 class Forecast(ZoltarResource):
-    _repr_keys = ('source', 'issue_date')
+    _repr_keys = ('source', 'issued_at')
 
 
     def __init__(self, zoltar_connection, uri, initial_json=None):
@@ -610,22 +610,23 @@ class Forecast(ZoltarResource):
 
 
     @property
-    def issue_date(self):
-        return self.json['issue_date']
+    def issued_at(self):
+        return self.json['issued_at']
 
 
-    @issue_date.setter
-    def issue_date(self, issue_date):
+    @issued_at.setter
+    def issued_at(self, issued_at):
         """
-        Sets my issue_date to `issue_date`. NB: does *not* call `self.refresh()`, for efficiency
+        Sets my issued_at to `issued_at`. NB: does *not* call `self.refresh()`, for efficiency
 
-        :param issue_date: new issue_date. must be a string in YYYY_MM_DD_DATE_FORMAT, e.g., '2017-01-17'
+        :param issued_at: new issued_at. must be a datetime as parsed by the [dateutil python library]
+            (https://dateutil.readthedocs.io/en/stable/index.html), which accepts a variety of styles
         """
         response = requests.patch(self.uri,
                                   headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
-                                  json={'issue_date': issue_date})
+                                  json={'issued_at': issued_at})
         if response.status_code != 200:  # HTTP_200_OK
-            raise RuntimeError(f"set issue_date(): status code was not 200. status_code={response.status_code}. "
+            raise RuntimeError(f"set issued_at(): status code was not 200. status_code={response.status_code}. "
                                f"text={response.text}")
 
 

@@ -251,7 +251,7 @@ def query_project(conn, project_name, query_type, query):
           "units": ["US"],
           "targets": ["0 day ahead cum death", "1 day ahead cum death"],
           "timezeros": ["2020-05-14", "2020-05-09"],
-          "as_of": "2020-05-14",
+          "as_of": "2020-05-14 12N EST",
           "types": ["point", "quantile"]}
     Truth:
         {"units": ["US"],

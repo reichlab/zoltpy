@@ -351,7 +351,7 @@ class ConnectionTestCase(unittest.TestCase):
             self.assertEqual(new_source, forecast.source)
 
 
-    def test_forecasts_set_issue_date(self):
+    def test_forecasts_set_issued_at(self):
         from tests.test_util import FORECAST_DICT  # avoid circular imports
 
 
@@ -361,15 +361,15 @@ class ConnectionTestCase(unittest.TestCase):
                 patch('zoltpy.connection.ZoltarConnection.json_for_uri') as json_for_uri_mock:
             patch_mock.return_value.status_code = 200
             forecast = Forecast(conn, "http://example.com/api/forecast/3/", FORECAST_DICT)
-            self.assertEqual(FORECAST_DICT['issue_date'], forecast.issue_date)
+            self.assertEqual(FORECAST_DICT['issued_at'], forecast.issued_at)
 
-            new_issue_date = 'new issue_date'  # type isn't checked locally, just remotely
+            new_issued_at = 'new issued_at'  # type isn't checked locally, just remotely
             new_forecast_dict = dict(FORECAST_DICT)  # non-deep copy OK
-            new_forecast_dict['issue_date'] = new_issue_date
-            forecast.issue_date = new_issue_date  # call setter. does not refresh
+            new_forecast_dict['issued_at'] = new_issued_at
+            forecast.issued_at = new_issued_at  # call setter. does not refresh
             json_for_uri_mock.return_value = new_forecast_dict
             forecast.refresh()
-            self.assertEqual(new_issue_date, forecast.issue_date)
+            self.assertEqual(new_issued_at, forecast.issued_at)
 
 
     def test_is_token_expired(self):
