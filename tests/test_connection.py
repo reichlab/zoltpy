@@ -151,10 +151,15 @@ class ConnectionTestCase(unittest.TestCase):
             "url": "https://www.zoltardata.com/api/project/44/truth/",
             "project": "https://www.zoltardata.com/api/project/44/",
             "source": "zoltar-truth.csv",
-            "created_at": "2020-09-12T08:25:02.877459-04:00"}
+            "created_at": "2021-06-16T21:06:37.893283+00:00",
+            "issued_at": "2021-06-16T21:06:37.851554+00:00"}
         created_at = project_0.truth_created_at
         self.assertIsInstance(created_at, datetime.datetime)
-        self.assertEqual(dateutil.parser.parse("2020-09-12T08:25:02.877459-04:00"), created_at)
+        self.assertEqual(dateutil.parser.parse("2021-06-16T21:06:37.893283+00:00"), created_at)
+
+        issued_at = project_0.truth_issued_at
+        self.assertIsInstance(issued_at, datetime.datetime)
+        self.assertEqual(dateutil.parser.parse("2021-06-16T21:06:37.851554+00:00"), issued_at)
 
         # test Model.forecasts
         json_for_uri_mock.return_value = FORECASTS_LIST_DICTS

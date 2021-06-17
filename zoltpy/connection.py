@@ -281,9 +281,24 @@ class Project(ZoltarResource):
         """
         :return: the Project's truth's source
         """
-        # recall the json contains these keys: 'id', 'url', 'project', 'source', 'created_at,
-        # 'truth_data'
+        # recall the json contains these keys: 'id', 'url', 'project', 'source', 'created_at, 'issued_at'
         return self.zoltar_connection.json_for_uri(self.uri + 'truth/')['source']
+
+
+    @property
+    def truth_created_at(self):
+        """
+        :return: the Project's created_at, a datetime.datetime
+        """
+        return dateutil.parser.parse(self.zoltar_connection.json_for_uri(self.uri + 'truth/')['created_at'])
+
+
+    @property
+    def truth_issued_at(self):
+        """
+        :return: the Project's issued_at, a datetime.datetime
+        """
+        return dateutil.parser.parse(self.zoltar_connection.json_for_uri(self.uri + 'truth/')['issued_at'])
 
 
     @property
@@ -300,16 +315,6 @@ class Project(ZoltarResource):
         decoded_content = response_json.content.decode('utf-8')
         csv_reader = csv.reader(decoded_content.splitlines(), delimiter=',')
         return list(csv_reader)
-
-
-    @property
-    def truth_created_at(self):
-        """
-        :return: the Project's created_at, a datetime.datetime
-        """
-        # recall the json contains these keys: 'id', 'url', 'project', 'source', 'created_at,
-        # 'truth_data'
-        return dateutil.parser.parse(self.zoltar_connection.json_for_uri(self.uri + 'truth/')['created_at'])
 
 
     def upload_truth_data(self, truth_csv_fp):
@@ -393,15 +398,16 @@ class Project(ZoltarResource):
             queries:
         Forecasts:
             {"models": ["60-contact", "CovidIL_100"],
-              "units": ["US"],
-              "targets": ["0 day ahead cum death", "1 day ahead cum death"],
-              "timezeros": ["2020-05-14", "2020-05-09"],
-              "as_of": "2020-05-14 12N EST",
-              "types": ["point", "quantile"]}
+             "units": ["US"],
+             "targets": ["0 day ahead cum death", "1 day ahead cum death"],
+             "timezeros": ["2020-05-14", "2020-05-09"],
+             "as_of": "2020-05-14 12N EST",
+             "types": ["point", "quantile"]}
         Truth:
             {"units": ["US"],
-              "targets": ["0 day ahead cum death", "1 day ahead cum death"],
-              "timezeros": ["2020-05-14", "2020-05-09"]}
+             "targets": ["0 day ahead cum death", "1 day ahead cum death"],
+             "timezeros": ["2020-05-14", "2020-05-09"],
+             "as_of": "2020-05-14 12N EST"}
         :return: a Job for the query
         """
         if not isinstance(query_type, QueryType):
