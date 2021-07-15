@@ -11,8 +11,9 @@ numpy = "*"
 black = "==18.5b0"
 pymmwr = "==0.1.0"
 python-dateutil = "*"
+django = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.6"
+python_version = "3.9"
