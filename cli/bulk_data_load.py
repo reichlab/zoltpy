@@ -80,8 +80,5 @@ def bulk_data_load_app(zip_file, sqlite_file):
     logger.info(f"done. sqlite_file={sqlite_file}")
 
 
-# done!
-logger.info(f"done")
-
 if __name__ == '__main__':
     bulk_data_load_app()
