@@ -219,7 +219,7 @@ class QuantileIOTestCase(TestCase):
                                    "class. Found these duplicate unit/target/classes tuples: [('04', '1 day ahead "
                                    "inc hosp', ['point', 'point'])]"),
                                   (MESSAGE_QUANTILES_AS_A_GROUP,
-                                   "There must be exactly one point prediction for each location/target pair. Found "
+                                   "There must be zero or one point predictions for each location/target pair. Found "
                                    "these unit, target, point counts tuples did not have exactly one point: [('04', "
                                    "'1 day ahead inc hosp', 2)]")]
             self.assertEqual(exp_error_messages, act_error_messages)
@@ -229,10 +229,7 @@ class QuantileIOTestCase(TestCase):
         with open('tests/quantile-predictions-no-point.csv') as quantile_fp:
             _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, ['1 day ahead inc hosp',
                                                                                   '1 wk ahead cum death'])
-            self.assertEqual(1, len(error_messages))
-            self.assertEqual(MESSAGE_QUANTILES_AS_A_GROUP, error_messages[0][0])
-            self.assertIn("There must be exactly one point prediction for each location/target pair",
-                          error_messages[0][1])
+            self.assertEqual(0, len(error_messages))
 
 
     def test_json_io_dict_from_point_csv_file_bad_values(self):

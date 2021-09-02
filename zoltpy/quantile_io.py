@@ -143,13 +143,13 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
     # validate: "There must be exactly one point prediction for each location/target pair"
     unit_target_point_count = [(unit, target, pred_classes.count('point')) for (unit, target), pred_classes
                                in loc_targ_to_pred_classes.items()
-                               if pred_classes.count('point') != 1]
+                               if pred_classes.count('point') > 1]
     if unit_target_point_count:
         if len(unit_target_point_count) > 10:  # pick first 10 tuples to reduce output
             unit_target_point_count = unit_target_point_count[:10] + ['...']
         error_messages.append((MESSAGE_QUANTILES_AS_A_GROUP,
-                               f"There must be exactly one point prediction for each location/target pair. Found these "
-                               f"unit, target, point counts tuples did not have exactly one point: "
+                               f"There must be zero or one point predictions for each location/target pair. Found "
+                               f"these unit, target, point counts tuples did not have exactly one point: "
                                f"{unit_target_point_count}"))
 
     # done
