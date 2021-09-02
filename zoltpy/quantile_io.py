@@ -148,7 +148,7 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
         if len(unit_target_point_count) > 10:  # pick first 10 tuples to reduce output
             unit_target_point_count = unit_target_point_count[:10] + ['...']
         error_messages.append((MESSAGE_QUANTILES_AS_A_GROUP,
-                               f"There must be zero or one point predictions for each location/target pair. Found "
+                               f"There must be zero or one point prediction for each location/target pair. Found "
                                f"these unit, target, point counts tuples did not have exactly one point: "
                                f"{unit_target_point_count}"))
 

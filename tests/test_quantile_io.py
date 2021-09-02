@@ -219,7 +219,7 @@ class QuantileIOTestCase(TestCase):
                                    "class. Found these duplicate unit/target/classes tuples: [('04', '1 day ahead "
                                    "inc hosp', ['point', 'point'])]"),
                                   (MESSAGE_QUANTILES_AS_A_GROUP,
-                                   "There must be zero or one point predictions for each location/target pair. Found "
+                                   "There must be zero or one point prediction for each location/target pair. Found "
                                    "these unit, target, point counts tuples did not have exactly one point: [('04', "
                                    "'1 day ahead inc hosp', 2)]")]
             self.assertEqual(exp_error_messages, act_error_messages)
