@@ -91,12 +91,19 @@ class Project(models.Model):
 #
 
 class Unit(models.Model):
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['project', 'abbreviation'], name='unique_unit_abbreviation'),
+        ]
+
+
     project = models.ForeignKey(Project, related_name='units', on_delete=models.CASCADE)
     name = models.TextField()
+    abbreviation = models.TextField()
 
 
     def __repr__(self):
-        return str((self.pk, self.name))
+        return str((self.pk, self.abbreviation, self.name))
 
 
     def __str__(self):  # todo

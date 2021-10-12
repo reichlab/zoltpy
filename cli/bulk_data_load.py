@@ -14,14 +14,14 @@ logging.basicConfig(level=logging.INFO,  # level=logging.ERROR,
 
 logger = logging.getLogger(__name__)
 
-# maps csv_file_name -> 2-tuple: (table_name, columns)
+# maps csv_file_name -> 2-tuple: (table_name, columns). copied from Zoltar's utils.bulk_data_dump.model_field_names()
 CSV_FILE_NAME_TO_TABLE_NAME_COLUMNS = {
     'project.csv': (
         'forecast_app_project',
         ['id', 'core_data', 'description', 'home_url', 'is_public', 'logo_url', 'name', 'time_interval_type',
          'visualization_y_label']),
     'unit.csv': (
-        'forecast_app_unit', ['id', 'project_id', 'name']),
+        'forecast_app_unit', ['id', 'project_id', 'abbreviation', 'name']),
     'target.csv': (
         'forecast_app_target',
         ['id', 'project_id', 'description', 'is_step_ahead', 'name', 'step_ahead_increment', 'type', 'unit']),

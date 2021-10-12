@@ -117,6 +117,7 @@ class ConnectionTestCase(unittest.TestCase):
 
         unit_0 = units[0]
         self.assertIsInstance(unit_0, Unit)
+        self.assertEqual("loc1", unit_0.abbreviation)
         self.assertEqual("location1", unit_0.name)
 
         # test Project.targets
@@ -504,16 +505,19 @@ UNITS_LIST_DICTS = [
     {
         "id": 23,
         "url": "http://example.com/api/unit/23/",
+        "abbreviation": "loc1",
         "name": "location1"
     },
     {
         "id": 24,
         "url": "http://example.com/api/unit/24/",
+        "abbreviation": "loc2",
         "name": "location2"
     },
     {
         "id": 25,
         "url": "http://example.com/api/unit/25/",
+        "abbreviation": "loc3",
         "name": "location3"
     }
 ]

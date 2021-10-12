@@ -8,9 +8,9 @@
   "time_interval_type": "Week",
   "visualization_y_label": "the scale for your variable of interest",
   "units": [
-    {"name": "location1"},
-    {"name": "location2"},
-    {"name": "location3"}
+    {"name": "location1", "abbreviation": "loc1"},
+    {"name": "location2", "abbreviation": "loc2"},
+    {"name": "location3", "abbreviation": "loc3"}
   ],
   "targets": [
     {
@@ -28,7 +28,7 @@
       "description": "A forecasted integer number of cases for a future week.",
       "type": "discrete",
       "is_step_ahead": true,
-      "step_ahead_increment": 1,
+      "step_ahead_increment": 2,
       "unit": "cases",
       "range": [0, 100000],
       "cats": [0, 2, 50]

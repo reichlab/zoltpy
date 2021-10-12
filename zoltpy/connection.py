@@ -657,11 +657,16 @@ class Forecast(ZoltarResource):
 
 
 class Unit(ZoltarResource):
-    _repr_keys = ('name',)
+    _repr_keys = ('abbreviation', 'name',)
 
 
     def __init__(self, zoltar_connection, uri, initial_json=None):
         super().__init__(zoltar_connection, uri, initial_json)
+
+
+    @property
+    def abbreviation(self):
+        return self.json['abbreviation']
 
 
     @property

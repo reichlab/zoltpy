@@ -130,7 +130,10 @@ create table forecast_app_unit
     project_id integer not null
         constraint forecast_app_unit_project_id_23eaa60c_fk_forecast_
             references forecast_app_project
-            deferrable initially deferred
+            deferrable initially deferred,
+    abbreviation text not null,
+        constraint unique_unit_abbreviation
+            unique (project_id, abbreviation)
 );
 
 create table forecast_app_predictionelement

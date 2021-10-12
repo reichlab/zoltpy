@@ -7,7 +7,7 @@
   "time_interval_type": "Week",
   "visualization_y_label": "Weighted ILI (%)",
   "locations": [
-    {"name": "HHS Region 1"}
+    {"name": "HHS Region 1", "abbreviation": "HHS Region 1"}
   ],
   "targets": [
     {

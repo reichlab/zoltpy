@@ -35,7 +35,7 @@ def query_forecasts_for_project(project, query, max_num_rows=MAX_NUM_QUERY_ROWS)
     are lists of strings. all are optional:
 
     - 'models': Pass zero or more model abbreviations in the models field.
-    - 'units': Pass zero or more unit names in the units field.
+    - 'units': Pass zero or more unit abbreviations in the units field.
     - 'targets': Pass zero or more target names in the targets field.
     - 'timezeros': Pass zero or more timezero dates in YYYY_MM_DD_DATE_FORMAT format in the timezeros field.
     - 'types': Pass a list of string types in the types field. Choices are PRED_CLASS_INT_TO_NAME.values().
@@ -92,7 +92,7 @@ def query_forecasts_for_project(project, query, max_num_rows=MAX_NUM_QUERY_ROWS)
             value, cat, prob, sample, quantile, family, param1, param2, param3 = '', '', '', '', '', '', '', '', ''
             if pred_class == PredictionElement.BIN_CLASS:
                 for cat, prob in zip(pred_data['cat'], pred_data['prob']):
-                    yield [model_str, timezero_str, season, unit_id_to_obj[unit_id].name,
+                    yield [model_str, timezero_str, season, unit_id_to_obj[unit_id].abbreviation,
                            target_id_to_obj[target_id].name, class_str,
                            value, cat, prob, sample, quantile, family, param1, param2, param3]
             elif pred_class == PredictionElement.NAMED_CLASS:
@@ -100,22 +100,22 @@ def query_forecasts_for_project(project, query, max_num_rows=MAX_NUM_QUERY_ROWS)
                 param1 = pred_data.get('param1', '')
                 param2 = pred_data.get('param2', '')
                 param3 = pred_data.get('param3', '')
-                yield [model_str, timezero_str, season, unit_id_to_obj[unit_id].name,
+                yield [model_str, timezero_str, season, unit_id_to_obj[unit_id].abbreviation,
                        target_id_to_obj[target_id].name, class_str,
                        value, cat, prob, sample, quantile, family, param1, param2, param3]
             elif pred_class == PredictionElement.POINT_CLASS:
                 value = pred_data['value']
-                yield [model_str, timezero_str, season, unit_id_to_obj[unit_id].name,
+                yield [model_str, timezero_str, season, unit_id_to_obj[unit_id].abbreviation,
                        target_id_to_obj[target_id].name, class_str,
                        value, cat, prob, sample, quantile, family, param1, param2, param3]
             elif pred_class == PredictionElement.QUANTILE_CLASS:
                 for quantile, value in zip(pred_data['quantile'], pred_data['value']):
-                    yield [model_str, timezero_str, season, unit_id_to_obj[unit_id].name,
+                    yield [model_str, timezero_str, season, unit_id_to_obj[unit_id].abbreviation,
                            target_id_to_obj[target_id].name, class_str,
                            value, cat, prob, sample, quantile, family, param1, param2, param3]
             elif pred_class == PredictionElement.SAMPLE_CLASS:
                 for sample in pred_data['sample']:
-                    yield [model_str, timezero_str, season, unit_id_to_obj[unit_id].name,
+                    yield [model_str, timezero_str, season, unit_id_to_obj[unit_id].abbreviation,
                            target_id_to_obj[target_id].name, class_str,
                            value, cat, prob, sample, quantile, family, param1, param2, param3]
 
@@ -237,7 +237,7 @@ def validate_forecasts_query(project, query):
         # return even though we could technically continue
         return [error_messages, (model_ids, unit_ids, target_ids, timezero_ids, types, as_of)]
 
-    # validate as_of if passed. must be parsable as a timezone-aware datetime
+    # validate `as_of` if passed. must be parsable as a timezone-aware datetime
     error_message, as_of = _validate_as_of(query)
     if error_message:
         error_messages.append(error_message)
@@ -317,21 +317,21 @@ def _validate_query_ids(project, query):
                 model_ids.append(model_abbrev_to_id[model_abbrev])
 
     if 'units' in query:
-        unit_names = query['units']
-        if not isinstance(unit_names, list):
-            error_messages.append(f"'units' was not a list. units={unit_names}, query={query}")
+        unit_abbrevs = query['units']
+        if not isinstance(unit_abbrevs, list):
+            error_messages.append(f"'units' was not a list. units={unit_abbrevs}, query={query}")
             return [error_messages, (model_ids, unit_ids, target_ids, timezero_ids)]
 
-        # look up Unit IDs corresponding to names. note that unit names are NOT currently enforced to be unique.
+        # look up Unit IDs corresponding to abbreviations. note that unit names are NOT currently enforced to be unique.
         # HOWEVER we do not check for multiple ones here b/c we anticipate enforcement will be added soon. thus we pick
         # an arbitrary one if there are duplicates
-        unit_name_to_id = {unit.name: unit.id for unit in project.units.all()}
-        for unit_name in unit_names:
-            if unit_name not in unit_name_to_id:
-                error_messages.append(f"unit with name not found. name={unit_name}, "
-                                      f"valid names={list(unit_name_to_id.keys())}, query={query}")
+        unit_abbrev_to_id = {unit.abbreviation: unit.id for unit in project.units.all()}
+        for unit_abbrev in unit_abbrevs:
+            if unit_abbrev not in unit_abbrev_to_id:
+                error_messages.append(f"unit with name not found. abbreviation={unit_abbrev}, "
+                                      f"valid names={list(unit_abbrev_to_id.keys())}, query={query}")
             else:
-                unit_ids.append(unit_name_to_id[unit_name])
+                unit_ids.append(unit_abbrev_to_id[unit_abbrev])
 
     if 'timezeros' in query:
         timezero_dates = query['timezeros']
