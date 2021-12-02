@@ -528,10 +528,10 @@ TARGETS_LIST_DICTS = [
         "url": "http://example.com/api/target/15/",
         "name": "pct next week",
         "description": "The forecasted percentage of positive tests for the next week",
-        "type": "continuous",
+        "outcome_variable": "percentage positive tests",
         "is_step_ahead": True,
-        "step_ahead_increment": 1,
-        "unit": "percent"
+        "numeric_horizon": 1,
+        "reference_date_type": "MMWR_WEEK_LAST_TIMEZERO_MONDAY"
     },
     {
         "id": 16,
@@ -539,9 +539,10 @@ TARGETS_LIST_DICTS = [
         "name": "cases next week",
         "description": "A forecasted integer number of cases for a future week.",
         "type": "discrete",
+        "outcome_variable": "cases",
         "is_step_ahead": True,
-        "step_ahead_increment": 1,
-        "unit": "cases"
+        "numeric_horizon": 1,
+        "reference_date_type": "MMWR_WEEK_LAST_TIMEZERO_MONDAY"
     }
 ]
 
