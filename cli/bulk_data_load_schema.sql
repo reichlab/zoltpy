@@ -55,19 +55,20 @@ create index forecast_app_project_owner_id_c4918997
 
 create table forecast_app_target
 (
-    id                   serial  not null
+    id                  serial  not null
         constraint forecast_app_target_pkey
             primary key,
-    type                 integer not null,
-    name                 text    not null,
-    description          text    not null,
-    is_step_ahead        boolean not null,
-    step_ahead_increment integer,
-    unit                 text,
-    project_id           integer not null
+    type                integer not null,
+    name                text    not null,
+    description         text    not null,
+    is_step_ahead       boolean not null,
+    numeric_horizon     integer,
+    project_id          integer not null
         constraint forecast_app_target_project_id_eaadfc34_fk_forecast_
             references forecast_app_project
-            deferrable initially deferred
+            deferrable initially deferred,
+    outcome_variable    text    not null,
+    reference_date_type integer
 );
 
 create index forecast_app_target_project_id_eaadfc34
@@ -123,17 +124,17 @@ create index forecast_app_timezero_project_id_a2dbaf7e
 
 create table forecast_app_unit
 (
-    id         serial  not null
+    id           serial  not null
         constraint forecast_app_unit_pkey
             primary key,
-    name       text    not null,
-    project_id integer not null
+    name         text    not null,
+    project_id   integer not null
         constraint forecast_app_unit_project_id_23eaa60c_fk_forecast_
             references forecast_app_project
             deferrable initially deferred,
-    abbreviation text not null,
-        constraint unique_unit_abbreviation
-            unique (project_id, abbreviation)
+    abbreviation text    not null,
+    constraint unique_unit_abbreviation
+        unique (project_id, abbreviation)
 );
 
 create table forecast_app_predictionelement

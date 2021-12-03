@@ -675,7 +675,7 @@ class Unit(ZoltarResource):
 
 
 class Target(ZoltarResource):
-    _repr_keys = ('name', 'type', 'is_step_ahead', 'step_ahead_increment', 'unit')
+    _repr_keys = ('name', 'type', 'outcome_variable', 'is_step_ahead', 'numeric_horizon', 'reference_date_type')
 
 
     def __init__(self, zoltar_connection, uri, initial_json=None):
@@ -693,18 +693,23 @@ class Target(ZoltarResource):
 
 
     @property
+    def outcome_variable(self):
+        return self.json['outcome_variable']
+
+
+    @property
     def is_step_ahead(self):
         return self.json['is_step_ahead']
 
 
     @property
-    def step_ahead_increment(self):
-        return self.json['step_ahead_increment']
+    def numeric_horizon(self):
+        return self.json['numeric_horizon']
 
 
     @property
-    def unit(self):
-        return self.json['unit']
+    def reference_date_type(self):
+        return self.json['reference_date_type']
 
 
 class TimeZero(ZoltarResource):

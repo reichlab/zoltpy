@@ -24,7 +24,8 @@ CSV_FILE_NAME_TO_TABLE_NAME_COLUMNS = {
         'forecast_app_unit', ['id', 'project_id', 'abbreviation', 'name']),
     'target.csv': (
         'forecast_app_target',
-        ['id', 'project_id', 'description', 'is_step_ahead', 'name', 'step_ahead_increment', 'type', 'unit']),
+        ['id', 'project_id', 'name', 'type', 'description', 'outcome_variable', 'is_step_ahead', 'numeric_horizon',
+         'reference_date_type']),
     'timezero.csv': (
         'forecast_app_timezero',
         ['id', 'project_id', 'data_version_date', 'is_season_start', 'season_name', 'timezero_date']),

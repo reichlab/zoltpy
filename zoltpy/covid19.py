@@ -181,20 +181,20 @@ def covid19_row_validator(column_index_dict, row, is_valid_target):
     is_day_or_week_ahead_target = (len(target_day_ahead_split) == 2) or (len(target_week_ahead_split) == 2)
     try:
         if is_day_or_week_ahead_target:  # valid day or week ahead target
-            step_ahead_increment = int(target_day_ahead_split[0].strip()) if len(target_day_ahead_split) == 2 \
+            numeric_horizon = int(target_day_ahead_split[0].strip()) if len(target_day_ahead_split) == 2 \
                 else int(target_week_ahead_split[0].strip())
         else:  # invalid target. don't add error message b/c caught by caller `_validated_rows_for_quantile_csv()`
-            return error_messages  # terminate - remaining validation depends on valid step_ahead_increment
+            return error_messages  # terminate - remaining validation depends on valid numeric_horizon
     except ValueError:
         error_messages.append((MESSAGE_FORECAST_CHECKS, f"non-integer 'ahead' number in target: {target!r}. row={row}"))
-        return error_messages  # terminate - remaining validation depends on valid step_ahead_increment
+        return error_messages  # terminate - remaining validation depends on valid numeric_horizon
 
     # validate date alignment
     # 1/4) for x day ahead targets the target_end_date should be forecast_date + x
     if 'day ahead' in target:
-        if (target_end_date - forecast_date).days != step_ahead_increment:
+        if (target_end_date - forecast_date).days != numeric_horizon:
             error_messages.append((MESSAGE_FORECAST_CHECKS,
-                                   f"invalid target_end_date: was not {step_ahead_increment} day(s) after "
+                                   f"invalid target_end_date: was not {numeric_horizon} day(s) after "
                                    f"forecast_date. diff={(target_end_date - forecast_date).days}, "
                                    f"forecast_date={forecast_date}, target_end_date={target_end_date}. row={row}"))
     else:  # 'wk ahead' in target
@@ -211,11 +211,11 @@ def covid19_row_validator(column_index_dict, row, is_valid_target):
                                                     weekday_to_sun_based[forecast_date.weekday()])))
         if weekday_to_sun_based[forecast_date.weekday()] <= 2:  # Sun or Mon
             # 3/4) (Sun or Mon) for x week ahead targets, ensure that the 1-week ahead forecast is for the next Sat
-            delta_days = weekday_diff + datetime.timedelta(days=(7 * (step_ahead_increment - 1)))
+            delta_days = weekday_diff + datetime.timedelta(days=(7 * (numeric_horizon - 1)))
             exp_target_end_date = forecast_date + delta_days
         else:  # Tue through Sat
             # 4/4) (Tue on) for x week ahead targets, ensures that the 1-week ahead forecast is for the Sat after next
-            delta_days = weekday_diff + datetime.timedelta(days=(7 * step_ahead_increment))
+            delta_days = weekday_diff + datetime.timedelta(days=(7 * numeric_horizon))
             exp_target_end_date = forecast_date + delta_days
         if target_end_date != exp_target_end_date:
             error_messages.append((MESSAGE_DATE_ALIGNMENT,
