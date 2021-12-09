@@ -73,15 +73,22 @@ COVID_QUANTILES_CASE = [0.025, 0.1, 0.25, 0.5, 0.75, 0.9, 0.975]
 # validate_quantile_csv_file()
 #
 
-def validate_quantile_csv_file(csv_fp, silent=False):
+def validate_quantile_csv_file(csv_path, validation_config, silent=False):
     """
     A simple wrapper of `json_io_dict_from_quantile_csv_file()` that tosses the json_io_dict and just prints validation
     error_messages.
 
-    :param csv_fp: as passed to `json_io_dict_from_quantile_csv_file()`
+    :param csv_path: as passed to `json_io_dict_from_quantile_csv_file()`
+    :param validation_config: a dict with validation information as documented at __ <- todo url for doc. summary:
+        the only key we use is "target_groups", which is a list of target_group objects, each of which has these fields:
+        - 'name': target group name
+        - 'targets': a list of specific target names (strings) in the group
+        - 'locations': a list of valid locations (strings) for the group
+        - 'quantiles': a list of valid quantiles (numbers) for the group
+    :param silent: True if should echo starting message
     :return: error_messages: a list of strings
     """
-    quantile_csv_file = Path(csv_fp)
+    quantile_csv_file = Path(csv_path)
     if not silent:
         click.echo(f"* validating quantile_csv_file '{quantile_csv_file}'...")
     with open(quantile_csv_file) as cdc_csv_fp:
@@ -92,6 +99,38 @@ def validate_quantile_csv_file(csv_fp, silent=False):
             return summarized_error_messages(error_messages)  # summarizes and orders, converting 2-tuples to strings
         else:
             return "no errors"
+
+
+#
+# validate_config_dict()
+#
+
+def validate_config_dict(validation_config):
+    """
+    Validates validation_config
+    :param validation_config: as passed to validate_quantile_csv_file()
+    :raises: RuntimeError if validation_config is invalid
+    """
+    if not isinstance(validation_config, dict):
+        raise RuntimeError(f"validation_config was not a dict: {validation_config}, type={type(validation_config)}")
+    elif 'target_groups' not in validation_config:
+        raise RuntimeError(f"validation_config did not contain 'target_groups' key: {validation_config}")
+    elif not isinstance(validation_config['target_groups'], list):
+        raise RuntimeError(f"'target_groups' was not a list: {validation_config['target_groups']}")
+
+    # validate each target_group
+    for target_group in validation_config['target_groups']:
+        expected_keys = ['name', 'targets', 'locations', 'quantiles']
+        actual_keys = list(target_group.keys())
+        if actual_keys != expected_keys:
+            raise RuntimeError(f"one or more target group keys was missing. expected keys={expected_keys}, "
+                               f"actual keys={actual_keys}")
+        elif (not isinstance(target_group['targets'], list)) \
+                or (not isinstance(target_group['locations'], list)) \
+                or (not isinstance(target_group['quantiles'], list)):
+            raise RuntimeError(f"one of these fields was not a list. target_group={target_group}")
+        elif not isinstance(target_group['name'], str):
+            raise RuntimeError(f"'name' field was not a string: {target_group['name']!r}")
 
 
 #
