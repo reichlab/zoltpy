@@ -37,6 +37,18 @@ class CdcIOTestCase(TestCase):
         with self.assertRaisesRegex(RuntimeError, "'name' field was not a string"):
             validate_config_dict({'target_groups': [{"name": None, "targets": [], "locations": [], "quantiles": []}]})
 
+        # case: dict with one 'target_groups' with all keys present, but targets or locations contain non-strings
+        bad_target_groups = [{"name": "inc flu hosp", "targets": [-1], "locations": [], "quantiles": []},
+                             {"name": "inc flu hosp", "targets": [], "locations": [-1], "quantiles": []}]
+        for bad_target_group in bad_target_groups:
+            with self.assertRaisesRegex(RuntimeError, "one of these fields contained non-strings"):
+                validate_config_dict({'target_groups': [bad_target_group]})
+
+        # case: dict with one 'target_groups' with all keys present, but quantiles contains non-numbers
+        with self.assertRaisesRegex(RuntimeError, "'quantiles' field contained non-numbers"):
+            validate_config_dict({'target_groups': [
+                {"name": "inc flu hosp", "targets": [], "locations": [], "quantiles": ['not a number']}]})
+
         # case: blue sky
         try:
             validate_config_dict({'target_groups':

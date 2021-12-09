@@ -1,6 +1,7 @@
 import csv
 import datetime
 import math
+import numbers
 import os
 from pathlib import Path
 
@@ -128,9 +129,16 @@ def validate_config_dict(validation_config):
         elif (not isinstance(target_group['targets'], list)) \
                 or (not isinstance(target_group['locations'], list)) \
                 or (not isinstance(target_group['quantiles'], list)):
-            raise RuntimeError(f"one of these fields was not a list. target_group={target_group}")
+            raise RuntimeError(f"one of these fields was not a list: 'targets', 'locations', or 'quantiles'. "
+                               f"target_group={target_group}")
         elif not isinstance(target_group['name'], str):
             raise RuntimeError(f"'name' field was not a string: {target_group['name']!r}")
+        elif (not all([isinstance(target, str) for target in target_group['targets']])) or \
+                (not all([isinstance(target, str) for target in target_group['locations']])):
+            raise RuntimeError(f"one of these fields contained non-strings: 'targets' or 'locations'"
+                               f"target_group={target_group}")
+        elif not all([isinstance(quantile, numbers.Number) for quantile in target_group['quantiles']]):
+            raise RuntimeError(f"'quantiles' field contained non-numbers. target_group={target_group}")
 
 
 #
