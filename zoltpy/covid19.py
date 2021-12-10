@@ -1,8 +1,6 @@
-import csv
 import datetime
 import math
 import numbers
-import os
 from pathlib import Path
 
 import click
@@ -24,53 +22,6 @@ COVID_ADDL_REQ_COLS = ['forecast_date', 'target_end_date']
 
 
 #
-# FIPS codes (locations)
-#
-
-def load_fips_codes(file):
-    fips_codes_state = []
-    fips_codes_county = []
-    with open(file) as fp:
-        csv_reader = csv.reader(fp, delimiter=',')
-        next(csv_reader)  # skip header
-        for abbreviation, location, location_name in csv_reader:
-            if abbreviation:
-                fips_codes_state.append(location)
-            else:
-                fips_codes_county.append(location)
-    return fips_codes_state, fips_codes_county
-
-
-# file per https://stackoverflow.com/questions/10174211/how-to-make-an-always-relative-to-current-module-file-path
-# FIPS_CODES_STATE: '01', '02', ..., 'US'
-# FIPS_CODES_COUNTY: '01001', '01003', ..., '56045'
-FIPS_CODES_STATE, FIPS_CODES_COUNTY = load_fips_codes(os.path.join(os.path.dirname(__file__), 'locations.csv'))
-
-#
-# targets
-#
-
-COVID_TARGETS_NON_CASE = [f"{_} day ahead inc hosp" for _ in range(131)] + \
-                         [f"{_} wk ahead inc death" for _ in range(1, 21)] + \
-                         [f"{_} wk ahead cum death" for _ in range(1, 21)]
-COVID_TARGETS_CASE = [f"{_} wk ahead inc case" for _ in range(1, 9)]
-COVID_TARGETS = COVID_TARGETS_NON_CASE + COVID_TARGETS_CASE
-
-#
-# quantiles
-#
-
-#
-# these are non-overlapping, which makes the below logic simpler. case targets is complete, but the full non-case
-# targets list is the combination of both, i.e.,
-# NC:      0.01, 0.05,  0.15, 0.2,   0.3, 0.35, 0.4, 0.45,  0.55, 0.6, 0.65, 0.7,   0.8, 0.85,  0.95,    0.99  (16) = 23
-# C:  0.025,         0.1,        0.25,                   0.5,                   0.75,        0.9,   0.975       (7)
-#
-COVID_QUANTILES_NON_CASE = [0.01, 0.05, 0.15, 0.2, 0.3, 0.35, 0.4, 0.45, 0.55, 0.6, 0.65, 0.7, 0.8, 0.85, 0.95, 0.99]
-COVID_QUANTILES_CASE = [0.025, 0.1, 0.25, 0.5, 0.75, 0.9, 0.975]
-
-
-#
 # validate_quantile_csv_file()
 #
 
@@ -89,12 +40,17 @@ def validate_quantile_csv_file(csv_path, validation_config, silent=False):
     :param silent: True if should echo starting message
     :return: error_messages: a list of strings
     """
+    try:
+        validate_config_dict(validation_config)
+    except RuntimeError as rte:
+        return [f"invalid validation_config. rte={rte}"]
+
     quantile_csv_file = Path(csv_path)
     if not silent:
         click.echo(f"* validating quantile_csv_file '{quantile_csv_file}'...")
     with open(quantile_csv_file) as cdc_csv_fp:
         # toss json_io_dict:
-        _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp, COVID_TARGETS, covid19_row_validator,
+        _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp, validation_config, hub_row_validator,
                                                                 COVID_ADDL_REQ_COLS)
         if error_messages:
             return summarized_error_messages(error_messages)  # summarizes and orders, converting 2-tuples to strings
@@ -145,12 +101,9 @@ def validate_config_dict(validation_config):
 # `json_io_dict_from_quantile_csv_file()` row validator
 #
 
-def covid19_row_validator(column_index_dict, row, is_valid_target):
+def hub_row_validator(column_index_dict, row, target_group_dict):
     """
-    Does COVID19-specific row validation. Notes:
-
-    - expects these `valid_target_names` passed to `json_io_dict_from_quantile_csv_file()`: COVID_TARGETS_NON_CASE
-    - expects these `addl_req_cols` passed to `json_io_dict_from_quantile_csv_file()`: COVID_ADDL_REQ_COLS
+    Does hub row validation. Notes: recall that target_group_dict is none if row's target is invalid.
     """
     from zoltpy.cdc_io import _parse_date  # avoid circular imports
 
@@ -159,15 +112,9 @@ def covid19_row_validator(column_index_dict, row, is_valid_target):
 
     location = row[column_index_dict['location']]
     target = row[column_index_dict['target']]
-    is_county_location = location in FIPS_CODES_COUNTY
-    is_state_location = location in FIPS_CODES_STATE
-    is_case_target = target in COVID_TARGETS_CASE
-    is_non_case_target = target in COVID_TARGETS_NON_CASE
 
     # validate location (FIPS code)
-    if is_valid_target and not ((is_case_target and is_state_location) or
-                                (is_case_target and is_county_location) or
-                                (is_non_case_target and is_state_location)):
+    if target_group_dict and (location not in target_group_dict['locations']):
         error_messages.append((MESSAGE_FORECAST_CHECKS, f"invalid location for target. location={location!r}, "
                                                         f"target={target!r}. row={row}"))
 
@@ -185,11 +132,7 @@ def covid19_row_validator(column_index_dict, row, is_valid_target):
     if row[column_index_dict['type']] == 'quantile':
         try:
             quantile_float = float(quantile)
-            is_case_quantile = quantile_float in COVID_QUANTILES_CASE
-            is_non_case_quantile = quantile_float in COVID_QUANTILES_CASE + COVID_QUANTILES_NON_CASE
-            if is_valid_target and not ((is_case_target and is_case_quantile) or
-                                        (is_non_case_target and is_case_quantile) or
-                                        (is_non_case_target and is_non_case_quantile)):
+            if target_group_dict and (quantile_float not in target_group_dict['quantiles']):
                 error_messages.append((MESSAGE_FORECAST_CHECKS, f"invalid quantile for target. quantile={quantile!r}, "
                                                                 f"target={target!r}. row={row}"))
         except ValueError:

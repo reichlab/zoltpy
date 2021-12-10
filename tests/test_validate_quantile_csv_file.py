@@ -1,11 +1,26 @@
 from unittest import TestCase
+from unittest.mock import patch
 
-from zoltpy.covid19 import validate_config_dict
+from zoltpy.covid19 import validate_config_dict, validate_quantile_csv_file
 
 
 class CdcIOTestCase(TestCase):
     """
     """
+
+
+    def test_validate_quantile_csv_file_calls_validate_config_dict(self):
+        validation_config = {'target_groups':
+                                 [{"name": "inc flu hosp", "targets": [], "locations": [], "quantiles": []}]}
+        with patch('zoltpy.covid19.validate_config_dict') as validate_config_mock:
+            validate_quantile_csv_file('tests/quantile-predictions.csv', validation_config)
+            validate_config_mock.assert_called_once_with(validation_config)
+
+        validation_config = {'target_groups': [
+            {"name": "inc flu hosp", "targets": [], "locations": [], "quantiles": ['not a number']}]}
+        error_messages = validate_quantile_csv_file('tests/quantile-predictions.csv', validation_config)
+        self.assertEqual(1, len(error_messages))
+        self.assertIn("invalid validation_config", error_messages[0])
 
 
     def test_validate_config_dict(self):
