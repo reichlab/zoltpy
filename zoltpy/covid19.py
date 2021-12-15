@@ -77,7 +77,7 @@ def validate_config_dict(validation_config):
 
     # validate each target_group
     for target_group in validation_config['target_groups']:
-        expected_keys = ['name', 'targets', 'locations', 'quantiles']
+        expected_keys = ['outcome_variable', 'targets', 'locations', 'quantiles']
         actual_keys = list(target_group.keys())
         if actual_keys != expected_keys:
             raise RuntimeError(f"one or more target group keys was missing. expected keys={expected_keys}, "
@@ -87,8 +87,8 @@ def validate_config_dict(validation_config):
                 or (not isinstance(target_group['quantiles'], list)):
             raise RuntimeError(f"one of these fields was not a list: 'targets', 'locations', or 'quantiles'. "
                                f"target_group={target_group}")
-        elif not isinstance(target_group['name'], str):
-            raise RuntimeError(f"'name' field was not a string: {target_group['name']!r}")
+        elif not isinstance(target_group['outcome_variable'], str):
+            raise RuntimeError(f"'outcome_variable' field was not a string: {target_group['outcome_variable']!r}")
         elif (not all([isinstance(target, str) for target in target_group['targets']])) or \
                 (not all([isinstance(target, str) for target in target_group['locations']])):
             raise RuntimeError(f"one of these fields contained non-strings: 'targets' or 'locations'"
