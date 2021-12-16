@@ -2,7 +2,7 @@ import json
 from unittest import TestCase
 from unittest.mock import patch
 
-from zoltpy.covid19 import hub_row_validator, COVID_ADDL_REQ_COLS
+from zoltpy.covid19 import hub_row_validator, COVID_ADDL_REQ_COLS, hub_quantile_prediction_dict_validator
 from zoltpy.csv_io import CSV_HEADER
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, _validate_header, REQUIRED_COLUMNS, \
     quantile_csv_rows_from_json_io_dict, summarized_error_messages, MESSAGE_DATE_ALIGNMENT, MESSAGE_FORECAST_CHECKS, \
@@ -26,12 +26,11 @@ class QuantileIOTestCase(TestCase):
                 cls.target_to_group[target] = target_group
 
 
-
     def test_optional_additional_required_column_names(self):
         # target, location, location_name, type, quantile,value:
         with open('tests/quantile-predictions.csv') as quantile_fp:
             _, error_messages = \
-                json_io_dict_from_quantile_csv_file(quantile_fp, ['1 wk ahead cum death', '1 day ahead inc hosp'],
+                json_io_dict_from_quantile_csv_file(quantile_fp, self.validation_config,
                                                     addl_req_cols=COVID_ADDL_REQ_COLS)
             self.assertEqual(1, len(error_messages))
             self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
@@ -126,7 +125,7 @@ class QuantileIOTestCase(TestCase):
             try:
                 json_io_dict, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, self.validation_config,
                                                                                    hub_row_validator,
-                                                                                   COVID_ADDL_REQ_COLS)
+                                                                                   addl_req_cols=COVID_ADDL_REQ_COLS)
                 exp_json_io_dict = [
                     {'unit': 'US', 'target': '1 day ahead inc hosp', 'class': 'quantile', 'prediction': None},
                     {'unit': 'US', 'target': '1 day ahead inc hosp', 'class': 'point', 'prediction': None}]
@@ -140,7 +139,7 @@ class QuantileIOTestCase(TestCase):
             try:
                 _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, self.validation_config,
                                                                         hub_row_validator,
-                                                                        COVID_ADDL_REQ_COLS)
+                                                                        addl_req_cols=COVID_ADDL_REQ_COLS)
                 self.assertEqual(1, len(error_messages))
                 self.assertEqual(MESSAGE_QUANTILES_AND_VALUES, error_messages[0][0])
                 self.assertIn("Retracted quantile values must all be 'NULL', but only some were",
@@ -161,7 +160,7 @@ class QuantileIOTestCase(TestCase):
             with open('tests/covid19-data-processed-examples/' + quantile_file) as quantile_fp:
                 _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, self.validation_config,
                                                                         hub_row_validator,
-                                                                        COVID_ADDL_REQ_COLS)
+                                                                        addl_req_cols=COVID_ADDL_REQ_COLS)
                 self.assertEqual(0, len(error_messages))
 
 
@@ -185,7 +184,7 @@ class QuantileIOTestCase(TestCase):
             with open('tests/covid19-data-processed-examples/' + quantile_file) as quantile_fp:
                 _, act_error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, self.validation_config,
                                                                             hub_row_validator,
-                                                                            COVID_ADDL_REQ_COLS)
+                                                                            addl_req_cols=COVID_ADDL_REQ_COLS)
                 self.assertEqual(exp_num_errors, len(act_error_messages), exp_error_messages)
                 for act_priority, act_error_message in act_error_messages:
                     self.assertEqual(exp_priority, act_priority)
@@ -455,7 +454,7 @@ class QuantileIOTestCase(TestCase):
             with open('tests/' + csv_file) as quantile_fp:
                 _, error_messages = \
                     json_io_dict_from_quantile_csv_file(quantile_fp, self.validation_config, hub_row_validator,
-                                                        COVID_ADDL_REQ_COLS)
+                                                        addl_req_cols=COVID_ADDL_REQ_COLS)
             self.assertEqual(1, len(error_messages))
             self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
             self.assertIn("invalid location for target", error_messages[0][1])
@@ -509,9 +508,9 @@ class QuantileIOTestCase(TestCase):
     def test_county_cases(self):
         # test blue sky
         with open('tests/county-examples/correct.csv') as quantile_fp:
-            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp,
-                                                                    self.validation_config, hub_row_validator,
-                                                                    COVID_ADDL_REQ_COLS)
+            _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, self.validation_config,
+                                                                    hub_row_validator,
+                                                                    addl_req_cols=COVID_ADDL_REQ_COLS)
         self.assertEqual(0, len(error_messages))
 
         # test invalid combinations
@@ -525,7 +524,7 @@ class QuantileIOTestCase(TestCase):
             with open('tests/county-examples/' + quantile_file) as quantile_fp:
                 _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, self.validation_config,
                                                                         hub_row_validator,
-                                                                        COVID_ADDL_REQ_COLS)
+                                                                        addl_req_cols=COVID_ADDL_REQ_COLS)
                 self.assertEqual(exp_num_errors, len(error_messages))
                 self.assertEqual(MESSAGE_FORECAST_CHECKS, error_messages[0][0])
                 self.assertIn(exp_message, error_messages[0][1])  # arbitrarily pick first message. all are similar
@@ -540,3 +539,46 @@ class QuantileIOTestCase(TestCase):
                 self.assertIn('no data rows in file', error_messages[0][1])
             except Exception as ex:
                 self.fail(f"unexpected exception: {ex}")
+
+
+    def test_hub_quantile_prediction_dict_validator(self):
+        # case: prediction dict is a subset of valid quantiles
+        target_group_dict = {"outcome_variable": "incident cases",
+                             "targets": [],
+                             "locations": [],
+                             "quantiles": [0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975]}
+        prediction_dict = {"unit": "loc2",
+                           "target": "pct next week",
+                           "class": "quantile",
+                           "prediction": {
+                               "quantile": [0.025, 0.25, 0.5, 0.75, 0.975],  # subset
+                               "value": []}}
+        error_messages = hub_quantile_prediction_dict_validator(target_group_dict, prediction_dict)
+        self.assertEqual(1, len(error_messages))
+        self.assertIn("prediction_dict quantiles != valid_quantiles", error_messages[0])
+
+        # case: prediction dict is a superset of valid quantiles
+        target_group_dict = {"outcome_variable": "incident cases",
+                             "targets": [],
+                             "locations": [],
+                             "quantiles": [0.025, 0.25, 0.5, 0.75, 0.975]}
+        prediction_dict = {"unit": "loc2",
+                           "target": "pct next week",
+                           "class": "quantile",
+                           "prediction": {
+                               "quantile": [0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975],  # superset
+                               "value": []}}
+        error_messages = hub_quantile_prediction_dict_validator(target_group_dict, prediction_dict)
+        self.assertEqual(1, len(error_messages))
+        self.assertIn("prediction_dict quantiles != valid_quantiles", error_messages[0])
+
+        # case: prediction dict equals valid quantiles
+        # same target_group_dict
+        prediction_dict = {"unit": "loc2",
+                           "target": "pct next week",
+                           "class": "quantile",
+                           "prediction": {
+                               "quantile": [0.025, 0.25, 0.5, 0.75, 0.975],  # equalq
+                               "value": []}}
+        error_messages = hub_quantile_prediction_dict_validator(target_group_dict, prediction_dict)
+        self.assertEqual(0, len(error_messages))

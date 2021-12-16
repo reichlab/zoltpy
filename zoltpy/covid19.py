@@ -51,6 +51,7 @@ def validate_quantile_csv_file(csv_path, validation_config, silent=False):
     with open(quantile_csv_file) as cdc_csv_fp:
         # toss json_io_dict:
         _, error_messages = json_io_dict_from_quantile_csv_file(cdc_csv_fp, validation_config, hub_row_validator,
+                                                                hub_quantile_prediction_dict_validator,
                                                                 COVID_ADDL_REQ_COLS)
         if error_messages:
             return summarized_error_messages(error_messages)  # summarizes and orders, converting 2-tuples to strings
@@ -103,7 +104,8 @@ def validate_config_dict(validation_config):
 
 def hub_row_validator(column_index_dict, row, target_group_dict):
     """
-    Does hub row validation. Notes: recall that target_group_dict is none if row's target is invalid.
+    Does hub row validation as documented in `json_io_dict_from_quantile_csv_file()`. Notes: recall that
+    target_group_dict is none if row's target is invalid.
     """
     from zoltpy.cdc_io import _parse_date  # avoid circular imports
 
@@ -214,4 +216,21 @@ def hub_row_validator(column_index_dict, row, target_group_dict):
                                    f"row={row}"))
 
     # done!
+    return error_messages
+
+
+#
+# hub_quantile_prediction_dict_validator()
+#
+
+def hub_quantile_prediction_dict_validator(target_group_dict, prediction_dict):
+    """
+    Does hub prediction_dict validation as documented in `json_io_dict_from_quantile_csv_file()`
+    """
+    error_messages = []  # return value. filled next
+    valid_quantiles = target_group_dict['quantiles']
+    prediction_quantiles = prediction_dict['prediction']['quantile']
+    if set(valid_quantiles) != set(prediction_quantiles):
+        error_messages.append(f"prediction_dict quantiles != valid_quantiles. valid_quantiles={valid_quantiles}, "
+                              f"prediction_quantiles={prediction_quantiles}")
     return error_messages

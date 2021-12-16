@@ -44,7 +44,8 @@ MESSAGE_QUANTILES_AND_VALUES = 2  # 4. validates quantiles and values (i.e,. at 
 MESSAGE_QUANTILES_AS_A_GROUP = 3  # 5. validates quantiles as a group
 
 
-def json_io_dict_from_quantile_csv_file(csv_fp, validation_config, row_validator=None, addl_req_cols=()):
+def json_io_dict_from_quantile_csv_file(csv_fp, validation_config, row_validator=None, prediction_dict_validator=None,
+                                        addl_req_cols=()):
     """
     Utility that validates and extracts the two types of predictions found in quantile CSV files (points and quantiles),
     returning them as a "JSON IO dict" suitable for loading into the database (see
@@ -62,23 +63,36 @@ def json_io_dict_from_quantile_csv_file(csv_fp, validation_config, row_validator
 
     :param csv_fp: an open quantile csv file-like object. the quantile CSV file format is documented at
         https://docs.zoltardata.com/
-    :param valid_target_names: list of strings of valid targets to validate against
+    :param validation_config: as documented at `validate_config_dict()`. assumes passed validation
     :param row_validator: an optional function that takes the following args and that is run to perform additional
-        project-specific validations. returns `error_messages` (a list of strings).
+        project-specific row validations. returns `error_messages` (a list of strings).
         - column_index_dict: as returned by _validate_header(): a dict that maps column_name -> its index in header (row)
         - row: the raw row being validated. NB: the order of columns is variable, but callers can use column_index_dict
             to index into row
         - target_group_dict: the dict the validation_config corresponding to the row's target, as passed to
             validate_quantile_csv_file(), e.g., the dict that contains these keys: 'name', 'targets', 'locations', and
             'quantiles'. the dict is None if the target was invalid
+    :param prediction_dict_validator: an optional function that takes the following args and that is run to
+        perform additional project-specific quantile prediction_dict validations. returns `error_messages` (a list of
+        strings).
+        - target_group_dict: a previously-validated dict from the 'target_groups' portion of a validation_config as
+            documented at `validate_config_dict()`
+        - prediction_dict
     :param addl_req_cols: an optional list of strings naming columns in addition to REQUIRED_COLUMNS that are required
     :return 2-tuple: (json_io_dict, error_messages) where the former is a "JSON IO dict" (aka 'json_io_dict' by callers)
         that contains the two types of predictions. see https://docs.zoltardata.com/ for details. json_io_dict is None
         if there were errors. the second arg is a list of 2-tuples: (priority, error_message). priority is an int that's
         used by callers to sort the messages
     """
+    # build target_to_group for fast lookup of target_group dicts. todo NB: this hub-specific cache should be done
+    # outside of this function and passed in
+    target_to_group = {}
+    for target_group in validation_config['target_groups']:
+        for target in target_group['targets']:
+            target_to_group[target] = target_group
+
     # load and validate the rows (validation step 1/4). error_messages is one of the the return values (filled next)
-    rows, error_messages = _validated_rows_for_quantile_csv(csv_fp, validation_config, row_validator, addl_req_cols)
+    rows, error_messages = _validated_rows_for_quantile_csv(csv_fp, target_to_group, row_validator, addl_req_cols)
 
     # step 2/4: process rows, collecting point and quantile values for each row. then add the actual prediction dicts.
     # each point row has its own dict, but quantile rows are grouped into one dict.
@@ -126,8 +140,13 @@ def json_io_dict_from_quantile_csv_file(csv_fp, validation_config, row_validator
         is_retraction = prediction_dict['prediction'] is None
         loc_targ_to_pred_classes[(unit, target)].append(prediction_class)
         if (prediction_dict['class'] == QUANTILE_PREDICTION_CLASS) and (not is_retraction):
-            pred_dict_error_messages = _validate_quantile_prediction_dict(prediction_dict)
-            error_messages.extend(pred_dict_error_messages)
+            error_messages.extend(_validate_quantile_prediction_dict(prediction_dict))
+
+            target_group_dict = target_to_group.get(target)  # None if not found
+            if prediction_dict_validator and (target_group_dict is not None):
+                # note that target_group_dict=None is checked by _validated_rows_for_quantile_csv() and added to
+                # error_messages there
+                error_messages.extend(prediction_dict_validator(target_group_dict, prediction_dict))
 
     # step 4/4: do "prediction"-level validations
     # validate: "Within a Prediction, there cannot be more than 1 Prediction Element of the same type".
@@ -158,7 +177,7 @@ def json_io_dict_from_quantile_csv_file(csv_fp, validation_config, row_validator
     return {'meta': {}, 'predictions': prediction_dicts}, error_messages
 
 
-def _validated_rows_for_quantile_csv(csv_fp, validation_config, row_validator, addl_req_cols):
+def _validated_rows_for_quantile_csv(csv_fp, target_to_group, row_validator, addl_req_cols):
     """
     `json_io_dict_from_quantile_csv_file()` helper function
 
@@ -180,12 +199,6 @@ def _validated_rows_for_quantile_csv(csv_fp, validation_config, row_validator, a
         return [], error_messages  # terminate processing b/c column_index_dict is required to get columns
 
     error_targets = set()  # output set of invalid target names
-
-    # build target_to_group for fast lookup of target_group dicts
-    target_to_group = {}
-    for target_group in validation_config['target_groups']:
-        for target in target_group['targets']:
-            target_to_group[target] = target_group
 
     rows = []  # list of parsed and validated rows. filled next
     for row in csv_reader:
@@ -225,7 +238,8 @@ def _validated_rows_for_quantile_csv(csv_fp, validation_config, row_validator, a
                                                             f"{parsed_value}. row={row}"))
 
         # do optional application-specific row validation. NB: error_messages is modified in-place as a side-effect
-        if row_validator:
+        if row_validator and (target_group_dict is not None):
+            # note that target_group_dict=None is checked above and added to error_messages there
             error_messages.extend(row_validator(column_index_dict, row, target_group_dict))
 
         # convert parsed date back into string suitable for JSON.

@@ -3,6 +3,7 @@ import os
 
 from zoltpy.cdc_io import json_io_dict_from_cdc_csv_file
 from zoltpy.connection import ZoltarConnection, QueryType
+from zoltpy.covid19 import hub_row_validator, hub_quantile_prediction_dict_validator
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file
 from zoltpy.util import busy_poll_job, create_project, dataframe_from_json_io_dict, dataframe_from_rows
 
@@ -72,9 +73,11 @@ def zoltar_connection_app():
     # work with a quantile csv file
     quantile_csv_file = "tests/quantile-predictions.csv"
     print(f'\n* working with a quantile csv file: {quantile_csv_file}')
-    with open(quantile_csv_file) as fp:
-        json_io_dict, error_messages = \
-            json_io_dict_from_quantile_csv_file(fp, ['1 wk ahead cum death', '1 day ahead inc hosp'])
+    with open(quantile_csv_file) as fp, open('tests/covid-validation-config.json', 'r') as config_fp:
+        validation_config = json.load(config_fp)
+        json_io_dict, error_messages = json_io_dict_from_quantile_csv_file(
+            fp, validation_config, hub_row_validator, hub_quantile_prediction_dict_validator,
+            ['1 wk ahead cum death', '1 day ahead inc hosp'])
     print(f"- converted quantile data to json: {len(json_io_dict['predictions'])} predictions")  # 5 predictions
 
     # convert to a Pandas DataFrame
