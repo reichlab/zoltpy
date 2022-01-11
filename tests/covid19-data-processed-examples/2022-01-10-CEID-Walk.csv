@@ -1,0 +1,17 @@
+forecast_date,target,target_end_date,location,type,quantile,value
+2022-01-10,1 wk ahead inc flu hosp,2022-01-15,01,quantile,0.025,5.648
+2022-01-10,1 wk ahead inc flu hosp,2022-01-15,01,quantile,0.1,11.397
+2022-01-10,1 wk ahead inc flu hosp,2022-01-15,01,quantile,0.25,17.25
+2022-01-10,1 wk ahead inc flu hosp,2022-01-15,01,quantile,0.5,23.428
+2022-01-10,1 wk ahead inc flu hosp,2022-01-15,01,quantile,0.75,30.195
+2022-01-10,1 wk ahead inc flu hosp,2022-01-15,01,quantile,0.9,36.443
+2022-01-10,1 wk ahead inc flu hosp,2022-01-15,01,quantile,0.975,40.483
+2022-01-10,1 wk ahead inc flu hosp,2022-01-15,01,point,NA,23.428
+2022-01-10,2 wk ahead inc flu hosp,2022-01-22,01,quantile,0.025,0
+2022-01-10,2 wk ahead inc flu hosp,2022-01-22,01,quantile,0.1,3.672
+2022-01-10,2 wk ahead inc flu hosp,2022-01-22,01,quantile,0.25,12.802
+2022-01-10,2 wk ahead inc flu hosp,2022-01-22,01,quantile,0.5,22.068
+2022-01-10,2 wk ahead inc flu hosp,2022-01-22,01,quantile,0.75,31.488
+2022-01-10,2 wk ahead inc flu hosp,2022-01-22,01,quantile,0.9,38.933
+2022-01-10,2 wk ahead inc flu hosp,2022-01-22,01,quantile,0.975,43.603
+2022-01-10,2 wk ahead inc flu hosp,2022-01-22,01,point,NA,22.068

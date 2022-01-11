@@ -16,7 +16,7 @@ class QuantileIOTestCase(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with open('tests/covid-validation-config.json', 'r') as fp:
+        with open('tests/covid-project-config.json', 'r') as fp:
             cls.validation_config = json.load(fp)
 
         # build target_to_group for fast lookup of target_group dicts
@@ -555,7 +555,8 @@ class QuantileIOTestCase(TestCase):
                                "value": []}}
         error_messages = hub_quantile_prediction_dict_validator(target_group_dict, prediction_dict)
         self.assertEqual(1, len(error_messages))
-        self.assertIn("prediction_dict quantiles != valid_quantiles", error_messages[0])
+        self.assertEqual(MESSAGE_QUANTILES_AS_A_GROUP, error_messages[0][0])
+        self.assertIn("prediction_dict quantiles != valid_quantiles", error_messages[0][1])
 
         # case: prediction dict is a superset of valid quantiles
         target_group_dict = {"outcome_variable": "incident cases",
@@ -570,7 +571,8 @@ class QuantileIOTestCase(TestCase):
                                "value": []}}
         error_messages = hub_quantile_prediction_dict_validator(target_group_dict, prediction_dict)
         self.assertEqual(1, len(error_messages))
-        self.assertIn("prediction_dict quantiles != valid_quantiles", error_messages[0])
+        self.assertEqual(MESSAGE_QUANTILES_AS_A_GROUP, error_messages[0][0])
+        self.assertIn("prediction_dict quantiles != valid_quantiles", error_messages[0][1])
 
         # case: prediction dict equals valid quantiles
         # same target_group_dict
@@ -582,3 +584,22 @@ class QuantileIOTestCase(TestCase):
                                "value": []}}
         error_messages = hub_quantile_prediction_dict_validator(target_group_dict, prediction_dict)
         self.assertEqual(0, len(error_messages))
+
+
+    def test_bad_error_messages_format(self):
+        with open('tests/flu-project-config.json', 'r') as validation_config_fp, \
+                open('tests/covid19-data-processed-examples/2022-01-10-CEID-Walk.csv') as quantile_fp:
+            flu_validation_config = json.load(validation_config_fp)
+            try:
+                _, error_messages = json_io_dict_from_quantile_csv_file(quantile_fp, flu_validation_config,
+                                                                        hub_row_validator,
+                                                                        hub_quantile_prediction_dict_validator,
+                                                                        addl_req_cols=COVID_ADDL_REQ_COLS)
+                self.assertEqual(2, len(error_messages))
+                for error_message in error_messages:
+                    self.assertEqual(tuple, type(error_message))
+                    self.assertEqual(2, len(error_message))
+                    self.assertEqual(int, type(error_message[0]))
+                    self.assertEqual(str, type(error_message[1]))
+            except Exception as ex:
+                self.fail(f"unexpected exception: {ex}")

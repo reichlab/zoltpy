@@ -6,7 +6,7 @@ from pathlib import Path
 import click
 
 from zoltpy.quantile_io import json_io_dict_from_quantile_csv_file, summarized_error_messages, MESSAGE_FORECAST_CHECKS, \
-    MESSAGE_DATE_ALIGNMENT
+    MESSAGE_DATE_ALIGNMENT, MESSAGE_QUANTILES_AS_A_GROUP
 
 
 #
@@ -38,7 +38,7 @@ def validate_quantile_csv_file(csv_path, validation_config, silent=False):
         - 'locations': a list of valid locations (strings) for the group
         - 'quantiles': a list of valid quantiles (numbers) for the group
     :param silent: True if should echo starting message
-    :return: error_messages: a list of strings
+    :return: error_messages: list of 2-tuples as returned by `json_io_dict_from_quantile_csv_file()`
     """
     try:
         validate_config_dict(validation_config)
@@ -231,6 +231,7 @@ def hub_quantile_prediction_dict_validator(target_group_dict, prediction_dict):
     valid_quantiles = target_group_dict['quantiles']
     prediction_quantiles = prediction_dict['prediction']['quantile']
     if set(valid_quantiles) != set(prediction_quantiles):
-        error_messages.append(f"prediction_dict quantiles != valid_quantiles. valid_quantiles={valid_quantiles}, "
-                              f"prediction_quantiles={prediction_quantiles}")
+        error_messages.append((MESSAGE_QUANTILES_AS_A_GROUP,
+                               f"prediction_dict quantiles != valid_quantiles. valid_quantiles={valid_quantiles}, "
+                               f"prediction_quantiles={prediction_quantiles}"))
     return error_messages

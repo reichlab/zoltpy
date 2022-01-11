@@ -73,7 +73,7 @@ def zoltar_connection_app():
     # work with a quantile csv file
     quantile_csv_file = "tests/quantile-predictions.csv"
     print(f'\n* working with a quantile csv file: {quantile_csv_file}')
-    with open(quantile_csv_file) as fp, open('tests/covid-validation-config.json', 'r') as config_fp:
+    with open(quantile_csv_file) as fp, open('tests/covid-project-config.json', 'r') as config_fp:
         validation_config = json.load(config_fp)
         json_io_dict, error_messages = json_io_dict_from_quantile_csv_file(
             fp, validation_config, hub_row_validator, hub_quantile_prediction_dict_validator,

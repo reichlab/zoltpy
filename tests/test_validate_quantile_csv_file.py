@@ -73,7 +73,7 @@ class CdcIOTestCase(TestCase):
             self.fail(f"unexpected exception: {ex}")
 
         # case: load from file
-        with open('tests/covid-validation-config.json', 'r') as fp:
+        with open('tests/covid-project-config.json', 'r') as fp:
             validation_config = json.load(fp)
             try:
                 validate_config_dict(validation_config)

@@ -65,7 +65,7 @@ def json_io_dict_from_quantile_csv_file(csv_fp, validation_config, row_validator
         https://docs.zoltardata.com/
     :param validation_config: as documented at `validate_config_dict()`. assumes passed validation
     :param row_validator: an optional function that takes the following args and that is run to perform additional
-        project-specific row validations. returns `error_messages` (a list of strings).
+        project-specific row validations. returns `error_messages` as documented below.
         - column_index_dict: as returned by _validate_header(): a dict that maps column_name -> its index in header (row)
         - row: the raw row being validated. NB: the order of columns is variable, but callers can use column_index_dict
             to index into row
@@ -73,8 +73,8 @@ def json_io_dict_from_quantile_csv_file(csv_fp, validation_config, row_validator
             validate_quantile_csv_file(), e.g., the dict that contains these keys: 'name', 'targets', 'locations', and
             'quantiles'. the dict is None if the target was invalid
     :param prediction_dict_validator: an optional function that takes the following args and that is run to
-        perform additional project-specific quantile prediction_dict validations. returns `error_messages` (a list of
-        strings).
+        perform additional project-specific quantile prediction_dict validations. returns `error_messages` as documented
+        below.
         - target_group_dict: a previously-validated dict from the 'target_groups' portion of a validation_config as
             documented at `validate_config_dict()`
         - prediction_dict
