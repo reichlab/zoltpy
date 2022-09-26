@@ -5,8 +5,6 @@ create table forecast_app_project
             primary key,
     is_public             boolean      not null,
     name                  text         not null,
-    time_interval_type    varchar(1)   not null,
-    visualization_y_label text         not null,
     description           text         not null,
     home_url              varchar(200) not null,
     logo_url              varchar(200),

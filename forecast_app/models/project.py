@@ -18,16 +18,6 @@ class Project(models.Model):
                                               "can only be accessed by the project's owner or any of its model_owners. "
                                               "True means it is publicly accessible.")
     name = models.TextField()
-    WEEK_TIME_INTERVAL_TYPE = 'w'
-    BIWEEK_TIME_INTERVAL_TYPE = 'b'
-    MONTH_TIME_INTERVAL_TYPE = 'm'
-    TIME_INTERVAL_TYPE_CHOICES = ((WEEK_TIME_INTERVAL_TYPE, 'Week'),
-                                  (BIWEEK_TIME_INTERVAL_TYPE, 'Biweek'),
-                                  (MONTH_TIME_INTERVAL_TYPE, 'Month'))
-    time_interval_type = models.CharField(max_length=1,
-                                          choices=TIME_INTERVAL_TYPE_CHOICES, default=WEEK_TIME_INTERVAL_TYPE,
-                                          help_text="Used when visualizing the x axis label.")
-    visualization_y_label = models.TextField(help_text="Used when visualizing the Y axis label.")
     description = models.TextField(help_text="A few paragraphs describing the project. Please see documentation for"
                                              "what should be included here - 'real-time-ness', time_zeros, etc.")
     home_url = models.URLField(help_text="The project's home site.")

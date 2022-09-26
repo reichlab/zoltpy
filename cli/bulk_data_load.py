@@ -18,8 +18,7 @@ logger = logging.getLogger(__name__)
 CSV_FILE_NAME_TO_TABLE_NAME_COLUMNS = {
     'project.csv': (
         'forecast_app_project',
-        ['id', 'core_data', 'description', 'home_url', 'is_public', 'logo_url', 'name', 'time_interval_type',
-         'visualization_y_label']),
+        ['id', 'core_data', 'description', 'home_url', 'is_public', 'logo_url', 'name']),
     'unit.csv': (
         'forecast_app_unit', ['id', 'project_id', 'abbreviation', 'name']),
     'target.csv': (
