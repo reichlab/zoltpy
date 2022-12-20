@@ -1,7 +1,7 @@
 import json
 from unittest import TestCase
 
-from zoltpy.csv_io import csv_rows_from_json_io_dict
+from zoltpy.csv_io import csv_rows_from_json_io_dict, CSV_HEADER
 
 
 class CsvIOTestCase(TestCase):
@@ -20,8 +20,7 @@ class CsvIOTestCase(TestCase):
         # blue sky. note that we hard-code the rows here instead of loading from an expected csv file b/c the latter
         # reads all values as strings, which means we'd have to cast types based on target. it became too painful :-)
         exp_rows = [
-            ['unit', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'quantile', 'family', 'param1', 'param2',
-             'param3'],
+            CSV_HEADER,
             ['loc1', 'pct next week', 'point', 2.1, '', '', '', '', '', '', '', ''],
             ['loc1', 'pct next week', 'named', '', '', '', '', '', 'norm', 1.1, 2.2, ''],
             ['loc2', 'pct next week', 'point', 2.0, '', '', '', '', '', '', '', ''],
@@ -96,8 +95,7 @@ class CsvIOTestCase(TestCase):
         with open('tests/retractions/docs-predictions-with-retractions.json') as fp:
             json_io_dict = json.load(fp)
         exp_rows = [
-            ['unit', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'quantile', 'family', 'param1', 'param2',
-             'param3'],
+            CSV_HEADER,
             ['loc1', 'pct next week', 'point', '', '', '', '', '', '', '', '', ''],
             ['loc1', 'pct next week', 'named', '', '', '', '', '', '', '', '', ''],
             ['loc2', 'pct next week', 'point', '', '', '', '', '', '', '', '', ''],

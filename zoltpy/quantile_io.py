@@ -75,7 +75,7 @@ def json_io_dict_from_quantile_csv_file(csv_fp, valid_target_names, row_validato
         if there were errors. the second arg is a list of 2-tuples: (priority, error_message). priority is an int that's
         used by callers to sort the messages
     """
-    # load and validate the rows (validation step 1/4). error_messages is one of the the return values (filled next)
+    # load and validate the rows (validation step 1/4). error_messages is one of the return values (filled next)
     rows, error_messages = _validated_rows_for_quantile_csv(csv_fp, valid_target_names, row_validator, addl_req_cols)
 
     # step 2/4: process rows, collecting point and quantile values for each row. then add the actual prediction dicts.
