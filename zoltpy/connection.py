@@ -531,7 +531,7 @@ class Model(ZoltarResource):
                                f"text={response.text}")
 
 
-    def upload_forecast(self, forecast_json, source, timezero_date, notes=''):
+    def upload_forecast(self, forecast_json, source, timezero_date, is_json=True, notes=''):
         """
         Uploads forecast data to this connection.
 
@@ -547,7 +547,8 @@ class Model(ZoltarResource):
             forecast_json_fp.seek(0)
             response = requests.post(self.uri + 'forecasts/',
                                      headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
-                                     data={'format': 'json', 'timezero_date': timezero_date, 'notes': notes},
+                                     data={'format': 'json' if is_json else 'csv', 'timezero_date': timezero_date,
+                                           'notes': notes},
                                      files={'data_file': (source, forecast_json_fp, 'application/json')})
             if response.status_code != 200:  # HTTP_200_OK
                 raise RuntimeError(f"upload_forecast(): status code was not 200. status_code={response.status_code}. "
