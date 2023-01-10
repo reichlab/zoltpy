@@ -536,8 +536,9 @@ class Model(ZoltarResource):
         Uploads forecast data to this connection.
 
         :param forecast_json: "JSON IO dict" to upload. format as documented at https://docs.zoltardata.com/
-        :param timezero_date: timezero to upload to YYYY-MM-DD DATE FORMAT
         :param source: source to associate with the uploaded data
+        :param timezero_date: timezero to upload to YYYY-MM-DD DATE FORMAT
+        :param is_json: True if forecast_json is JSON (dict) format, and FALSE if it is CSV (list) format
         :param notes: optional user notes for the new forecast
         :return: a Job to use to track the upload
         """

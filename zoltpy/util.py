@@ -151,11 +151,11 @@ def upload_forecast(conn, json_io_dict, forecast_filename, project_name, model_a
             predx_json, forecast_filename = util.convert_cdc_csv_to_json_io_dict(forecast_file_path)""")
             sys.exit(1)
 
-    job = model.upload_forecast(json_io_dict, forecast_filename, timezero_date, notes)
+    job = model.upload_forecast(json_io_dict, forecast_filename, timezero_date, notes=notes)
     if sync:
-        return busy_poll_job(job)
-    else:
-        return job
+        busy_poll_job(job)
+
+    return job
 
 
 def upload_forecast_batch(conn, json_io_dict_batch, forecast_filename_batch, project_name,
