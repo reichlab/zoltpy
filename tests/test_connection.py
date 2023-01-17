@@ -203,14 +203,37 @@ class ConnectionTestCase(unittest.TestCase):
         with open('tests/job-2.json') as ufj_fp, \
                 open("examples/example-model-config.json") as fp, \
                 patch('requests.post') as post_mock, \
-                patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary') as re_auth_mock:
+                patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary') as re_auth_mock, \
+                patch('json.dump') as json_dump_mock, \
+                patch('csv.writer') as csv_writer_mock:
             job_json = json.load(ufj_fp)
             model_config = json.load(fp)
             model_config['url'] = 'http://example.com/api/model/5/'
             post_mock.return_value.status_code = 200
             post_mock.return_value.json = MagicMock(return_value=job_json)
             forecast_model = Model(conn, model_config['url'], model_config)
-            act_job_json = forecast_model.upload_forecast({}, None, None)
+            act_job_json = forecast_model.upload_forecast({}, None, None)  # json forecast_data
+            json_dump_mock.assert_called_once()
+            csv_writer_mock.assert_not_called()
+            re_auth_mock.assert_called_once()
+            self.assertEqual(1, post_mock.call_count)
+            self.assertEqual('http://example.com/api/model/5/forecasts/', post_mock.call_args[0][0])
+            self.assertIsInstance(act_job_json, Job)
+            self.assertEqual(job_json['url'], act_job_json.uri)
+
+            # test csv forecast_json
+            csv_rows = [
+                ['unit', 'target', 'class', 'value', 'cat', 'prob', 'sample', 'quantile', 'family', 'param1', 'param2',
+                 'param3'],
+                ['loc1', 'pct next week', 'point', '2.1', '', '', '', '', '', '', '', '']
+            ]
+            re_auth_mock.reset_mock()
+            post_mock.reset_mock()
+            json_dump_mock.reset_mock()
+            csv_writer_mock.reset_mock()
+            act_job_json = forecast_model.upload_forecast(csv_rows, None, None, is_json=False)
+            json_dump_mock.assert_not_called()
+            csv_writer_mock.assert_called_once()
             re_auth_mock.assert_called_once()
             self.assertEqual(1, post_mock.call_count)
             self.assertEqual('http://example.com/api/model/5/forecasts/', post_mock.call_args[0][0])
@@ -218,10 +241,19 @@ class ConnectionTestCase(unittest.TestCase):
             self.assertEqual(job_json['url'], act_job_json.uri)
 
 
+    def test_forecast_data_is_json_mismatches(self):
+        forecast_model = Model(None, None, None)
+        with self.assertRaisesRegex(RuntimeError, 'invalid forecast_data type for is_json'):
+            forecast_model.upload_forecast([], None, None, is_json=True)  # list but is_json
+
+        with self.assertRaisesRegex(RuntimeError, 'invalid forecast_data type for is_json'):
+            forecast_model.upload_forecast({}, None, None, is_json=False)  # dict but not is_json
+
+
     def test_create_timezero(self):
         conn = mock_authenticate(ZoltarConnection('http://example.com'))
         with patch('zoltpy.connection.ZoltarConnection.json_for_uri', return_value=PROJECTS_LIST_DICTS), \
-             patch('requests.post') as post_mock, \
+                patch('requests.post') as post_mock, \
                 patch('zoltpy.connection.ZoltarConnection.re_authenticate_if_necessary') as re_auth_mock:
             project = conn.projects[0]
             post_mock.return_value.status_code = 200

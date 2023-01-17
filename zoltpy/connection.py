@@ -531,26 +531,40 @@ class Model(ZoltarResource):
                                f"text={response.text}")
 
 
-    def upload_forecast(self, forecast_json, source, timezero_date, is_json=True, notes=''):
+    def upload_forecast(self, forecast_data, source, timezero_date, is_json=True, notes=''):
         """
         Uploads forecast data to this connection.
 
-        :param forecast_json: "JSON IO dict" to upload. format as documented at https://docs.zoltardata.com/
+        :param forecast_data: data to upload, either a dict (if is_json==True) or csv rows otherwise. formats are
+            documented at https://docs.zoltardata.com/
         :param source: source to associate with the uploaded data
         :param timezero_date: timezero to upload to YYYY-MM-DD DATE FORMAT
-        :param is_json: True if forecast_json is JSON (dict) format, and FALSE if it is CSV (list) format
+        :param is_json: True if forecast_data is JSON (dict) format, and FALSE if it is CSV (list) format
         :param notes: optional user notes for the new forecast
         :return: a Job to use to track the upload
         """
+        # validate forecast_data and is_json combination. there are two valid cases:
+        # - forecast_data is a dict and is_json == True (JSON format)
+        # - forecast_data is a list and is_json == False (CSV format)
+        if (not isinstance(forecast_data, dict) and is_json) or \
+                (not isinstance(forecast_data, list) and not is_json):
+            raise RuntimeError(f"upload_forecast(): invalid forecast_data type for is_json. "
+                               f"type={type(forecast_data)}, is_json={is_json}")
+
         self.zoltar_connection.re_authenticate_if_necessary()
-        with tempfile.TemporaryFile("r+") as forecast_json_fp:
-            json.dump(forecast_json, forecast_json_fp)
-            forecast_json_fp.seek(0)
+        with tempfile.TemporaryFile("r+") as forecast_data_fp:
+            if is_json:
+                json.dump(forecast_data, forecast_data_fp)
+            else:
+                csv_writer = csv.writer(forecast_data_fp, delimiter=',')
+                csv_writer.writerows(forecast_data)
+            forecast_data_fp.seek(0)
             response = requests.post(self.uri + 'forecasts/',
                                      headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
                                      data={'format': 'json' if is_json else 'csv', 'timezero_date': timezero_date,
                                            'notes': notes},
-                                     files={'data_file': (source, forecast_json_fp, 'application/json')})
+                                     files={'data_file': (source, forecast_data_fp,
+                                                          'application/json' if is_json else 'text/csv')})
             if response.status_code != 200:  # HTTP_200_OK
                 raise RuntimeError(f"upload_forecast(): status code was not 200. status_code={response.status_code}. "
                                    f"text={response.text}", response)
