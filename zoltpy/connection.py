@@ -641,8 +641,9 @@ class Forecast(ZoltarResource):
         """
         Sets my issued_at to `issued_at`. NB: does *not* call `self.refresh()`, for efficiency
 
-        :param issued_at: new issued_at. must be a datetime as parsed by the [dateutil python library]
-            (https://dateutil.readthedocs.io/en/stable/index.html), which accepts a variety of styles
+        :param issued_at: datetime to use for the forecast's issued_at value in ISO 8601 format. NB: it
+            must include timezone information. (the default issued_at is the time of upload.) the value must obey the
+            constraints documented at https://docs.zoltardata.com/forecastversions/#forecast-version-rules
         """
         response = requests.patch(self.uri,
                                   headers={'Authorization': f'JWT {self.zoltar_connection.session.token}'},
