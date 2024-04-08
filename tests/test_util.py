@@ -108,7 +108,7 @@ class UtilTestCase(TestCase):
             json_io_dict = json.load(fp)
 
         df = dataframe_from_json_io_dict(json_io_dict)
-        self.assertEqual((64, 12), df.shape)
+        self.assertEqual((67, 12), df.shape)
 
 
 FORECAST_DICT = {

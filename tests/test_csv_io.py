@@ -22,6 +22,9 @@ class CsvIOTestCase(TestCase):
         exp_rows = [
             CSV_HEADER,
             ['loc1', 'pct next week', 'point', 2.1, '', '', '', '', '', '', '', ''],
+            ['loc1', 'pct next week', 'mean', 2.11, '', '', '', '', '', '', '', ''],
+            ['loc1', 'pct next week', 'median', 2.12, '', '', '', '', '', '', '', ''],
+            ['loc1', 'pct next week', 'mode', 2.13, '', '', '', '', '', '', '', ''],
             ['loc1', 'pct next week', 'named', '', '', '', '', '', 'norm', 1.1, 2.2, ''],
             ['loc2', 'pct next week', 'point', 2.0, '', '', '', '', '', '', '', ''],
             ['loc2', 'pct next week', 'bin', '', 1.1, 0.3, '', '', '', '', '', ''],
@@ -97,6 +100,9 @@ class CsvIOTestCase(TestCase):
         exp_rows = [
             CSV_HEADER,
             ['loc1', 'pct next week', 'point', '', '', '', '', '', '', '', '', ''],
+            ['loc1', 'pct next week', 'mean', '', '', '', '', '', '', '', '', ''],
+            ['loc1', 'pct next week', 'median', '', '', '', '', '', '', '', '', ''],
+            ['loc1', 'pct next week', 'mode', '', '', '', '', '', '', '', '', ''],
             ['loc1', 'pct next week', 'named', '', '', '', '', '', '', '', '', ''],
             ['loc2', 'pct next week', 'point', '', '', '', '', '', '', '', '', ''],
             ['loc2', 'pct next week', 'bin', '', '', '', '', '', '', '', '', ''],
@@ -126,5 +132,5 @@ class CsvIOTestCase(TestCase):
             ['loc3', 'Season peak week', 'point', '', '', '', '', '', '', '', '', ''],
             ['loc3', 'Season peak week', 'sample', '', '', '', '', '', '', '', '', '']]
         act_rows = csv_rows_from_json_io_dict(json_io_dict)
-        self.assertEqual(30, len(act_rows))  # 29 predictions retracted + header
-        self.assertEqual(exp_rows, act_rows)  # todo xx
+        self.assertEqual(33, len(act_rows))  # 32 predictions retracted + header
+        self.assertEqual(exp_rows, act_rows)
