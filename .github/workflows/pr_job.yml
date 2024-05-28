@@ -2,24 +2,25 @@ name: Zoltpy PR job
 
 on:
   push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-        architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
-    - name: Install pipenv
-      run: pip3 install pipenv
-    - name: Install deps
-      run: pipenv install -d
-    - name: Run tests
-      run: pipenv run python -m unittest discover tests/
+      - uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12'
+
+      - name: Install pipenv
+        run: pip3 install pipenv
+
+      - name: Install deps
+        run: pipenv install -d
+
+      - name: Run tests
+        run: pipenv run python -m unittest discover tests/
